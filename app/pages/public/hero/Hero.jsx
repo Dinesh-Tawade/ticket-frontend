@@ -11,11 +11,18 @@ import {
   FaLock,
   FaBolt,
 } from "react-icons/fa";
-
+import { useQuery } from "@tanstack/react-query";
+import {checkBackend} from "@/app/services/publicCommunication";
 import { useTranslation } from "react-i18next";
 
 function Hero() {
   const { t } = useTranslation();
+  const { data: backendStatus, error } = useQuery({
+    queryKey: ["checkBackend"],
+    queryFn: checkBackend,
+  });
+
+  console.log("Backend Status:", backendStatus);
 
   return (
     <section
@@ -30,11 +37,11 @@ function Hero() {
         
         <h1 className="text-3xl md:text-5xl font-bold mb-4 flex items-center justify-center gap-3">
           <FaTicketAlt className="text-yellow-300" />
-          {t("app.title") || "Book Your Tickets Easily"}
+          {t("app.title")}
         </h1>
 
         <p className="text-lg md:text-xl mb-8 text-gray-200">
-          {t("app.subtitle") || "Fast, secure and reliable ticket booking platform"}
+          {t("app.subtitle")}
         </p>
 
         <div className="bg-white dark:bg-gray-800 text-black dark:text-white rounded-xl shadow-lg p-4 md:p-6 max-w-4xl mx-auto">
