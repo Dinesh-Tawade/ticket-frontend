@@ -1,0 +1,13 @@
+{
+  "app": {
+    "login": "Login",
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact",
+    "title": "Book Your Tickets Easily",
+    "subtitle": "Fast, secure and reliable ticket booking platform",
+    "from": "From",
+    "to": "To",
+    "search": "Search Tickets"
+  }
+}
