@@ -12,7 +12,26 @@ export const getPublicCommunications = async () => {
   }
 };
 
+
 export const checkBackend = async () => {
   const res = await axios.get(`${BE_URL}/yes`);
   return res.data;
 };
+
+export const userLogin = async (email, password) => {
+  const res = await axios.post(`${BE_URL}/auth/login`, { email, password });
+  return res.data;
+};
+
+
+// ✅ register API (form-data)
+export const userRegister = async (formData) => {
+  const res = await axios.post(`${BE_URL}/auth/register`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return res.data;
+};
+
+

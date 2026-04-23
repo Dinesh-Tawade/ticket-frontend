@@ -8,6 +8,8 @@
     "subtitle": "Fast, secure and reliable ticket booking platform",
     "from": "From",
     "to": "To",
-    "search": "Search Tickets"
+    "search": "Search Tickets",
+    "email": "Email",
+    "login": "Login"
   }
 }
