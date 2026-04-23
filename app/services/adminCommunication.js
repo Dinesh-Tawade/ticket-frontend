@@ -23,3 +23,13 @@ export const Dashboardstats = async () => {
   const res = await axios.get(`${BE_URL}/admin/stats`);
   return res.data;
 };
+
+
+// Theater
+
+
+
+export const Theaters = async () => {
+  const res = await axios.get(`${BE_URL}/admin/add-theater/THEATER_OWNER_ID`);
+  return res.data;
+};

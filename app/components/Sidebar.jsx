@@ -129,8 +129,8 @@ export default function Sidebar() {
       <div>
         <div className="mb-8 flex items-center justify-between">
           {(!isCollapsed || isMobile) ? (
-            <h1 className="text-xl font-bold text-white">
-              🎟 Super Admin
+            <h1 className="text-3xl  font-bold text-white">
+              Super Admin
             </h1>
           ) : (
             <span className="text-xl mx-auto">🎟</span>

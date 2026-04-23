@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Dashboardstats } from "@/app/services/adminCommunication"; // ✅ correct import
+import { useRouter } from "next/navigation";
+import { Dashboardstats } from "@/app/services/adminCommunication";
 import AOS from "aos";
 
 export default function Dashboard() {
+  const router = useRouter();
+
   const [stats, setStats] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -15,7 +18,15 @@ export default function Dashboard() {
     setMounted(true);
   }, []);
 
-  // ✅ Init AOS
+  // ✅ Redirect if no token
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/admin/login");
+    }
+  }, [router]);
+
+  // ✅ Init AOS (FIXED TYPO)
   useEffect(() => {
     if (typeof window !== "undefined") {
       AOS.init({ duration: 800, once: true });
@@ -29,7 +40,6 @@ export default function Dashboard() {
         const res = await Dashboardstats();
         console.log("API RESPONSE:", res);
 
-        // ✅ Safe data handling
         if (res?.data) {
           setStats(res.data);
         } else {
@@ -38,7 +48,9 @@ export default function Dashboard() {
       } catch (err) {
         console.log("API ERROR:", err);
 
-        // 🔥 fallback data (so UI empty na lage)
+        setError("Failed to load data");
+
+        // fallback data
         setStats({
           totalUsers: 0,
           vendors: 0,
@@ -47,8 +59,6 @@ export default function Dashboard() {
           superAdmins: 0,
           activeUsers: 0,
         });
-
-        setError("Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -57,10 +67,8 @@ export default function Dashboard() {
     fetchStats();
   }, []);
 
-  // 🚨 Prevent hydration mismatch
   if (!mounted) return null;
 
-  // 🔄 Loader
   if (loading) {
     return (
       <div className="p-6 text-gray-500 text-lg animate-pulse">
@@ -78,7 +86,7 @@ export default function Dashboard() {
         <p className="text-gray-500">Welcome Admin 👋</p>
       </div>
 
-      {/* ERROR MESSAGE */}
+      {/* ERROR */}
       {error && (
         <div className="text-red-500 bg-red-100 p-3 rounded">
           {error}
@@ -87,14 +95,12 @@ export default function Dashboard() {
 
       {/* CARDS */}
       <div className="grid grid-cols-3 gap-6">
-
         <Card title="Total Users" value={stats.totalUsers} color="blue" delay="0" />
         <Card title="Vendors" value={stats.vendors} color="green" delay="100" />
         <Card title="Theater Owners" value={stats.theaterOwners} color="purple" delay="200" />
         <Card title="Buyers" value={stats.buyers} color="pink" delay="0" />
         <Card title="Super Admins" value={stats.superAdmins} color="yellow" delay="100" />
         <Card title="Active Users" value={stats.activeUsers} color="teal" delay="200" />
-
       </div>
 
       {/* OVERVIEW */}
@@ -113,17 +119,26 @@ export default function Dashboard() {
 }
 
 //
-// 🔥 REUSABLE CARD COMPONENT
+// ✅ SAFE CARD COMPONENT (TAILWIND FIXED)
 //
 function Card({ title, value, color, delay }) {
+  const colors = {
+    blue: "bg-blue-500",
+    green: "bg-green-500",
+    purple: "bg-purple-500",
+    pink: "bg-pink-500",
+    yellow: "bg-yellow-500",
+    teal: "bg-teal-500",
+  };
+
   return (
     <div
       data-aos="fade-up"
       data-aos-delay={delay}
       className={`
+        ${colors[color]}
         text-white p-6 rounded-xl shadow-lg 
         transition transform hover:scale-105
-        bg-${color}-500
       `}
     >
       <h3 className="text-lg mb-2">{title}</h3>
