@@ -1,16 +1,47 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSelector, useDispatch } from "react-redux";
+import { getCurrentUser, logoutUser } from "@/app/store/slices/authSlice";
 
-export default function useAuth() {
+export default function useAuth(redirectTo = null) {
   const router = useRouter();
+  const pathname = usePathname();
+  const dispatch = useDispatch();
+  
+  const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
+
+  // Public routes that don't require authentication
+  const publicRoutes = ["/login", "/register", "/"];
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-
-    if (!token) {
-      router.push("/admin/login");
+    
+    if (token && !user && !isLoading) {
+      dispatch(getCurrentUser());
     }
-  }, []);
-}   
+  }, [dispatch, user, isLoading]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const isPublicRoute = publicRoutes.includes(pathname);
+    
+    // Redirect to login if not authenticated and trying to access protected route
+    if (!token && !isPublicRoute && pathname !== "/admin/login") {
+      router.push(redirectTo || "/login");
+    }
+    
+    // Redirect to home if authenticated and trying to access login/register
+    if (token && (pathname === "/login" || pathname === "/register")) {
+      router.push("/");
+    }
+  }, [pathname, router, redirectTo]);
+
+  const logout = () => {
+    dispatch(logoutUser());
+    router.push("/login");
+  };
+
+  return { user, isAuthenticated, isLoading, logout };
+}
