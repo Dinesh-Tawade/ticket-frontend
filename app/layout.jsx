@@ -1,26 +1,26 @@
-import Header from './components/public/Header'
-import Footer from './components/public/Footer'
-import Providers from "@/app/providers";
+import { ReduxProvider } from "@/app/providers/ReduxProvider";
+import ReactQueryProvider from "@/app/providers/ReactQueryProvider";
+import Header from "@/app/components/public/Header";
+import Footer from "@/app/components/public/Footer";
+import "./globals.css";
 
-import './globals.css'
+export const metadata = {
+  title: "Booking App",
+  description: "Movie Ticket Booking App",
+};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className='flex flex-col min-h-screen'>
-        <Providers>
-          <Header />
-          
-          <main className='flex-grow container mx-auto p-4'>
-          {children}
-          </main>
-
-          <Footer />
-        </Providers>
-      
-
-
+      <body>
+        <ReduxProvider>
+          <Header/>
+          <ReactQueryProvider>
+            {children}
+          </ReactQueryProvider>
+        </ReduxProvider>
+        <Footer/>
       </body>
     </html>
-  )
+  );
 }
