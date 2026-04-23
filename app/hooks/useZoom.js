@@ -1,22 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { zoomIn, zoomOut, setZoom } from "@/app/store/slices/zoomSlice";
 
 export default function useZoom() {
-  const [zoom, setZoom] = useState(100);
+  const dispatch = useDispatch();
+  const zoom = useSelector((state) => state.zoom.zoom);
 
+  // Sync with localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("zoom");
-    if (saved) setZoom(Number(saved));
-  }, []);
+    if (saved && Number(saved) !== zoom) {
+      dispatch(setZoom(Number(saved)));
+    }
+  }, [dispatch, zoom]);
 
+  // Apply zoom to body
   useEffect(() => {
     document.body.style.zoom = `${zoom}%`;
     localStorage.setItem("zoom", zoom);
   }, [zoom]);
 
-  const zoomIn = () => setZoom((z) => Math.min(z + 10, 150));
-  const zoomOut = () => setZoom((z) => Math.max(z - 10, 50));
+  const zoomInHandler = () => dispatch(zoomIn());
+  const zoomOutHandler = () => dispatch(zoomOut());
 
-  return { zoom, zoomIn, zoomOut };
+  return { zoom, zoomIn: zoomInHandler, zoomOut: zoomOutHandler };
 }

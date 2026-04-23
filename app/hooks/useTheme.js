@@ -1,23 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { toggleTheme, setTheme } from "@/app/store/slices/themeSlice";
 
 export default function useTheme() {
-  const [theme, setTheme] = useState("light");
+  const dispatch = useDispatch();
+  const theme = useSelector((state) => state.theme.theme);
 
+  // Sync with localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("theme");
-    if (saved) setTheme(saved);
-  }, []);
+    if (saved && saved !== theme) {
+      dispatch(setTheme(saved));
+    }
+  }, [dispatch, theme]);
 
+  // Apply theme to document
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const toggle = () => {
+    dispatch(toggleTheme());
   };
 
-  return { theme, toggleTheme };
+  return { theme, toggleTheme: toggle };
 }
