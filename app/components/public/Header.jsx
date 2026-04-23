@@ -33,8 +33,28 @@ function Header() {
           </span>
           <span className="hover:text-yellow-400 cursor-pointer">
             {t("app.contact")}
+
           </span>
+          <a
+            href="../../pages/Authentication/login"
+            className="hover:text-yellow-400 cursor-pointer"
+          >
+            {t("app.login")}
+          </a>
+          <span>
+
+            <a
+              href="../../pages/Authentication/register"
+              className="hover:text-yellow-400 cursor-pointer"
+            >
+              {t("app.register")}
+            </a>
+          </span>
+
         </nav>
+
+
+
 
         {/* Controls */}
         <div className="flex items-center gap-3">

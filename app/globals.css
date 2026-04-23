@@ -15,3 +15,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   transition: all 0.3s ease;
 }
+
+.font-serif {
+  font-family: "Georgia", serif;
+}
