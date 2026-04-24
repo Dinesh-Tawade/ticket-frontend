@@ -11,7 +11,6 @@ const getAuthHeader = () => {
   };
 };
 
-// ==================== ADMIN COMMUNICATIONS ====================
 export const getadmincommunications = async () => {
   try {
     const res = await axios.get(`${BE_URL}/public-communications`);
