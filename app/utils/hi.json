@@ -10,6 +10,21 @@
     "to": "कहाँ तक",
     "search": "टिकट खोजें",
     "login": "लॉगिन",
-    "email": "ईमेल"
+    "email": "ईमेल",
+    "Dashboard": "डैशबोर्ड",
+    "logout": "लॉगआउट",
+    "welcome": "डैशबोर्ड में आपका स्वागत है!",
+    "Total Users": "कुल उपयोगकर्ता",
+    "Active Users": "सक्रिय उपयोगकर्ता",
+    "totalBookings": "कुल बुकिंग",
+    "Super Admins": "सुपर एडमिन",
+    "Theater Owners": "थिएटर मालिक",
+    "Vendors": "वेंडर्स",
+    "Buyers": "खरीदार",
+    "Admin": "एडमिन"
+
+
+
+  
   }
 }

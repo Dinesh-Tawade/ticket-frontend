@@ -10,6 +10,17 @@
     "to": "To",
     "search": "Search Tickets",
     "email": "Email",
-    "login": "Login"
+    "login": "Login",
+    "Dashboard": "Dashboard",
+    "logout": "Logout",
+    "welcome": "Welcome to the Dashboard!",
+    "Total Users": "Total Users",
+    "Active Users": "Active Users",
+    "totalBookings": "Total Bookings",
+    "Super Admins": "Super Admins",
+    "Theater Owners": "Theater Owners",
+    "Vendors": "Vendors",
+    "Buyers": "Buyers",
+    "Admin": "Admin"
   }
 }

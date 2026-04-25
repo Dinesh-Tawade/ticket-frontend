@@ -11,15 +11,6 @@ const getAuthHeader = () => {
   };
 };
 
-export const getadmincommunications = async () => {
-  try {
-    const res = await axios.get(`${BE_URL}/public-communications`);
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching public communications:", error);
-    throw error;
-  }
-};
 
 // ==================== AUTH ====================
 export const SuperAdminLogin = async (email, password) => {
