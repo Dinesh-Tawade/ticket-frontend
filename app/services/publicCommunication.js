@@ -96,3 +96,24 @@ export const setupSuperAdmin = async (adminData) => {
   const res = await axios.post(`${BE_URL}/setup/create-super-admin`, adminData);
   return res.data;
 };
+
+
+export const createBooking = async (bookingData) => {
+  const res = await axios.post(`${BE_URL}/public/booking/create`, bookingData, getAuthHeader());
+  return res.data;
+};
+
+export const confirmPayment = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/public/booking/confirm-payment/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+};  
+
+export const getMyBookings = async () => {
+  const res = await axios.get(`${BE_URL}/public/booking/my-bookings`, getAuthHeader());
+  return res.data;
+}
+
+export const cancelBooking = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+}
