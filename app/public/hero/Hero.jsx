@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import "../../../i18n";
+import "@/app/i18n";
 
 import {
   FaMapMarkerAlt,

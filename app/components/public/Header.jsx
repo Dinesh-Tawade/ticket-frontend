@@ -48,10 +48,10 @@ function Header() {
           </span>
           {!isAuthenticated ? (
             <>
-              <a href="../../pages/Authentication/login" className="hover:text-yellow-400 cursor-pointer">
+              <a href="../../login" className="hover:text-yellow-400 cursor-pointer">
                 {t("app.login")}
               </a>
-              <a href="../../pages/Authentication/register" className="hover:text-yellow-400 cursor-pointer">
+              <a href="../../register" className="hover:text-yellow-400 cursor-pointer">
                 {t("app.register")}
               </a>
             </>

@@ -1,12 +1,10 @@
-"use client";
 import React from 'react'
-import Hero from '@/app/public/hero/Hero';
-
+import Theater from './Theater'
 
 function page() {
   return (
     <div>
-     <Hero/> 
+      <Theater />
     </div>
   )
 }
