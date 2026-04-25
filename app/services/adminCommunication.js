@@ -11,15 +11,6 @@ const getAuthHeader = () => {
   };
 };
 
-export const getadmincommunications = async () => {
-  try {
-    const res = await axios.get(`${BE_URL}/public-communications`);
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching public communications:", error);
-    throw error;
-  }
-};
 
 // ==================== AUTH ====================
 export const SuperAdminLogin = async (email, password) => {
@@ -151,5 +142,15 @@ export const deleteShow = async (id) => {
 
 export const getAllBookingsAdmin = async () => {
   const res = await axios.get(`${BE_URL}/admin/booking/all`, getAuthHeader());
+  return res.data;
+};
+
+
+// Theater
+
+
+
+export const Theaters = async () => {
+  const res = await axios.get(`${BE_URL}/admin/add-theater/THEATER_OWNER_ID`);
   return res.data;
 };

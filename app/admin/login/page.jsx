@@ -2,47 +2,82 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SuperAdminLogin } from "@/app/services/adminCommunication";
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function AdminLogin() {
+const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState("");
 
-  const handleLogin = () => {
-    // dummy login
-    if (email && password) {
-      localStorage.setItem("token", "123");
-      router.push("/admin/dashboard");
-    }
-  };
+const handleLogin = async (e) => {
+e.preventDefault();
+setLoading(true);
+setError("");
+try {
+  const res = await SuperAdminLogin(email, password);
 
-  return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="p-6 border rounded w-80">
-        <h2 className="mb-4">Login</h2>
+  if (res?.token) {
+    router.push("/admin/dashboard");
+  } else {
+    setError("Invalid credentials");
+  }
+} catch (err) {
+  setError("Login failed");
+} finally {
+  setLoading(false);
+}
 
-        <input
-          type="email"
-          placeholder="Email"
-          className="border w-full mb-2 p-2"
-          onChange={(e) => setEmail(e.target.value)}
-        />
+};
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="border w-full mb-2 p-2"
-          onChange={(e) => setPassword(e.target.value)}
-        />
+return ( <div className="h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-800">
 
-        <button
-          onClick={handleLogin}
-          className="bg-blue-500 text-white w-full p-2"
-        >
-          Login
-        </button>
-      </div>
-    </div>
-  );
+  {/* Card */}
+  <div className="w-[320px] p-8 rounded-2xl bg-white/10 backdrop-blur-lg border border-white/20 shadow-2xl animate-fadeIn">
+
+    <h2 className="text-2xl font-bold text-white text-center mb-6">
+      Super Admin Login
+    </h2>
+
+    <form onSubmit={handleLogin} className="space-y-4">
+
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-gray-300 outline-none focus:ring-2 focus:ring-white transition"
+      />
+
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+        className="w-full p-3 rounded-lg bg-white/20 text-white placeholder-gray-300 outline-none focus:ring-2 focus:ring-white transition"
+      />
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full p-3 rounded-lg bg-white text-black font-semibold hover:bg-gray-200 transition transform hover:scale-105 active:scale-95 disabled:opacity-50"
+      >
+        {loading ? "Logging in..." : "Login"}
+      </button>
+
+      {error && (
+        <p className="text-red-400 text-sm text-center animate-pulse">
+          {error}
+        </p>
+      )}
+
+    </form>
+  </div>
+</div>
+
+);
 }
