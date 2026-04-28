@@ -19,3 +19,7 @@ body {
 .font-serif {
   font-family: "Georgia", serif;
 }
+
+.admin-bg1 {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
