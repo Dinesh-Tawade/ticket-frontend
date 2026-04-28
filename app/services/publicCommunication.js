@@ -2,6 +2,35 @@ import axios from "axios";
 
 const BE_URL = process.env.NEXT_PUBLIC_BE_URL;
 
+// ==================== HELPER FUNCTIONS ====================
+export const setAuthToken = (token) => {
+  if (token) {
+    localStorage.setItem("token", token);
+  } else {
+    localStorage.removeItem("token");
+  }
+};
+
+export const getAuthHeader = () => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token) {
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  }
+  return {};
+};
+
+export const logout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+};
+
+// ==================== PUBLIC TEST ROUTES ====================
 export const testAPI = async () => {
   try {
     const res = await axios.get(`${BE_URL}/`);
@@ -22,19 +51,28 @@ export const checkBackend = async () => {
   }
 };
 
+// ==================== AUTHENTICATION (Public) ====================
 
-// User (General) Auth
+// General User Auth
 export const userRegister = async (formData) => {
   const res = await axios.post(`${BE_URL}/auth/register`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
+  if (res.data.token) {
+    setAuthToken(res.data.token);
+    if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+  }
   return res.data;
 };
 
 export const userLogin = async (email, password) => {
   const res = await axios.post(`${BE_URL}/auth/login`, { email, password });
+  if (res.data.token) {
+    setAuthToken(res.data.token);
+    if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+  }
   return res.data;
 };
 
@@ -45,18 +83,28 @@ export const buyerRegister = async (formData) => {
       "Content-Type": "multipart/form-data",
     },
   });
+  if (res.data.token) {
+    setAuthToken(res.data.token);
+    if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+  }
   return res.data;
 };
 
 export const buyerLogin = async (email, password) => {
   const res = await axios.post(`${BE_URL}/users/login`, { email, password });
+  if (res.data.token) {
+    setAuthToken(res.data.token);
+    if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+  }
   return res.data;
 };
 
+// ==================== PUBLIC SHOWS (No Auth Required) ====================
 
-
-export const getPublicShows = async () => {
-  const res = await axios.get(`${BE_URL}/public/shows`);
+export const getPublicShows = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/public/shows?${params}` : `${BE_URL}/public/shows`;
+  const res = await axios.get(url);
   return res.data;
 };
 
@@ -70,33 +118,18 @@ export const getPublicShowById = async (id) => {
   return res.data;
 };
 
-export const getPublicTheaters = async () => {
-  const res = await axios.get(`${BE_URL}/public/theaters`);
+export const getPublicTheaters = async (city = "") => {
+  const url = city ? `${BE_URL}/public/theaters?city=${city}` : `${BE_URL}/public/theaters`;
+  const res = await axios.get(url);
   return res.data;
 };
 
-export const getAvailableSeats = async (id) => {
-  const res = await axios.get(`${BE_URL}/public/shows/${id}/seats`);
+export const getAvailableSeats = async (showId) => {
+  const res = await axios.get(`${BE_URL}/public/shows/${showId}/seats`);
   return res.data;
 };
 
-
-export const getPublicCommunications = async () => {
-  try {
-    const res = await axios.get(`${BE_URL}/public-communications`);
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching public communications:", error);
-    throw error;
-  }
-};
-
-
-export const setupSuperAdmin = async (adminData) => {
-  const res = await axios.post(`${BE_URL}/setup/create-super-admin`, adminData);
-  return res.data;
-};
-
+// ==================== BOOKING (Auth Required) ====================
 
 export const createBooking = async (bookingData) => {
   const res = await axios.post(`${BE_URL}/public/booking/create`, bookingData, getAuthHeader());
@@ -106,14 +139,43 @@ export const createBooking = async (bookingData) => {
 export const confirmPayment = async (bookingId) => {
   const res = await axios.put(`${BE_URL}/public/booking/confirm-payment/${bookingId}`, {}, getAuthHeader());
   return res.data;
-};  
+};
 
 export const getMyBookings = async () => {
   const res = await axios.get(`${BE_URL}/public/booking/my-bookings`, getAuthHeader());
   return res.data;
-}
+};
 
 export const cancelBooking = async (bookingId) => {
   const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
   return res.data;
-}
+};
+
+// ==================== USER PROFILE (Auth Required) ====================
+
+export const getMe = async () => {
+  const res = await axios.get(`${BE_URL}/auth/me`, getAuthHeader());
+  return res.data;
+};
+
+export const updateProfile = async (formData) => {
+  const res = await axios.put(`${BE_URL}/auth/update-profile`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    ...getAuthHeader(),
+  });
+  return res.data;
+};
+
+export const getBuyerProfile = async () => {
+  const res = await axios.get(`${BE_URL}/users/profile`, getAuthHeader());
+  return res.data;
+};
+
+// ==================== SETUP (Public - One Time) ====================
+
+export const setupSuperAdmin = async (adminData) => {
+  const res = await axios.post(`${BE_URL}/setup/create-super-admin`, adminData);
+  return res.data;
+};

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Dashboardstats } from "@/app/services/adminCommunication"; // ✅ correct import
+import { getDashboardStats } from "@/app/services/adminCommunication"; // ✅ correct import
 import AOS from "aos";
 
 export default function Dashboard() {
@@ -26,7 +26,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await Dashboardstats();
+        const res = await getDashboardStats();
         console.log("API RESPONSE:", res);
 
         // ✅ Safe data handling

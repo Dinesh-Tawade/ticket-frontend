@@ -1,26 +1,33 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getPublicShows } from "@/app/services/publicCommunication";
 import { useQuery } from "@tanstack/react-query";
+import SeatSelection from "./components/SeatSelection";  // ✅ Import SeatSelection
 
 function Show() {
   const router = useRouter();
+  const [selectedShow, setSelectedShow] = useState(null);  // ✅ Store full show object
+
   const { data: shows, isLoading, error } = useQuery({
     queryKey: ["publicShows"],
     queryFn: getPublicShows,
   });
 
-
-  const showId = shows?.data?.[0]?._id; 
-
-  const handleBookNow = (showId) => {
-    router.push(`/${id}`);
+  // ✅ Fixed: Pass show object, not just ID
+  const handleBookNow = (show) => {
+    setSelectedShow(show);
   };
 
-  console.log("Shows Data:", shows);
-  console.log("Show ID:", showId);
+  const handleBackToShows = () => {
+    setSelectedShow(null);
+  };
+
+  // ✅ Show seat selection if a show is selected
+  if (selectedShow) {
+    return <SeatSelection showId={selectedShow._id} showDetails={selectedShow} onBack={handleBackToShows} />;
+  }
 
   if (isLoading) {
     return (
@@ -45,7 +52,6 @@ function Show() {
 
   return (
     <div className="bg-gray-100 min-h-screen">
-      {/* Header */}
       <header className="bg-white shadow-md sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -56,7 +62,7 @@ function Show() {
             <div className="flex items-center space-x-4">
               <span className="text-gray-600">📍 Mumbai</span>
               <button 
-                onClick={() => router.push('/my-bookings')}
+                onClick={() => router.push('/public/my-bookings')}
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-700"
               >
                 My Bookings
@@ -69,13 +75,11 @@ function Show() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           {shows?.data?.map((show) => (
             <div key={show._id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
               <div className="flex flex-col md:flex-row">
-                {/* Movie Poster */}
                 <div className="md:w-64 lg:w-72 relative">
                   <img
                     src={show.movie?.poster || "https://via.placeholder.com/300x450?text=No+Poster"}
@@ -92,7 +96,6 @@ function Show() {
                   )}
                 </div>
 
-                {/* Movie Details */}
                 <div className="flex-1 p-6">
                   <div>
                     <h3 className="text-2xl font-bold text-gray-800 mb-2">{show.movie?.name}</h3>
@@ -113,7 +116,6 @@ function Show() {
                     <p className="text-gray-600 text-sm mb-4">{show.movie?.description}</p>
                   </div>
 
-                  {/* Theater Info */}
                   <div className="border-t border-b border-gray-100 py-4 my-3">
                     <div className="flex items-start gap-3">
                       <span className="text-xl">🏢</span>
@@ -124,7 +126,6 @@ function Show() {
                     </div>
                   </div>
 
-                  {/* Show Details */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">📅</span>
@@ -169,44 +170,22 @@ function Show() {
                     </div>
                   </div>
 
-                  {/* Seat Categories */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">🎟️ Seat Categories:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {show.seatCategories?.map((category) => (
-                        <div
-                          key={category.category}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-                            category.category === "NORMAL" 
-                              ? "bg-blue-100 text-blue-700"
-                              : category.category === "EXECUTIVE"
-                              ? "bg-purple-100 text-purple-700"
-                              : category.category === "PREMIUM"
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          <span className={`w-2 h-2 rounded-full ${
-                            category.category === "NORMAL" 
-                              ? "bg-blue-500"
-                              : category.category === "EXECUTIVE"
-                              ? "bg-purple-500"
-                              : category.category === "PREMIUM"
-                              ? "bg-orange-500"
-                              : "bg-red-500"
-                          }`}></span>
-                          <span>{category.category}</span>
-                          <span className="font-bold">₹{category.pricePerSeat}</span>
-                          <span className="text-gray-500">({category.availableSeats})</span>
-                        </div>
-                      ))}
-                    </div>
+                  {/* ✅ Free/Paid Show Indicator */}
+                  <div className="mb-4">
+                    {show.isPaid ? (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-center">
+                        <p className="text-sm text-yellow-800">💳 Paid Show - Payment required for booking</p>
+                      </div>
+                    ) : (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                        <p className="text-sm text-green-800">🎉 Free Show - No payment required!</p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3">
                     <button 
-                      onClick={() => handleBookNow(show._id)}
+                      onClick={() => handleBookNow(show)}  // ✅ Pass entire show object
                       className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-red-700 transition-colors duration-200 shadow-md"
                     >
                       Book Now
@@ -216,7 +195,6 @@ function Show() {
                     </button>
                   </div>
 
-                  {/* Status */}
                   {show.status === "BOOKING_OPEN" && (
                     <div className="mt-3 flex items-center justify-center gap-1">
                       <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
