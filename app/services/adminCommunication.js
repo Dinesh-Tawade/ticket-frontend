@@ -2,33 +2,63 @@ import axios from "axios";
 
 const BE_URL = process.env.NEXT_PUBLIC_BE_URL;
 
+// ==================== HELPER FUNCTIONS ====================
 const getAuthHeader = () => {
-  const token = localStorage.getItem("token");
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token) {
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  }
+  return {};
 };
 
+export const adminLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("adminData");
+};
+
+export const isAuthenticated = () => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+    if (token && user) {
+      try {
+        const userData = JSON.parse(user);
+        return userData.role === "SUPER_ADMIN";
+      } catch {
+        return false;
+      }
+    }
+  }
+  return false;
+};
 
 // ==================== AUTH ====================
 export const SuperAdminLogin = async (email, password) => {
   const res = await axios.post(`${BE_URL}/auth/login`, { email, password });
-  // Store token after login
   if (res.data.token) {
     localStorage.setItem("token", res.data.token);
+    if (res.data.user) {
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      localStorage.setItem("adminData", JSON.stringify(res.data.user));
+    }
   }
   return res.data;
 };
 
 // ==================== DASHBOARD STATS ====================
-export const Dashboardstats = async () => {
+export const getDashboardStats = async () => {
   const res = await axios.get(`${BE_URL}/admin/stats`, getAuthHeader());
   return res.data;
 };
 
-// ==================== USER MANAGEMENT (SUPER_ADMIN only) ====================
+// ==================== USER MANAGEMENT ====================
 
 // Create Users
 export const createTheaterOwner = async (userData) => {
@@ -52,13 +82,20 @@ export const createSuperAdminByAdmin = async (userData) => {
 };
 
 // Get Users
-export const getAllUsers = async () => {
-  const res = await axios.get(`${BE_URL}/admin/users`, getAuthHeader());
+export const getAllUsers = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/admin/users?${params}` : `${BE_URL}/admin/users`;
+  const res = await axios.get(url, getAuthHeader());
   return res.data;
 };
 
 export const getUserById = async (id) => {
   const res = await axios.get(`${BE_URL}/admin/users/${id}`, getAuthHeader());
+  return res.data;
+};
+
+export const getUserStats = async () => {
+  const res = await axios.get(`${BE_URL}/admin/stats`, getAuthHeader());
   return res.data;
 };
 
@@ -85,15 +122,17 @@ export const deleteUser = async (id) => {
   return res.data;
 };
 
-// ==================== THEATER MANAGEMENT (Admin) ====================
+// ==================== THEATER MANAGEMENT ====================
 
 export const createTheater = async (theaterData) => {
   const res = await axios.post(`${BE_URL}/admin/theater/create`, theaterData, getAuthHeader());
   return res.data;
 };
 
-export const getAllTheatersAdmin = async () => {
-  const res = await axios.get(`${BE_URL}/admin/theater/all`, getAuthHeader());
+export const getAllTheatersAdmin = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/admin/theater/all?${params}` : `${BE_URL}/admin/theater/all`;
+  const res = await axios.get(url, getAuthHeader());
   return res.data;
 };
 
@@ -117,15 +156,17 @@ export const deleteTheater = async (id) => {
   return res.data;
 };
 
-// ==================== SHOW MANAGEMENT (Admin) ====================
+// ==================== SHOW MANAGEMENT ====================
 
 export const createShow = async (showData) => {
   const res = await axios.post(`${BE_URL}/admin/show/create`, showData, getAuthHeader());
   return res.data;
 };
 
-export const getAllShowsAdmin = async () => {
-  const res = await axios.get(`${BE_URL}/admin/show/all`, getAuthHeader());
+export const getAllShowsAdmin = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/admin/show/all?${params}` : `${BE_URL}/admin/show/all`;
+  const res = await axios.get(url, getAuthHeader());
   return res.data;
 };
 
@@ -139,18 +180,22 @@ export const deleteShow = async (id) => {
   return res.data;
 };
 
+// ==================== BOOKING MANAGEMENT (Admin) ====================
 
-export const getAllBookingsAdmin = async () => {
-  const res = await axios.get(`${BE_URL}/admin/booking/all`, getAuthHeader());
+export const getAllBookingsAdmin = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/admin/booking/all?${params}` : `${BE_URL}/admin/booking/all`;
+  const res = await axios.get(url, getAuthHeader());
   return res.data;
 };
 
-
-// Theater
-
-
-
-export const Theaters = async () => {
-  const res = await axios.get(`${BE_URL}/admin/add-theater/THEATER_OWNER_ID`);
-  return res.data;
+// ==================== PUBLIC COMMUNICATIONS (Keep if needed) ====================
+export const getAdminCommunications = async () => {
+  try {
+    const res = await axios.get(`${BE_URL}/public-communications`);
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching public communications:", error);
+    throw error;
+  }
 };
