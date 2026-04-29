@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { getMyBookings, cancelBooking } from "@/app/services/publicCommunication";
-import { generateTicketPDF, generateTicketHTML, generateQRCode } from "../../services/ticketGenerator";
 
 const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
@@ -25,46 +24,13 @@ const MyBookingsPage = () => {
     }
   };
 
-  const handleDownloadTicket = async (booking) => {
-    const bookingInfo = {
-      bookingId: booking.bookingId,
-      movieName: booking.movieName,
-      showDate: new Date(booking.showDate).toLocaleDateString(),
-      showTime: booking.showTime,
-      theaterName: booking.theaterId?.name || "Theater",
-      seats: booking.seats,
-      totalAmount: booking.totalAmount
-    };
-    
-    await generateTicketPDF(bookingInfo, { movie: { poster: null, genre: "N/A", language: "N/A" } });
-  };
-
-  const handleViewTicket = async (booking) => {
-    const bookingInfo = {
-      bookingId: booking.bookingId,
-      movieName: booking.movieName,
-      showDate: new Date(booking.showDate).toLocaleDateString(),
-      showTime: booking.showTime,
-      theaterName: booking.theaterId?.name || "Theater",
-      seats: booking.seats,
-      totalAmount: booking.totalAmount
-    };
-    
-    const qrCodeUrl = await generateQRCode(bookingInfo);
-    const ticketHtml = generateTicketHTML(bookingInfo, { movie: { poster: null } }, qrCodeUrl);
-    
-    const ticketWindow = window.open();
-    ticketWindow.document.write(ticketHtml);
-    ticketWindow.document.close();
-  };
-
   const handleCancelBooking = async (bookingId) => {
     if (confirm("Are you sure you want to cancel this booking?")) {
       try {
         const res = await cancelBooking(bookingId);
         if (res.success) {
           alert("Booking cancelled successfully");
-          fetchBookings(); // Refresh list
+          fetchBookings();
         }
       } catch (error) {
         alert("Failed to cancel booking");
@@ -134,24 +100,12 @@ const MyBookingsPage = () => {
                   </div>
                   
                   <div className="flex gap-3 mt-4 pt-4 border-t">
-                    <button
-                      onClick={() => handleViewTicket(booking)}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
-                    >
-                      View Ticket
-                    </button>
-                    <button
-                      onClick={() => handleDownloadTicket(booking)}
-                      className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-700"
-                    >
-                      Download PDF
-                    </button>
                     {(booking.bookingStatus === 'CONFIRMED' || booking.bookingStatus === 'PENDING') && (
                       <button
                         onClick={() => handleCancelBooking(booking.bookingId)}
                         className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700"
                       >
-                        Cancel
+                        Cancel Booking
                       </button>
                     )}
                   </div>
