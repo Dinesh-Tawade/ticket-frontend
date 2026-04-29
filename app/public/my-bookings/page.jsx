@@ -1,192 +1,168 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
 import { getMyBookings, cancelBooking } from "@/app/services/publicCommunication";
-import Ticket from "@/app/components/Ticket"; // or TicketSimple
+import { generateTicketPDF, generateTicketHTML, generateQRCode } from "../../services/ticketGenerator";
 
-function MyBookings() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [filter, setFilter] = useState("ALL");
+const MyBookingsPage = () => {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: bookingsData, isLoading, error } = useQuery({
-    queryKey: ["myBookings"],
-    queryFn: getMyBookings,
-  });
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
-  const cancelBookingMutation = useMutation({
-    mutationFn: cancelBooking,
-    onSuccess: () => {
-      alert("Booking cancelled successfully!");
-      queryClient.invalidateQueries(["myBookings"]);
-    },
-    onError: (error) => {
-      alert(error.response?.data?.message || "Failed to cancel booking");
-    },
-  });
-
-  const handleCancelBooking = (bookingId) => {
-    if (window.confirm("Are you sure you want to cancel this booking?")) {
-      cancelBookingMutation.mutate(bookingId);
+  const fetchBookings = async () => {
+    try {
+      const res = await getMyBookings();
+      if (res.success) {
+        setBookings(res.data);
+      }
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const bookings = bookingsData?.data || [];
-  
-  const filteredBookings = filter === "ALL" 
-    ? bookings 
-    : bookings.filter(b => b.bookingStatus === filter);
-
-  const getStatusCount = (status) => {
-    if (status === "ALL") return bookings.length;
-    return bookings.filter(b => b.bookingStatus === status).length;
+  const handleDownloadTicket = async (booking) => {
+    const bookingInfo = {
+      bookingId: booking.bookingId,
+      movieName: booking.movieName,
+      showDate: new Date(booking.showDate).toLocaleDateString(),
+      showTime: booking.showTime,
+      theaterName: booking.theaterId?.name || "Theater",
+      seats: booking.seats,
+      totalAmount: booking.totalAmount
+    };
+    
+    await generateTicketPDF(bookingInfo, { movie: { poster: null, genre: "N/A", language: "N/A" } });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your bookings...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleViewTicket = async (booking) => {
+    const bookingInfo = {
+      bookingId: booking.bookingId,
+      movieName: booking.movieName,
+      showDate: new Date(booking.showDate).toLocaleDateString(),
+      showTime: booking.showTime,
+      theaterName: booking.theaterId?.name || "Theater",
+      seats: booking.seats,
+      totalAmount: booking.totalAmount
+    };
+    
+    const qrCodeUrl = await generateQRCode(bookingInfo);
+    const ticketHtml = generateTicketHTML(bookingInfo, { movie: { poster: null } }, qrCodeUrl);
+    
+    const ticketWindow = window.open();
+    ticketWindow.document.write(ticketHtml);
+    ticketWindow.document.close();
+  };
 
-  if (error) {
+  const handleCancelBooking = async (bookingId) => {
+    if (confirm("Are you sure you want to cancel this booking?")) {
+      try {
+        const res = await cancelBooking(bookingId);
+        if (res.success) {
+          alert("Booking cancelled successfully");
+          fetchBookings(); // Refresh list
+        }
+      } catch (error) {
+        alert("Failed to cancel booking");
+      }
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'CONFIRMED': return 'text-green-600 bg-green-50';
+      case 'PENDING': return 'text-yellow-600 bg-yellow-50';
+      case 'CANCELLED': return 'text-red-600 bg-red-50';
+      case 'EXPIRED': return 'text-gray-600 bg-gray-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-100">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <p className="text-red-600 mb-4">Error loading bookings. Please login first.</p>
-          <button
-            onClick={() => router.push("/public/shows")}
-            className="bg-red-600 text-white px-6 py-2 rounded-lg"
-          >
-            Browse Shows
-          </button>
-        </div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-100 min-h-screen">
-      {/* Header */}
-      <header className="bg-white shadow-md sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-red-600">🎬 My Bookings</h1>
-              <p className="text-gray-500 text-sm">Your ticket history</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push("/public/shows")}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-700"
-              >
-                ← Browse Shows
-              </button>
-              <button
-                onClick={() => router.push("/")}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700"
-              >
-                Home
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div 
-            onClick={() => setFilter("ALL")}
-            className={`bg-white rounded-lg shadow-md p-4 text-center cursor-pointer hover:shadow-lg transition ${filter === "ALL" ? "ring-2 ring-red-500" : ""}`}
-          >
-            <p className="text-2xl font-bold text-gray-800">{getStatusCount("ALL")}</p>
-            <p className="text-sm text-gray-600">Total</p>
-          </div>
-          <div 
-            onClick={() => setFilter("CONFIRMED")}
-            className={`bg-green-50 rounded-lg shadow-md p-4 text-center cursor-pointer hover:shadow-lg transition ${filter === "CONFIRMED" ? "ring-2 ring-green-500" : ""}`}
-          >
-            <p className="text-2xl font-bold text-green-600">{getStatusCount("CONFIRMED")}</p>
-            <p className="text-sm text-green-600">Confirmed</p>
-          </div>
-          <div 
-            onClick={() => setFilter("PENDING")}
-            className={`bg-yellow-50 rounded-lg shadow-md p-4 text-center cursor-pointer hover:shadow-lg transition ${filter === "PENDING" ? "ring-2 ring-yellow-500" : ""}`}
-          >
-            <p className="text-2xl font-bold text-yellow-600">{getStatusCount("PENDING")}</p>
-            <p className="text-sm text-yellow-600">Pending</p>
-          </div>
-          <div 
-            onClick={() => setFilter("CANCELLED")}
-            className={`bg-red-50 rounded-lg shadow-md p-4 text-center cursor-pointer hover:shadow-lg transition ${filter === "CANCELLED" ? "ring-2 ring-red-500" : ""}`}
-          >
-            <p className="text-2xl font-bold text-red-600">{getStatusCount("CANCELLED")}</p>
-            <p className="text-sm text-red-600">Cancelled</p>
-          </div>
-        </div>
-
-        {/* Bookings List */}
-        {filteredBookings.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-            <div className="text-6xl mb-4">🎫</div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">No {filter !== "ALL" ? filter : ""} Bookings Found</h3>
-            <p className="text-gray-600 mb-6">You haven't booked any tickets yet.</p>
-            <button
-              onClick={() => router.push("/public/shows")}
-              className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700"
-            >
-              Book Your First Ticket
-            </button>
+    <div className="bg-gray-100 min-h-screen py-8">
+      <div className="container mx-auto px-4">
+        <h1 className="text-3xl font-bold mb-8">My Bookings</h1>
+        
+        {bookings.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <p className="text-gray-500">No bookings found</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {filteredBookings.map((booking) => (
-              <div key={booking._id} className="relative">
-                <Ticket booking={booking} />
-                
-                {/* Action Buttons */}
-                <div className="mt-4 flex gap-3 justify-end">
-                  {booking.bookingStatus === "PENDING" && (
-                    <>
-                      <button
-                        onClick={() => router.push(`/public/payment/${booking.bookingId}`)}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700"
-                      >
-                        Complete Payment
-                      </button>
+          <div className="space-y-4">
+            {bookings.map((booking) => (
+              <div key={booking._id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h2 className="text-xl font-bold">{booking.movieName}</h2>
+                      <p className="text-gray-600 text-sm">{booking.theaterId?.name}</p>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(booking.bookingStatus)}`}>
+                      {booking.bookingStatus}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Date</p>
+                      <p className="font-semibold">{new Date(booking.showDate).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Time</p>
+                      <p className="font-semibold">{booking.showTime}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Seats</p>
+                      <p className="font-semibold">{booking.seats.map(s => `${s.rowName}${s.seatNumber}`).join(", ")}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Amount</p>
+                      <p className="font-semibold text-red-600">₹{booking.totalAmount}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 mt-4 pt-4 border-t">
+                    <button
+                      onClick={() => handleViewTicket(booking)}
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
+                    >
+                      View Ticket
+                    </button>
+                    <button
+                      onClick={() => handleDownloadTicket(booking)}
+                      className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-700"
+                    >
+                      Download PDF
+                    </button>
+                    {(booking.bookingStatus === 'CONFIRMED' || booking.bookingStatus === 'PENDING') && (
                       <button
                         onClick={() => handleCancelBooking(booking.bookingId)}
-                        className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700"
+                        className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700"
                       >
                         Cancel
                       </button>
-                    </>
-                  )}
-
-                  {booking.bookingStatus === "CONFIRMED" && (
-                    <button
-                      onClick={() => handleCancelBooking(booking.bookingId)}
-                      className="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-700"
-                    >
-                      Cancel Booking
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
-}
+};
 
-export default MyBookings;
+export default MyBookingsPage;

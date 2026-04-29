@@ -1,7 +1,7 @@
 "use client";
 import React from 'react'
 import Hero from '@/app/public/hero/Hero';
-import Show from '@/app/public/shows/page';
+import Show from '@/app/public/shows/Show';
 
 
 function page() {
