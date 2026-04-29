@@ -19,7 +19,7 @@ const AdminDashboard = () => {
 
 const getStats = stats?.data || {};
 
-  console.log("Dashboard Stats:", getStats);
+  // console.log("Dashboard Stats:", getStats);
 
   // ✅ Safe percentage
   const getPercentage = (value) => {

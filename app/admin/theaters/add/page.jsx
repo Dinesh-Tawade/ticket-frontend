@@ -1,15 +1,28 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { createTheater } from "@/app/services/adminCommunication";
 import { toast, Toaster } from 'react-hot-toast';
-import { FaPlus, FaTrash, FaSave, FaTimes, FaBuilding, FaMapMarkerAlt, FaPhone, FaCity, FaFlag } from 'react-icons/fa';
-import { MdScreenShare } from 'react-icons/md';
+import { 
+  FaPlus, FaTrash, FaSave, FaTimes, FaBuilding, FaMapMarkerAlt, 
+  FaPhone, FaCity, FaFlag, FaCouch, FaWifi, FaParking, FaCoffee, 
+  FaAccessibleIcon, FaArrowLeft, FaCheckCircle, FaUserTie
+} from 'react-icons/fa';
+import { MdScreenShare, MdChair } from 'react-icons/md';
+import { createTheater } from "@/app/services/adminCommunication";
+import { getAllUsers } from "@/app/services/adminCommunication";
 
-// Generate default seat rows for a screen
+const AMENITIES = [
+  { icon: FaCouch, name: "Recliner Seats", key: "hasRecliner" },
+  { icon: FaWifi, name: "Free WiFi", key: "hasWifi" },
+  { icon: FaParking, name: "Parking", key: "hasParking" },
+  { icon: FaCoffee, name: "Food & Café", key: "hasCafe" },
+  { icon: FaAccessibleIcon, name: "Wheelchair Access", key: "hasWheelchair" }
+];
+
+// Generate default seat rows
 const generateDefaultSeatRows = (totalColumns = 20) => {
   const rows = [];
   const rowLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -31,7 +44,6 @@ const generateDefaultSeatRows = (totalColumns = 20) => {
     }
   };
   
-  // Generate 10 default rows (A to J)
   for (let i = 0; i < 10; i++) {
     const category = getCategory(i);
     const isVIP = category === "VIP";
@@ -57,28 +69,27 @@ const createNewScreen = (screenNumber, totalColumns = 20) => ({
 });
 
 // Seat Row Component
-const SeatRowConfig = ({ row, index, onUpdate, onDelete, t, totalColumns }) => {
+const SeatRowConfig = ({ row, index, onUpdate, onDelete, totalColumns }) => {
   const categories = [
-    { value: "NORMAL", label: t('app.normal') || "Normal" },
-    { value: "EXECUTIVE", label: t('app.executive') || "Executive" },
-    { value: "PREMIUM", label: t('app.premium') || "Premium" },
-    { value: "VIP", label: t('app.vip') || "VIP" }
+    { value: "NORMAL", label: "Normal", color: "green" },
+    { value: "EXECUTIVE", label: "Executive", color: "blue" },
+    { value: "PREMIUM", label: "Premium", color: "purple" },
+    { value: "VIP", label: "VIP", color: "yellow" }
   ];
 
-  // Calculate max seats based on category
   const getMaxSeats = () => {
     if (row.category === "VIP") return Math.min(10, totalColumns);
     return totalColumns;
   };
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-2">
+    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 mb-2 border border-gray-200 dark:border-gray-700">
       <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
         <input 
           type="text" 
           value={row.rowName} 
           onChange={(e) => onUpdate(index, { ...row, rowName: e.target.value.toUpperCase() })}
-          className="px-2 py-1 border rounded dark:bg-gray-700 text-center" 
+          className="px-3 py-2 border rounded-lg dark:bg-gray-700 text-center font-mono font-bold" 
           maxLength={2} 
           placeholder="Row" 
         />
@@ -90,16 +101,18 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, t, totalColumns }) => {
             const newEndSeat = newCategory === "VIP" ? Math.min(10, totalColumns) : totalColumns;
             onUpdate(index, { ...row, category: newCategory, endSeat: newEndSeat });
           }}
-          className="px-2 py-1 border rounded dark:bg-gray-700"
+          className="px-3 py-2 border rounded-lg dark:bg-gray-700"
         >
-          {categories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+          {categories.map(cat => (
+            <option key={cat.value} value={cat.value}>{cat.label}</option>
+          ))}
         </select>
         
         <input 
           type="number" 
           value={row.startSeat} 
           onChange={(e) => onUpdate(index, { ...row, startSeat: parseInt(e.target.value) })}
-          className="px-2 py-1 border rounded dark:bg-gray-700" 
+          className="px-3 py-2 border rounded-lg dark:bg-gray-700" 
           min="1" 
           placeholder="Start" 
         />
@@ -114,7 +127,7 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, t, totalColumns }) => {
             if (newEnd < row.startSeat) newEnd = row.startSeat;
             onUpdate(index, { ...row, endSeat: newEnd });
           }}
-          className="px-2 py-1 border rounded dark:bg-gray-700" 
+          className="px-3 py-2 border rounded-lg dark:bg-gray-700" 
           min="1" 
           max={getMaxSeats()}
           placeholder="End" 
@@ -125,16 +138,16 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, t, totalColumns }) => {
           step="0.5" 
           value={row.priceMultiplier} 
           onChange={(e) => onUpdate(index, { ...row, priceMultiplier: parseFloat(e.target.value) })}
-          className="px-2 py-1 border rounded dark:bg-gray-700" 
+          className="px-3 py-2 border rounded-lg dark:bg-gray-700" 
           placeholder="Price x" 
         />
         
         <button 
           type="button"
           onClick={() => onDelete(index)} 
-          className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+          className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition"
         >
-          <FaTrash size={12} />
+          <FaTrash />
         </button>
       </div>
     </div>
@@ -142,155 +155,187 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, t, totalColumns }) => {
 };
 
 // Screen Component
-const ScreenConfig = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, t }) => {
+const ScreenConfig = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, onUpdateRow }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 border border-gray-200 dark:border-gray-700">
-      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-        <h3 className="text-lg font-bold flex items-center gap-2">
-          <MdScreenShare className="text-blue-500" />
-          {t('app.screen') || "Screen"} {screen.screenNumber}
-        </h3>
-        <div className="flex gap-2">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div 
+        className="flex justify-between items-center p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-xl flex items-center justify-center">
+            <MdScreenShare className="text-white text-xl" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">{screen.name}</h3>
+            <p className="text-sm text-gray-500">Screen {screen.screenNumber} | {screen.seatRows.length} rows</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
           <button 
             type="button" 
-            onClick={() => onRemove(index)} 
-            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-2"
+            onClick={(e) => { e.stopPropagation(); onRemove(index); }} 
+            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition"
           >
-            <FaTrash size={12} /> {t('app.remove') || "Remove"}
+            <FaTrash size={12} /> Remove
+          </button>
+          <button className="text-gray-400">
+            {isExpanded ? '▲' : '▼'}
           </button>
         </div>
       </div>
+      
+      {isExpanded && (
+        <div className="p-5 pt-0 border-t border-gray-100 dark:border-gray-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl">
+            <div>
+              <label className="block text-sm font-medium mb-1">Screen Name</label>
+              <input 
+                type="text" 
+                value={screen.name} 
+                onChange={(e) => onUpdate(index, { name: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700" 
+                placeholder="Screen Name" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Seats Per Row</label>
+              <input 
+                type="number" 
+                value={screen.totalColumns} 
+                onChange={(e) => {
+                  const newCols = parseInt(e.target.value);
+                  onUpdate(index, { 
+                    totalColumns: newCols,
+                    seatRows: screen.seatRows.map(row => ({ 
+                      ...row, 
+                      endSeat: row.category === "VIP" ? Math.min(10, newCols) : newCols 
+                    }))
+                  });
+                }} 
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700" 
+                min="1" 
+                max="30" 
+              />
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('app.screenName') || "Screen Name"}</label>
-          <input 
-            type="text" 
-            value={screen.name} 
-            onChange={(e) => onUpdate(index, { name: e.target.value })}
-            className="w-full px-3 py-2 border rounded dark:bg-gray-700" 
-            placeholder="Screen Name" 
-          />
+          <div className="mb-3">
+            <div className="flex justify-between items-center mb-3">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <MdChair /> Seat Rows ({screen.seatRows.length})
+              </label>
+              <button 
+                type="button" 
+                onClick={() => onAddRow(index)} 
+                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition"
+              >
+                <FaPlus size={12} /> Add Row
+              </button>
+            </div>
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {screen.seatRows.map((row, rowIndex) => (
+                <SeatRowConfig 
+                  key={rowIndex} 
+                  row={row} 
+                  index={rowIndex} 
+                  onUpdate={(i, r) => onUpdateRow(index, rowIndex, r)}
+                  onDelete={(i) => onRemoveRow(index, rowIndex)}
+                  totalColumns={screen.totalColumns}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">{t('app.seatsPerRow') || "Seats Per Row"}</label>
-          <input 
-            type="number" 
-            value={screen.totalColumns} 
-            onChange={(e) => {
-              const newCols = parseInt(e.target.value);
-              onUpdate(index, { 
-                totalColumns: newCols,
-                seatRows: screen.seatRows.map(row => ({ 
-                  ...row, 
-                  endSeat: row.category === "VIP" ? Math.min(10, newCols) : newCols 
-                }))
-              });
-            }} 
-            className="w-full px-3 py-2 border rounded dark:bg-gray-700" 
-            min="1" 
-            max="30" 
-          />
-        </div>
-      </div>
-
-      <div className="mb-3">
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-sm font-medium">{t('app.seatRows') || "Seat Rows"} ({screen.seatRows.length})</label>
-          <button 
-            type="button" 
-            onClick={() => onAddRow(index)} 
-            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs flex items-center gap-1"
-          >
-            <FaPlus size={10} /> {t('app.addRow') || "Add Row"}
-          </button>
-        </div>
-        <div className="max-h-96 overflow-y-auto">
-          {screen.seatRows.map((row, rowIndex) => (
-            <SeatRowConfig 
-              key={rowIndex} 
-              row={row} 
-              index={rowIndex} 
-              onUpdate={(i, r) => onRemoveRow ? onUpdate(index, {
-                seatRows: screen.seatRows.map((rr, ri) => ri === i ? r : rr)
-              }) : null}
-              onDelete={(i) => onRemoveRow(index, i)}
-              t={t}
-              totalColumns={screen.totalColumns}
-            />
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
 // Main Component
-function AddTheater() {
+export default function AddTheaterPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("basic");
 
+  const [step, setStep] = useState(1);
   const [basicInfo, setBasicInfo] = useState({
-    ownerId: "69e9c32ed6d20d1b792b023e",
+    ownerId: "", 
     name: "", 
     location: "", 
     city: "", 
     state: "", 
     pincode: "", 
     contactNumber: "",
+    hasRecliner: false,
+    hasWifi: false,
+    hasParking: false,
+    hasCafe: false,
+    hasWheelchair: false
   });
 
   const [screens, setScreens] = useState([createNewScreen(1)]);
 
+  // Fetch Theater Owners (role: THEATER_OWNER)
+  const { data: usersData, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['users', 'THEATER_OWNER'],
+    queryFn: () => getAllUsers({ role: 'THEATER_OWNER' }),
+  });
+
+  const theaterOwners = usersData?.data || [];
+
+  // Create theater mutation using adminCommunication
   const mutation = useMutation({
     mutationFn: createTheater,
     onSuccess: () => {
-      toast.success(t('app.theaterCreated') || "Theater created successfully!");
+      toast.success('Theater created successfully! 🎉');
       queryClient.invalidateQueries(['allTheatersAdmin']);
-      setTimeout(() => router.push("/admin/theaters"), 2000);
+      setTimeout(() => router.push('/admin/theaters'), 2000);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || t('app.createFailed') || "Failed to create theater");
-    },
+      toast.error(error.response?.data?.message || 'Failed to create theater');
+    }
   });
 
   const handleBasicChange = (e) => {
-    setBasicInfo({ ...basicInfo, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setBasicInfo(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
-  // Update entire screen
-  const updateScreen = (screenIndex, updates) => {
-    setScreens(prev => prev.map((screen, i) => 
-      i === screenIndex ? { ...screen, ...updates } : screen
-    ));
-  };
-
-  // Add new screen
+  // Screen management
   const addScreen = () => {
     const newScreenNumber = screens.length + 1;
     setScreens(prev => [...prev, createNewScreen(newScreenNumber, prev[0]?.totalColumns || 20)]);
     toast.success(`Screen ${newScreenNumber} added`);
   };
 
-  // Remove screen
   const removeScreen = (screenIndex) => {
     if (screens.length <= 1) {
       toast.error("At least one screen is required!");
       return;
     }
     setScreens(prev => prev.filter((_, i) => i !== screenIndex));
-    // Renumber remaining screens
-    setScreens(prev => prev.map((screen, idx) => ({
-      ...screen,
-      screenNumber: idx + 1,
-      name: `Screen ${idx + 1}`
-    })));
+    setTimeout(() => {
+      setScreens(prev => prev.map((screen, idx) => ({
+        ...screen,
+        screenNumber: idx + 1,
+        name: `Screen ${idx + 1}`
+      })));
+    }, 0);
     toast.success("Screen removed");
   };
 
-  // Add row to a screen
+  const updateScreen = (screenIndex, updates) => {
+    setScreens(prev => prev.map((screen, i) => 
+      i === screenIndex ? { ...screen, ...updates } : screen
+    ));
+  };
+
   const addRowToScreen = (screenIndex) => {
     setScreens(prev => prev.map((screen, si) => {
       if (si !== screenIndex) return screen;
@@ -298,6 +343,11 @@ function AddTheater() {
       const lastRow = screen.seatRows[screen.seatRows.length - 1];
       const lastCharCode = lastRow.rowName.charCodeAt(0);
       const nextLetter = String.fromCharCode(lastCharCode + 1);
+      
+      if (nextLetter > 'Z') {
+        toast.error("Maximum 26 rows reached (A-Z)!");
+        return screen;
+      }
       
       return {
         ...screen,
@@ -313,7 +363,6 @@ function AddTheater() {
     }));
   };
 
-  // Remove row from a screen
   const removeRowFromScreen = (screenIndex, rowIndex) => {
     setScreens(prev => prev.map((screen, si) => {
       if (si !== screenIndex) return screen;
@@ -329,7 +378,6 @@ function AddTheater() {
     }));
   };
 
-  // Update a specific row in a screen
   const updateSeatRow = (screenIndex, rowIndex, updatedRow) => {
     setScreens(prev => prev.map((screen, si) => 
       si === screenIndex ? {
@@ -339,24 +387,62 @@ function AddTheater() {
     ));
   };
 
+  const validateBasicInfo = () => {
+    if (!basicInfo.ownerId) {
+      toast.error("Please select a theater owner");
+      return false;
+    }
+    if (!basicInfo.name.trim()) {
+      toast.error("Theater name is required");
+      return false;
+    }
+    if (!basicInfo.location.trim()) {
+      toast.error("Location is required");
+      return false;
+    }
+    if (!basicInfo.city.trim()) {
+      toast.error("City is required");
+      return false;
+    }
+    if (!basicInfo.state.trim()) {
+      toast.error("State is required");
+      return false;
+    }
+    if (!basicInfo.contactNumber.trim()) {
+      toast.error("Contact number is required");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validate data before submit
-    if (!basicInfo.name || !basicInfo.location || !basicInfo.city || !basicInfo.state) {
-      toast.error("Please fill all basic information fields");
-      setActiveTab("basic");
+    if (!validateBasicInfo()) {
+      setStep(1);
       return;
     }
     
     if (screens.length === 0) {
       toast.error("At least one screen is required");
+      setStep(2);
       return;
     }
     
     // Prepare data for API
     const theaterData = {
-      ...basicInfo,
+      ownerId: basicInfo.ownerId,
+      name: basicInfo.name,
+      location: basicInfo.location,
+      city: basicInfo.city,
+      state: basicInfo.state,
+      pincode: basicInfo.pincode,
+      contactNumber: basicInfo.contactNumber,
+      hasRecliner: basicInfo.hasRecliner,
+      hasWifi: basicInfo.hasWifi,
+      hasParking: basicInfo.hasParking,
+      hasCafe: basicInfo.hasCafe,
+      hasWheelchair: basicInfo.hasWheelchair,
       screens: screens.map(({ screenNumber, name, totalRows, totalColumns, seatRows }) => ({
         screenNumber,
         name,
@@ -386,137 +472,291 @@ function AddTheater() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <Toaster position="top-right" />
       
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white sticky top-0 z-10 shadow-lg p-4">
-        <div className="container mx-auto flex justify-between items-center flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Add New Theater</h1>
-            <p className="text-blue-100 text-sm">Create theater with multiple screens and seat layouts</p>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-red-700 to-red-600 text-white sticky top-0 z-20 shadow-xl">
+        <div className="container mx-auto px-4 py-5">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="bg-white/20 hover:bg-white/30 p-2 rounded-xl transition"
+              >
+                <FaArrowLeft />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold">Add New Theater</h1>
+                <p className="text-red-100 text-sm">Create a new theater with screens and seat layouts</p>
+              </div>
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={mutation.isPending}
+              className="bg-green-500 hover:bg-green-600 px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition disabled:opacity-50"
+            >
+              {mutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <FaCheckCircle /> Create Theater
+                </>
+              )}
+            </button>
           </div>
-          <button 
-            type="button"
-            onClick={() => router.back()} 
-            className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 transition"
-          >
-            <FaTimes /> Cancel
-          </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="container mx-auto px-4 py-6">
-        {/* Tabs */}
-        <div className="flex gap-4 mb-6 border-b dark:border-gray-700">
-          <button 
-            type="button"
-            onClick={() => setActiveTab("basic")}
-            className={`pb-3 px-4 font-semibold transition flex items-center gap-2 ${
-              activeTab === "basic" 
-                ? "text-blue-600 border-b-2 border-blue-600" 
-                : "text-gray-600 dark:text-gray-400"
-            }`}
-          >
-            <FaBuilding /> Basic Info
-          </button>
-          <button 
-            type="button"
-            onClick={() => setActiveTab("screens")}
-            className={`pb-3 px-4 font-semibold transition flex items-center gap-2 ${
-              activeTab === "screens" 
-                ? "text-blue-600 border-b-2 border-blue-600" 
-                : "text-gray-600 dark:text-gray-400"
-            }`}
-          >
-            <MdScreenShare /> Screens & Seats ({screens.length})
-          </button>
+      {/* Progress Steps */}
+      <div className="container mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex justify-between mb-8">
+            {[
+              { step: 1, label: "Basic Info", icon: FaBuilding },
+              { step: 2, label: "Screens & Seats", icon: MdScreenShare },
+              { step: 3, label: "Review", icon: FaCheckCircle }
+            ].map((s) => (
+              <div key={s.step} className="flex-1 text-center">
+                <div 
+                  className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 transition ${
+                    step >= s.step 
+                      ? 'bg-red-600 text-white' 
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+                  }`}
+                >
+                  <s.icon className="text-xl" />
+                </div>
+                <p className={`text-sm ${step >= s.step ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Basic Info Tab */}
-        {activeTab === "basic" && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {basicFields.map(field => (
-                <div key={field.name}>
-                  <label className="block text-sm font-medium mb-1">
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
+        {/* Step 1: Basic Info */}
+        {step === 1 && (
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                <FaBuilding className="text-red-600" />
+                Theater Information
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Theater Owner Dropdown */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">
+                    Theater Owner <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    {field.icon && <field.icon className="absolute left-3 top-3 text-gray-400" />}
-                    <input 
-                      type={field.name === "contactNumber" ? "tel" : "text"} 
-                      name={field.name} 
-                      value={basicInfo[field.name]} 
-                      onChange={handleBasicChange} 
-                      required={field.required}
-                      className={`w-full px-4 py-2 border rounded-lg dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        field.icon ? 'pl-10' : ''
-                      }`} 
-                      placeholder={field.placeholder} 
-                    />
+                    <FaUserTie className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <select
+                      name="ownerId"
+                      value={basicInfo.ownerId}
+                      onChange={handleBasicChange}
+                      required
+                      className="w-full pl-10 pr-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    >
+                      <option value="">Select Theater Owner</option>
+                      {isLoadingUsers ? (
+                        <option disabled>Loading owners...</option>
+                      ) : (
+                        theaterOwners.map(owner => (
+                          <option key={owner._id} value={owner._id}>
+                            {owner.name} ({owner.email})
+                          </option>
+                        ))
+                      )}
+                    </select>
                   </div>
+                  {theaterOwners.length === 0 && !isLoadingUsers && (
+                    <p className="text-sm text-red-500 mt-1">
+                      No theater owners found. Please create a theater owner first.
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button 
-                type="button" 
-                onClick={() => setActiveTab("screens")} 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"
-              >
-                Next →
-              </button>
+
+                {basicFields.map(field => (
+                  <div key={field.name}>
+                    <label className="block text-sm font-medium mb-2">
+                      {field.label} {field.required && <span className="text-red-500">*</span>}
+                    </label>
+                    <div className="relative">
+                      {field.icon && <field.icon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />}
+                      <input 
+                        type={field.name === "contactNumber" ? "tel" : "text"} 
+                        name={field.name} 
+                        value={basicInfo[field.name]} 
+                        onChange={handleBasicChange} 
+                        required={field.required}
+                        className={`w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                          field.icon ? 'pl-10' : ''
+                        }`} 
+                        placeholder={field.placeholder} 
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Amenities */}
+              <div className="mt-8">
+                <label className="block text-sm font-medium mb-3">Amenities</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {AMENITIES.map(amenity => (
+                    <label key={amenity.key} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                      <input
+                        type="checkbox"
+                        name={amenity.key}
+                        checked={basicInfo[amenity.key]}
+                        onChange={handleBasicChange}
+                        className="w-5 h-5 rounded"
+                      />
+                      <amenity.icon className="text-gray-600 dark:text-gray-400" />
+                      <span className="text-sm">{amenity.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-8 pt-6 border-t dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  disabled={!basicInfo.ownerId}
+                  className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next: Configure Screens →
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Screens Tab */}
-        {activeTab === "screens" && (
-          <div className="space-y-6">
-            {screens.map((screen, idx) => (
-              <ScreenConfig 
-                key={idx}
-                screen={screen}
-                index={idx}
-                onUpdate={updateScreen}
-                onRemove={removeScreen}
-                onAddRow={addRowToScreen}
-                onRemoveRow={removeRowFromScreen}
-                onUpdateRow={updateSeatRow}
-                t={t}
-              />
-            ))}
-            
-            <div className="flex flex-col md:flex-row justify-between gap-4">
-              <button 
-                type="button" 
-                onClick={addScreen} 
-                className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 transition"
-              >
-                <FaPlus /> Add Screen
-              </button>
-              
-              <div className="flex gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setActiveTab("basic")} 
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition"
+        {/* Step 2: Screens & Seats */}
+        {step === 2 && (
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <MdScreenShare className="text-red-600" />
+                  Screens Configuration
+                </h2>
+                <button
+                  type="button"
+                  onClick={addScreen}
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition"
+                >
+                  <FaPlus /> Add Screen
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {screens.map((screen, idx) => (
+                  <ScreenConfig 
+                    key={idx}
+                    screen={screen}
+                    index={idx}
+                    onUpdate={updateScreen}
+                    onRemove={removeScreen}
+                    onAddRow={addRowToScreen}
+                    onRemoveRow={removeRowFromScreen}
+                    onUpdateRow={updateSeatRow}
+                  />
+                ))}
+              </div>
+
+              <div className="flex justify-between mt-8 pt-6 border-t dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-3 rounded-xl font-semibold transition"
                 >
                   ← Back
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={mutation.isPending} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 transition"
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition"
+                >
+                  Review & Submit →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Review */}
+        {step === 3 && (
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                <FaCheckCircle className="text-green-500" />
+                Review & Submit
+              </h2>
+
+              {/* Basic Info Review */}
+              <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <h3 className="font-semibold text-lg mb-3">Theater Information</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <p><span className="text-gray-500">Owner:</span> {
+                    theaterOwners.find(o => o._id === basicInfo.ownerId)?.name || 'Selected'
+                  }</p>
+                  <p><span className="text-gray-500">Name:</span> {basicInfo.name}</p>
+                  <p><span className="text-gray-500">Location:</span> {basicInfo.location}</p>
+                  <p><span className="text-gray-500">City:</span> {basicInfo.city}</p>
+                  <p><span className="text-gray-500">State:</span> {basicInfo.state}</p>
+                  <p><span className="text-gray-500">Contact:</span> {basicInfo.contactNumber}</p>
+                  <p><span className="text-gray-500">Pincode:</span> {basicInfo.pincode || 'N/A'}</p>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {AMENITIES.filter(a => basicInfo[a.key]).map(a => (
+                    <span key={a.key} className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                      <a.icon size={12} /> {a.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Screens Review */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-lg mb-3">Screens ({screens.length})</h3>
+                {screens.map((screen, idx) => (
+                  <div key={idx} className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                    <p className="font-bold">{screen.name}</p>
+                    <p className="text-sm text-gray-500">Rows: {screen.seatRows.length}</p>
+                    <p className="text-sm text-gray-500">Seats per row: {screen.totalColumns}</p>
+                    <p className="text-sm">Total seats: {screen.seatRows.reduce((sum, row) => sum + (row.endSeat - row.startSeat + 1), 0)}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-3 rounded-xl font-semibold transition"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={mutation.isPending}
+                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition disabled:opacity-50"
                 >
                   {mutation.isPending ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white"></div>
                       Creating...
                     </>
                   ) : (
                     <>
-                      <FaSave /> Create Theater
+                      <FaCheckCircle /> Create Theater
                     </>
                   )}
                 </button>
@@ -524,9 +764,7 @@ function AddTheater() {
             </div>
           </div>
         )}
-      </form>
+      </div>
     </div>
   );
 }
-
-export default AddTheater;
