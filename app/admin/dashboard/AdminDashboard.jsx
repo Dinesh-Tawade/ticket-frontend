@@ -65,7 +65,6 @@ const colorMap = {
 };
 
 
-/// ✅ Card Component
 const Card = ({ title, value, color }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
