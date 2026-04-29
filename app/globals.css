@@ -1,26 +1,77 @@
 @import "tailwindcss";
+
+/* 🌞 Light Theme */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+
+  --card: #ffffff;
+  --card-border: #0b1f3a; /* navy border */
+
+  --blue: #2563eb;
+  --green: #16a34a;
+  --purple: #9333ea;
+  --red: #dc2626;
+  --yellow: #ca8a04;
+  --indigo: #4f46e5;
 }
 
+/* 🌙 Dark Theme */
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0b1f3a;
+  --foreground: #e2e8f0;
+
+  --card: #122a4d;
+  --card-border: rgba(255,255,255,0.1);
+
+  --blue: #60a5fa;
+  --green: #4ade80;
+  --purple: #c084fc;
+  --red: #f87171;
+  --yellow: #facc15;
+  --indigo: #818cf8;
 }
 
+/* 🌍 Base */
 body {
   background: var(--background);
   color: var(--foreground);
+  transition: background 0.3s ease, color 0.3s ease;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 🧊 Card */
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 24px;
   transition: all 0.3s ease;
 }
 
-.font-serif {
-  font-family: "Georgia", serif;
+.card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
 }
 
-.admin-bg1 {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-}
+/* 🎨 Colors */
+.text-blue { color: var(--blue); }
+.text-green { color: var(--green); }
+.text-purple { color: var(--purple); }
+.text-red { color: var(--red); }
+.text-yellow { color: var(--yellow); }
+.text-indigo { color: var(--indigo); }
 
+/* Accent line */
+.accent {
+  height: 4px;
+  width: 40px;
+  border-radius: 999px;
+  margin-top: 12px;
+}
+.bg-blue { background: var(--blue); }
+.bg-green { background: var(--green); }
+.bg-purple { background: var(--purple); }
+.bg-red { background: var(--red); }
+.bg-yellow { background: var(--yellow); }
+.bg-indigo { background: var(--indigo); }
