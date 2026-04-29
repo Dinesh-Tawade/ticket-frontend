@@ -63,7 +63,18 @@
   "addRow": "रांग जोडा",
   "addScreen": "स्क्रीन जोडा",
   "creating": "तयार होत आहे...",
-  "createTheater": "थिएटर तयार करा"
+  "createTheater": "थिएटर तयार करा",
+      "Dashboard": "डॅशबोर्ड",
+    "logout": "लॉगआउट",
+    "welcome": "डॅशबोर्डमध्ये आपले स्वागत आहे!",
+    "Total Users": "एकूण वापरकर्ते",
+    "Active Users": "सक्रिय वापरकर्ते",
+    "totalBookings": "एकूण बुकिंग",
+    "Super Admins": "सुपर एडमिन",
+    "Theater Owners": "थिएटर मालक",
+    "Vendors": "वेंडर्स",
+    "Buyers": "खरेदीदार",
+    "Admin": "एडमिन"
 
 
   }
