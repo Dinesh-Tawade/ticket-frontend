@@ -122,7 +122,6 @@ export const deleteUser = async (id) => {
   return res.data;
 };
 
-// ==================== THEATER MANAGEMENT ====================
 
 export const createTheater = async (theaterData) => {
   const res = await axios.post(`${BE_URL}/admin/theater/create`, theaterData, getAuthHeader());

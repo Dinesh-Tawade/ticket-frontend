@@ -1,19 +1,23 @@
-"use client"
-import React, { useState } from 'react'
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import { createShow } from "@/app/services/adminCommunication";
-import { useMutation } from "@tanstack/react-query";
+import { getAllTheatersAdmin } from "@/app/services/adminCommunication";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { 
   FaFilm, FaCalendar, FaClock, FaMapMarkerAlt, FaTicketAlt, 
   FaStar, FaLanguage, FaTags, FaChair, FaSave, FaTimes,
-  FaPlus, FaTrash, FaTheaterMasks, FaInfoCircle, FaDollarSign
+  FaPlus, FaTrash, FaTheaterMasks, FaInfoCircle, FaDollarSign,
+  FaBuilding, FaScreen, FaCheckCircle
 } from 'react-icons/fa';
 import { MdTheaters, MdScreenShare } from 'react-icons/md';
 
 function CreateShow() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('basic');
+  const [selectedTheater, setSelectedTheater] = useState(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -35,29 +39,51 @@ function CreateShow() {
     startTime: '',
     endTime: '',
     seatCategories: [
-      { category: 'NORMAL', pricePerSeat: 150, rows: 5, seatsPerRow: 20 },
-      { category: 'EXECUTIVE', pricePerSeat: 220, rows: 5, seatsPerRow: 20 },
-      { category: 'PREMIUM', pricePerSeat: 300, rows: 3, seatsPerRow: 20 },
-      { category: 'VIP', pricePerSeat: 500, rows: 2, seatsPerRow: 10 }
+      { category: 'NORMAL', pricePerSeat: 150 },
+      { category: 'EXECUTIVE', pricePerSeat: 220 },
+      { category: 'PREMIUM', pricePerSeat: 300 },
+      { category: 'VIP', pricePerSeat: 500 }
     ],
-    isPaid: true,
+    isPaid: false,  // Default free show
     basePrice: 150
   });
 
   const [posterPreview, setPosterPreview] = useState('');
   const [posterFile, setPosterFile] = useState(null);
 
-  // Create show mutation
-  const createMutation = useMutation({
-    mutationFn: createShow,
-    onSuccess: (data) => {
-      toast.success('Show created successfully!');
-      router.push('/admin/shows');
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to create show');
-    }
+  // Fetch Theaters
+  const { data: theatersData, isLoading: isLoadingTheaters } = useQuery({
+    queryKey: ['allTheatersAdmin'],
+    queryFn: getAllTheatersAdmin,
   });
+
+  const theaters = theatersData?.data || [];
+
+  // Update screen options when theater changes
+  const handleTheaterChange = (e) => {
+    const theaterId = e.target.value;
+    const theater = theaters.find(t => t._id === theaterId);
+    setSelectedTheater(theater);
+    setFormData(prev => ({
+      ...prev,
+      theaterId: theaterId,
+      screenId: '',  // Reset screen selection
+      screenNumber: ''
+    }));
+  };
+
+  // Handle screen selection
+  const handleScreenChange = (e) => {
+    const screenId = e.target.value;
+    const screen = selectedTheater?.screens?.find(s => s._id === screenId);
+    if (screen) {
+      setFormData(prev => ({
+        ...prev,
+        screenId: screenId,
+        screenNumber: screen.screenNumber
+      }));
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -88,7 +114,6 @@ function CreateShow() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPosterPreview(reader.result);
-        // For base64 image (temporary)
         setFormData(prev => ({
           ...prev,
           movie: { ...prev.movie, poster: reader.result }
@@ -98,166 +123,216 @@ function CreateShow() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validate form
-    if (!formData.theaterId || !formData.screenId || !formData.screenNumber) {
-      toast.error('Please fill theater and screen details');
-      return;
+  // Create show mutation
+  const createMutation = useMutation({
+    mutationFn: createShow,
+    onSuccess: (data) => {
+      toast.success('Show created successfully! 🎬');
+      setTimeout(() => router.push('/admin/shows'), 2000);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to create show');
     }
-    
-    if (!formData.movie.name || !formData.movie.duration || !formData.movie.rating) {
-      toast.error('Please fill all movie details');
-      return;
+  });
+
+  const validateForm = () => {
+    if (!formData.theaterId) {
+      toast.error('Please select a theater');
+      return false;
     }
-    
-    if (!formData.showDate || !formData.startTime || !formData.endTime) {
-      toast.error('Please fill show date and time');
-      return;
+    if (!formData.screenId) {
+      toast.error('Please select a screen');
+      return false;
     }
-    
-    // Prepare data for API
-    const submitData = {
-      theaterId: formData.theaterId,
-      screenId: formData.screenId,
-      screenNumber: parseInt(formData.screenNumber),
-      movie: {
-        name: formData.movie.name,
-        poster: posterPreview || formData.movie.poster || '',
-        genre: formData.movie.genre,
-        duration: parseInt(formData.movie.duration),
-        rating: parseFloat(formData.movie.rating),
-        description: formData.movie.description,
-        language: formData.movie.language,
-        isTrending: formData.movie.isTrending,
-        releaseDate: formData.movie.releaseDate
-      },
-      showDate: formData.showDate,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      seatCategories: formData.seatCategories.map(cat => ({
-        category: cat.category,
-        pricePerSeat: parseInt(cat.pricePerSeat)
-      })),
-      isPaid: formData.isPaid,
-      basePrice: parseInt(formData.basePrice)
-    };
-    
-    createMutation.mutate(submitData);
+    if (!formData.movie.name) {
+      toast.error('Please enter movie name');
+      return false;
+    }
+    if (!formData.movie.duration) {
+      toast.error('Please enter movie duration');
+      return false;
+    }
+    if (!formData.movie.rating) {
+      toast.error('Please enter movie rating');
+      return false;
+    }
+    if (!formData.showDate) {
+      toast.error('Please select show date');
+      return false;
+    }
+    if (!formData.startTime) {
+      toast.error('Please select start time');
+      return false;
+    }
+    if (!formData.endTime) {
+      toast.error('Please select end time');
+      return false;
+    }
+    return true;
   };
 
-  const genres = ['ACTION', 'COMEDY', 'DRAMA', 'HORROR', 'ROMANCE', 'THRILLER', 'SCI-FI', 'ANIMATION'];
-  const languages = ['Hindi', 'English', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali'];
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    setActiveTab('basic');
+    return;
+  }
+  
+  const submitData = {
+    theaterId: formData.theaterId,
+    screenId: formData.screenId,
+    screenNumber: parseInt(formData.screenNumber),
+    movie: {
+      name: formData.movie.name,
+      poster: '',
+      genre: formData.movie.genre,
+      duration: parseInt(formData.movie.duration),
+      rating: parseFloat(formData.movie.rating),
+      description: formData.movie.description || '',
+      language: formData.movie.language,
+      isTrending: formData.movie.isTrending,
+      releaseDate: formData.movie.releaseDate || new Date().toISOString().split('T')[0]
+    },
+    showDate: formData.showDate,
+    startTime: formData.startTime,
+    endTime: formData.endTime,
+    seatCategories: formData.seatCategories.map(cat => ({
+      category: cat.category,
+      pricePerSeat: parseInt(cat.pricePerSeat)
+    })),
+    isPaid: formData.isPaid,
+    basePrice: parseInt(formData.basePrice)
+  };
+  
+  createMutation.mutate(submitData);
+};
+
+  const genres = ['ACTION', 'COMEDY', 'DRAMA', 'HORROR', 'ROMANCE', 'THRILLER', 'SCI-FI', 'ANIMATION', 'DOCUMENTARY'];
+  const languages = ['Hindi', 'English', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali', 'Marathi', 'Punjabi'];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-800 text-white sticky top-0 z-10 shadow-lg p-4 md:p-6">
-        <div className="container mx-auto">
-          <h1 className="text-2xl md:text-3xl font-bold">Create New Show</h1>
-          <p className="text-red-100 text-sm mt-1">Add a new movie screening to the system</p>
+      <div className="bg-gradient-to-r from-red-700 to-red-600 text-white sticky top-0 z-20 shadow-xl">
+        <div className="container mx-auto px-4 py-5">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                <FaFilm className="text-yellow-400" />
+                Create New Show
+              </h1>
+              <p className="text-red-100 text-sm mt-1">Add a new movie screening to the system</p>
+            </div>
+            <button
+              onClick={() => router.back()}
+              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition"
+            >
+              <FaTimes className="inline mr-1" /> Cancel
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="max-w-6xl mx-auto">
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-2 mb-6 border-b dark:border-gray-700">
-            <button
-              type="button"
-              onClick={() => setActiveTab('basic')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'basic' 
-                  ? 'text-red-600 border-b-2 border-red-600' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <FaFilm className="inline mr-2" /> Basic Info
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('movie')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'movie' 
-                  ? 'text-red-600 border-b-2 border-red-600' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <FaStar className="inline mr-2" /> Movie Details
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('seats')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'seats' 
-                  ? 'text-red-600 border-b-2 border-red-600' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <FaChair className="inline mr-2" /> Seat Categories
-            </button>
+        <form onSubmit={handleSubmit} className="max-w-5xl mx-auto">
+          {/* Progress Steps */}
+          <div className="flex justify-between mb-8 max-w-3xl mx-auto">
+            {[
+              { step: 'basic', label: 'Theater & Timing', icon: FaBuilding },
+              { step: 'movie', label: 'Movie Details', icon: FaFilm },
+              { step: 'seats', label: 'Seat Pricing', icon: FaChair }
+            ].map((tab) => (
+              <button
+                key={tab.step}
+                type="button"
+                onClick={() => setActiveTab(tab.step)}
+                className={`flex-1 text-center pb-3 transition ${
+                  activeTab === tab.step 
+                    ? 'border-b-2 border-red-500 text-red-600' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <tab.icon className={`text-xl mx-auto mb-1 ${
+                  activeTab === tab.step ? 'text-red-500' : 'text-gray-400'
+                }`} />
+                <span className="text-sm font-medium">{tab.label}</span>
+              </button>
+            ))}
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
             
-            {/* Basic Info Tab */}
+            {/* Basic Info Tab - Theater & Timing */}
             {activeTab === 'basic' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <MdTheaters className="text-red-600" /> Theater & Timing
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <MdTheaters className="text-red-600" /> Select Theater & Screen
                 </h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Theater Selection */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      <MdTheaters className="inline mr-1" /> Theater ID *
+                      <FaBuilding className="inline mr-2 text-red-500" />
+                      Select Theater *
                     </label>
-                    <input
-                      type="text"
-                      name="theaterId"
+                    <select
                       value={formData.theaterId}
-                      onChange={handleInputChange}
-                      placeholder="e.g., 69e9ecdcd1e8f499177852f8"
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      onChange={handleTheaterChange}
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                       required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Enter the theater ID from database</p>
+                    >
+                      <option value="">-- Select Theater --</option>
+                      {isLoadingTheaters ? (
+                        <option disabled>Loading theaters...</option>
+                      ) : (
+                        theaters.map(theater => (
+                          <option key={theater._id} value={theater._id}>
+                            {theater.name} - {theater.city} ({theater.screens?.length || 0} screens)
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {formData.theaterId && selectedTheater && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                        <FaCheckCircle /> {selectedTheater.location}, {selectedTheater.city}
+                      </p>
+                    )}
                   </div>
-                  
+
+                  {/* Screen Selection - Only show if theater selected */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      <MdScreenShare className="inline mr-1" /> Screen ID *
+                      <MdScreenShare className="inline mr-2 text-red-500" />
+                      Select Screen *
                     </label>
-                    <input
-                      type="text"
-                      name="screenId"
+                    <select
                       value={formData.screenId}
-                      onChange={handleInputChange}
-                      placeholder="e.g., 69e9ecdcd1e8f499177852f9"
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      onChange={handleScreenChange}
+                      disabled={!formData.theaterId}
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       required
-                    />
+                    >
+                      <option value="">-- Select Screen --</option>
+                      {selectedTheater?.screens?.map(screen => (
+                        <option key={screen._id} value={screen._id}>
+                          {screen.name} - Screen {screen.screenNumber}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.screenId && formData.screenNumber && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Screen Number: {formData.screenNumber}
+                      </p>
+                    )}
                   </div>
-                  
+
+                  {/* Show Date */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      <MdScreenShare className="inline mr-1" /> Screen Number *
-                    </label>
-                    <input
-                      type="number"
-                      name="screenNumber"
-                      value={formData.screenNumber}
-                      onChange={handleInputChange}
-                      placeholder="e.g., 1"
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      <FaCalendar className="inline mr-1" /> Show Date *
+                      <FaCalendar className="inline mr-2 text-red-500" />
+                      Show Date *
                     </label>
                     <input
                       type="date"
@@ -265,65 +340,84 @@ function CreateShow() {
                       value={formData.showDate}
                       onChange={handleInputChange}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                       required
                     />
                   </div>
-                  
+
+                  {/* Start Time */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      <FaClock className="inline mr-1" /> Start Time *
+                      <FaClock className="inline mr-2 text-red-500" />
+                      Start Time *
                     </label>
                     <input
                       type="time"
                       name="startTime"
                       value={formData.startTime}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                       required
                     />
                   </div>
-                  
+
+                  {/* End Time */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      <FaClock className="inline mr-1" /> End Time *
+                      <FaClock className="inline mr-2 text-red-500" />
+                      End Time *
                     </label>
                     <input
                       type="time"
                       name="endTime"
                       value={formData.endTime}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                       required
                     />
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="isPaid"
-                      checked={formData.isPaid}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-red-600"
-                    />
-                    <span className="text-sm font-medium">Paid Show</span>
-                  </label>
-                  
-                  {formData.isPaid && (
-                    <div className="flex items-center gap-2">
-                      <FaDollarSign className="text-green-600" />
+
+                  {/* Paid/Free Show Toggle */}
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
-                        type="number"
-                        name="basePrice"
-                        value={formData.basePrice}
+                        type="checkbox"
+                        name="isPaid"
+                        checked={formData.isPaid}
                         onChange={handleInputChange}
-                        placeholder="Base Price"
-                        className="w-32 px-3 py-1 border rounded-lg dark:bg-gray-600"
+                        className="w-5 h-5 text-red-600 rounded"
                       />
-                    </div>
-                  )}
+                      <span className="text-sm font-medium">💰 Paid Show</span>
+                    </label>
+                    
+                    {formData.isPaid && (
+                      <div className="flex items-center gap-2">
+                        <FaDollarSign className="text-green-600" />
+                        <input
+                          type="number"
+                          name="basePrice"
+                          value={formData.basePrice}
+                          onChange={handleInputChange}
+                          placeholder="Base Price"
+                          className="w-32 px-3 py-2 border rounded-lg dark:bg-gray-600"
+                        />
+                      </div>
+                    )}
+                    
+                    {!formData.isPaid && (
+                      <span className="text-sm text-green-600">🎉 Free Show - No payment required</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-6 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('movie')}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-semibold flex items-center gap-2 transition"
+                  >
+                    Next: Movie Details →
+                  </button>
                 </div>
               </div>
             )}
@@ -331,20 +425,20 @@ function CreateShow() {
             {/* Movie Details Tab */}
             {activeTab === 'movie' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <FaFilm className="text-red-600" /> Movie Information
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <FaStar className="text-yellow-500" /> Movie Information
                 </h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium mb-2">Movie Name *</label>
                     <input
                       type="text"
                       name="movie.name"
                       value={formData.movie.name}
                       onChange={handleInputChange}
-                      placeholder="e.g., Jawan, Pathaan, etc."
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      placeholder="e.g., Jawan, Pathaan, Animal"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                       required
                     />
                   </div>
@@ -355,10 +449,24 @@ function CreateShow() {
                       name="movie.genre"
                       value={formData.movie.genre}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                     >
                       {genres.map(genre => (
                         <option key={genre} value={genre}>{genre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Language *</label>
+                    <select
+                      name="movie.language"
+                      value={formData.movie.language}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
+                    >
+                      {languages.map(lang => (
+                        <option key={lang} value={lang}>{lang}</option>
                       ))}
                     </select>
                   </div>
@@ -371,37 +479,25 @@ function CreateShow() {
                       value={formData.movie.duration}
                       onChange={handleInputChange}
                       placeholder="e.g., 170"
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                       required
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium mb-2">Rating *</label>
+                    <label className="block text-sm font-medium mb-2">Rating (0-10) *</label>
                     <input
                       type="number"
                       step="0.1"
+                      min="0"
+                      max="10"
                       name="movie.rating"
                       value={formData.movie.rating}
                       onChange={handleInputChange}
                       placeholder="e.g., 8.5"
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                       required
                     />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Language *</label>
-                    <select
-                      name="movie.language"
-                      value={formData.movie.language}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
-                    >
-                      {languages.map(lang => (
-                        <option key={lang} value={lang}>{lang}</option>
-                      ))}
-                    </select>
                   </div>
                   
                   <div>
@@ -411,7 +507,7 @@ function CreateShow() {
                       name="movie.releaseDate"
                       value={formData.movie.releaseDate}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                     />
                   </div>
                   
@@ -421,40 +517,57 @@ function CreateShow() {
                       name="movie.description"
                       value={formData.movie.description}
                       onChange={handleInputChange}
-                      rows="3"
-                      placeholder="Movie description..."
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-red-500"
+                      rows="4"
+                      placeholder="Brief description about the movie..."
+                      className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
                     />
                   </div>
                   
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium mb-2">Movie Poster</label>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1">
                         <input
                           type="file"
                           accept="image/*"
                           onChange={handlePosterChange}
-                          className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                          className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700"
                         />
                       </div>
-                      <label className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           name="movie.isTrending"
                           checked={formData.movie.isTrending}
                           onChange={handleInputChange}
-                          className="w-4 h-4 text-red-600"
+                          className="w-5 h-5 text-red-600 rounded"
                         />
                         <span className="text-sm font-medium">🔥 Mark as Trending</span>
                       </label>
                     </div>
                     {posterPreview && (
                       <div className="mt-4">
-                        <img src={posterPreview} alt="Preview" className="h-32 w-auto rounded-lg object-cover" />
+                        <img src={posterPreview} alt="Preview" className="h-40 w-auto rounded-xl object-cover shadow-md" />
                       </div>
                     )}
                   </div>
+                </div>
+
+                <div className="flex justify-between mt-6 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('basic')}
+                    className="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded-xl font-semibold transition"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('seats')}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-semibold flex items-center gap-2 transition"
+                  >
+                    Next: Seat Pricing →
+                  </button>
                 </div>
               </div>
             )}
@@ -462,96 +575,77 @@ function CreateShow() {
             {/* Seat Categories Tab */}
             {activeTab === 'seats' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <FaChair className="text-red-600" /> Seat Categories & Pricing
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <FaChair className="text-green-500" /> Seat Categories & Pricing
                 </h2>
                 
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {formData.seatCategories.map((category, index) => (
-                    <div key={category.category} className="border dark:border-gray-700 rounded-lg p-4">
+                    <div key={category.category} className="border-2 dark:border-gray-700 rounded-xl p-5 hover:shadow-lg transition">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-lg">{category.category}</h3>
-                        <div className={`w-3 h-3 rounded-full ${
-                          category.category === 'NORMAL' ? 'bg-green-500' :
-                          category.category === 'EXECUTIVE' ? 'bg-blue-500' :
-                          category.category === 'PREMIUM' ? 'bg-purple-500' : 'bg-yellow-500'
-                        }`} />
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${
+                            category.category === 'NORMAL' ? 'bg-green-500' :
+                            category.category === 'EXECUTIVE' ? 'bg-blue-500' :
+                            category.category === 'PREMIUM' ? 'bg-purple-500' : 'bg-yellow-500'
+                          }`} />
+                          {category.category}
+                        </h3>
+                        <span className="text-sm text-gray-500">
+                          {category.category === 'NORMAL' ? 'Standard Seats' :
+                           category.category === 'EXECUTIVE' ? 'Extra Legroom' :
+                           category.category === 'PREMIUM' ? 'Premium Comfort' : 'Luxury Seats'}
+                        </span>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Price per Seat (₹)</label>
-                          <input
-                            type="number"
-                            value={category.pricePerSeat}
-                            onChange={(e) => handleCategoryChange(index, 'pricePerSeat', e.target.value)}
-                            className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Number of Rows</label>
-                          <input
-                            type="number"
-                            value={category.rows}
-                            onChange={(e) => handleCategoryChange(index, 'rows', e.target.value)}
-                            className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                            readOnly
-                          />
-                          <p className="text-xs text-gray-500 mt-1">Fixed layout</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Seats per Row</label>
-                          <input
-                            type="number"
-                            value={category.seatsPerRow}
-                            onChange={(e) => handleCategoryChange(index, 'seatsPerRow', e.target.value)}
-                            className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                        Total seats: {category.rows * category.seatsPerRow}
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Price per Seat (₹)</label>
+                        <input
+                          type="number"
+                          value={category.pricePerSeat}
+                          onChange={(e) => handleCategoryChange(index, 'pricePerSeat', e.target.value)}
+                          className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 focus:ring-2 focus:ring-red-500"
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
                 
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl mt-4">
                   <FaInfoCircle className="inline mr-2 text-blue-600" />
                   <span className="text-sm">
-                    Seat layout is automatically generated based on rows and seats per row configuration.
-                    Each category will have rows from next available letter.
+                    Seat layout will be automatically generated based on theater screen configuration.
+                    Each category  row allocation is pre-defined from the screen setup.
                   </span>
+                </div>
+
+                <div className="flex justify-between mt-6 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('movie')}
+                    className="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded-xl font-semibold transition"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending}
+                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition disabled:opacity-50"
+                  >
+                    {createMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white"></div>
+                        Creating Show...
+                      </>
+                    ) : (
+                      <>
+                        <FaSave /> Create Show
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             )}
-
-            {/* Form Actions */}
-            <div className="flex gap-4 mt-8 pt-6 border-t dark:border-gray-700">
-              <button
-                type="submit"
-                disabled={createMutation.isPending}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50"
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <FaSave /> Create Show
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition"
-              >
-                <FaTimes /> Cancel
-              </button>
-            </div>
           </div>
         </form>
       </div>
