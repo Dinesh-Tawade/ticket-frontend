@@ -61,6 +61,8 @@ body {
 .text-red { color: var(--red); }
 .text-yellow { color: var(--yellow); }
 .text-indigo { color: var(--indigo); }
+.bg-black { background: var(--black); }
+
 
 /* Accent line */
 .accent {
