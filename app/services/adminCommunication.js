@@ -17,6 +17,20 @@ const getAuthHeader = () => {
   return {};
 };
 
+const getAuthHeaderForFormData = () => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token) {
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  }
+  return {};
+};
+
 export const adminLogout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
@@ -62,22 +76,26 @@ export const getDashboardStats = async () => {
 
 // Create Users
 export const createTheaterOwner = async (userData) => {
-  const res = await axios.post(`${BE_URL}/admin/create-theater-owner`, userData, getAuthHeader());
+  const isFormData = userData instanceof FormData;
+  const res = await axios.post(`${BE_URL}/admin/create-theater-owner`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
   return res.data;
 };
 
 export const createVendor = async (userData) => {
-  const res = await axios.post(`${BE_URL}/admin/create-vendor`, userData, getAuthHeader());
+  const isFormData = userData instanceof FormData;
+  const res = await axios.post(`${BE_URL}/admin/create-vendor`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
   return res.data;
 };
 
 export const createBuyerAdmin = async (userData) => {
-  const res = await axios.post(`${BE_URL}/admin/create-buyer`, userData, getAuthHeader());
+  const isFormData = userData instanceof FormData;
+  const res = await axios.post(`${BE_URL}/admin/create-buyer`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
   return res.data;
 };
 
 export const createSuperAdminByAdmin = async (userData) => {
-  const res = await axios.post(`${BE_URL}/admin/create-super-admin`, userData, getAuthHeader());
+  const isFormData = userData instanceof FormData;
+  const res = await axios.post(`${BE_URL}/admin/create-super-admin`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
   return res.data;
 };
 
@@ -101,7 +119,8 @@ export const getUserStats = async () => {
 
 // Update Users
 export const updateUser = async (id, userData) => {
-  const res = await axios.put(`${BE_URL}/admin/users/${id}`, userData, getAuthHeader());
+  const isFormData = userData instanceof FormData;
+  const res = await axios.put(`${BE_URL}/admin/users/${id}`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
   return res.data;
 };
 

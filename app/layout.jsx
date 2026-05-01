@@ -14,12 +14,12 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <ReduxProvider>
-          <Header/>
+          {/* <Header/> */}
           <ReactQueryProvider>
             {children}
           </ReactQueryProvider>
         </ReduxProvider>
-        <Footer/>
+        {/* <Footer/> */}
       </body>
     </html>
   );
