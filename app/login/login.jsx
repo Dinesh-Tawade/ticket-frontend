@@ -53,6 +53,8 @@ export default function Login() {
           router.push("/admin/dashboard");
         } else if (role === "SELLER") {
           router.push("/seller/dashboard");
+        } else if (role === "THEATER_OWNER") {
+          router.push("/theater-owner/dashboard");
         } else if (role === "BUYER") {
           router.push("/buyer/dashboard");
         } else {
