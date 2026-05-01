@@ -352,23 +352,26 @@ export default function Users() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload, profileImage }) => {
-      const formData = new FormData();
-
-      Object.keys(payload).forEach((key) => {
-        if (payload[key] !== null && payload[key] !== undefined) {
-          if (key === "theaters" && Array.isArray(payload[key])) {
-            formData.append(key, JSON.stringify(payload[key]));
-          } else {
-            formData.append(key, payload[key]);
-          }
-        }
-      });
-
+      // Use FormData only when image is provided, otherwise send JSON
       if (profileImage) {
+        const formData = new FormData();
+
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] !== null && payload[key] !== undefined) {
+            if (key === "theaters" && Array.isArray(payload[key])) {
+              formData.append(key, JSON.stringify(payload[key]));
+            } else {
+              formData.append(key, payload[key]);
+            }
+          }
+        });
+
         formData.append("profileImage", profileImage);
+        return updateUser(id, formData);
       }
 
-      return updateUser(id, formData);
+      // No image - send JSON directly
+      return updateUser(id, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
@@ -384,26 +387,28 @@ export default function Users() {
 
   const createMutation = useMutation({
     mutationFn: ({ role, payload, profileImage }) => {
-      const formData = new FormData();
+      // Use FormData only when image is provided, otherwise send JSON
+      const userData = profileImage ? (() => {
+        const formData = new FormData();
 
-      Object.keys(payload).forEach((key) => {
-        if (payload[key] !== null && payload[key] !== undefined) {
-          if (key === "theaters" && Array.isArray(payload[key])) {
-            formData.append(key, JSON.stringify(payload[key]));
-          } else {
-            formData.append(key, payload[key]);
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] !== null && payload[key] !== undefined) {
+            if (key === "theaters" && Array.isArray(payload[key])) {
+              formData.append(key, JSON.stringify(payload[key]));
+            } else {
+              formData.append(key, payload[key]);
+            }
           }
-        }
-      });
+        });
 
-      if (profileImage) {
         formData.append("profileImage", profileImage);
-      }
+        return formData;
+      })() : payload;
 
-      if (role === "SUPER_ADMIN") return createSuperAdminByAdmin(formData);
-      if (role === "THEATER_OWNER") return createTheaterOwner(formData);
-      if (role === "VENDOR") return createVendor(formData);
-      return createBuyerAdmin(formData);
+      if (role === "SUPER_ADMIN") return createSuperAdminByAdmin(userData);
+      if (role === "THEATER_OWNER") return createTheaterOwner(userData);
+      if (role === "VENDOR") return createVendor(userData);
+      return createBuyerAdmin(userData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
