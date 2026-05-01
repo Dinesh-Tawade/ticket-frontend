@@ -1,119 +1,63 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { toast, Toaster } from 'react-hot-toast';
+import { toast, Toaster } from "react-hot-toast";
+import { useSelector } from "react-redux";
 import {
   getAllTheatersAdmin,
   deleteTheater,
-  updateTheater
+  updateTheater,
+  getAllUsers,
 } from "@/app/services/adminCommunication";
 import {
-  FaBuilding, FaMapMarkerAlt, FaPhone, FaTicketAlt,
-  FaCouch, FaWifi, FaParking, FaCoffee, FaAccessibleIcon,
-  FaEdit, FaTrash, FaPlus, FaSearch, FaTimes,
-  FaCheckCircle, FaTimesCircle, FaChevronDown
-} from 'react-icons/fa';
-import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat } from 'react-icons/md';
+  FaBuilding, FaMapMarkerAlt, FaPhone, FaTicketAlt, FaCouch, FaWifi,
+  FaParking, FaCoffee, FaAccessibleIcon, FaEdit, FaTrash, FaPlus,
+  FaSearch, FaTimes, FaCheckCircle, FaTimesCircle, FaChevronDown,
+  FaStar, FaRegGem, FaCrown, FaSpinner, FaUserTie, FaMoon, FaSun,
+  FaSave, FaCity, FaFlag
+} from "react-icons/fa";
+import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat, MdMovie, MdLocalMovies } from "react-icons/md";
+import { GiTheaterCurtains } from "react-icons/gi";
+import useTheme from "@/app/hooks/useTheme";
 
-/* ─────────────────────────────────────────
-   CONSTANTS
-───────────────────────────────────────── */
 const AMENITIES = [
-  { icon: FaCouch,          name: "Recliner",  key: "hasRecliner"   },
-  { icon: FaWifi,           name: "WiFi",       key: "hasWifi"       },
-  { icon: FaParking,        name: "Parking",    key: "hasParking"    },
-  { icon: FaCoffee,         name: "Café",       key: "hasCafe"       },
-  { icon: FaAccessibleIcon, name: "Accessible", key: "hasWheelchair" },
+  { icon: FaCouch, name: "Recliner Seats", key: "hasRecliner", desc: "Premium recliner chairs", color: "blue" },
+  { icon: FaWifi, name: "Free WiFi", key: "hasWifi", desc: "High-speed internet", color: "indigo" },
+  { icon: FaParking, name: "Parking", key: "hasParking", desc: "Covered car parking", color: "green" },
+  { icon: FaCoffee, name: "Food & Café", key: "hasCafe", desc: "In-house café & snacks", color: "orange" },
+  { icon: FaAccessibleIcon, name: "Accessibility", key: "hasWheelchair", desc: "Wheelchair friendly", color: "purple" },
 ];
 
-// Each type maps to a CSS variable name from global.css
 const SEAT_TYPES = {
-  NORMAL:    { label: "Standard",  cssVar: "--blue",   symbol: "S", mult: "1×"   },
-  EXECUTIVE: { label: "Executive", cssVar: "--green",  symbol: "E", mult: "1.5×" },
-  PREMIUM:   { label: "Premium",   cssVar: "--purple", symbol: "P", mult: "2×"   },
-  VIP:       { label: "VIP",       cssVar: "--yellow", symbol: "V", mult: "3×"   },
+  NORMAL: { label: "Standard", color: "blue", symbol: "S", mult: "1×", icon: MdEventSeat },
+  EXECUTIVE: { label: "Executive", color: "green", symbol: "E", mult: "1.5×", icon: FaStar },
+  PREMIUM: { label: "Premium", color: "purple", symbol: "P", mult: "2×", icon: FaRegGem },
+  VIP: { label: "VIP", color: "yellow", symbol: "V", mult: "3×", icon: FaCrown },
 };
 
-/* ─────────────────────────────────────────
-   INJECTED STYLES  (CSS variables only)
-───────────────────────────────────────── */
-const Styles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&display=swap');
+const SeatLegend = ({ type, isDark }) => {
+  const cfg = SEAT_TYPES[type];
+  const Icon = cfg.icon;
+  
+  return (
+    <div className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${isDark ? 'bg-card/50 border border-card-border/30 hover:shadow-lg hover:shadow-blue-500/20' : 'bg-white/50 border border-gray-200 hover:shadow-lg hover:shadow-blue-500/10'}`}>
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold transition-transform group-hover:scale-110 ${isDark ? `bg-${cfg.color}-900/30 border border-${cfg.color}-700/30 text-${cfg.color}-400` : `bg-${cfg.color}-50 border border-${cfg.color}-200 text-${cfg.color}-600`}`}>
+        <Icon className="text-xs" />
+      </div>
+      <div>
+        <div className={`text-sm font-bold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{cfg.label}</div>
+        <div className={`text-[11px] ${isDark ? 'text-foreground/60' : 'text-gray-400'}`}>{cfg.mult} price</div>
+      </div>
+    </div>
+  );
+};
 
-    .tp * { box-sizing: border-box; }
-    .tp   { font-family: 'Sora', system-ui, sans-serif; }
-
-    @keyframes tp-up   { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes tp-spin { to   { transform: rotate(360deg); } }
-
-    .tp-fade { animation: tp-up .42s ease both; }
-
-    /* ── cards ── */
-    .tp-stat-card {
-      transition: transform .25s, box-shadow .25s;
-      cursor: default;
-    }
-    .tp-stat-card:hover {
-      transform: translateY(-3px) scale(1.025);
-      box-shadow: 0 14px 36px rgba(0,0,0,.12) !important;
-    }
-    .tp-theater-card {
-      transition: transform .28s, box-shadow .28s, border-color .28s;
-    }
-    .tp-theater-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 24px 60px rgba(0,0,0,.13) !important;
-      border-color: var(--blue) !important;
-    }
-
-    /* ── buttons ── */
-    .tp-btn { transition: opacity .15s, transform .15s; cursor: pointer; }
-    .tp-btn:active { transform: scale(.95); }
-
-    /* ── seats ── */
-    .tp-seat { transition: transform .15s, box-shadow .15s, filter .15s; cursor: pointer; }
-    .tp-seat:hover { transform: scale(1.24) translateY(-2px); filter: brightness(1.15); }
-
-    /* ── inputs ── */
-    .tp-input:focus { outline: none; border-color: var(--blue) !important; }
-
-    /* ── scrollbar ── */
-    .tp-scroll::-webkit-scrollbar       { width:5px; height:5px; }
-    .tp-scroll::-webkit-scrollbar-track { background:transparent; }
-    .tp-scroll::-webkit-scrollbar-thumb { background:var(--card-border); border-radius:99px; }
-
-    /* ── legend pill ── */
-    .tp-legend {
-      display:flex; align-items:center; gap:8px;
-      padding:8px 14px; border-radius:10px;
-      border:1px solid var(--card-border);
-      background:var(--card);
-      transition:transform .2s;
-    }
-    .tp-legend:hover { transform:scale(1.04); }
-
-    /* ── select chrome reset ── */
-    .tp-select {
-      appearance:none; -webkit-appearance:none;
-      background:var(--card); color:var(--foreground);
-      border:1.5px solid var(--card-border);
-      border-radius:10px; padding:10px 36px 10px 14px;
-      font-family:'Sora',system-ui,sans-serif;
-      font-size:13px; font-weight:600; cursor:pointer;
-      min-width:130px;
-    }
-    .tp-select:focus { outline:none; border-color:var(--blue); }
-  `}</style>
-);
-
-/* ─────────────────────────────────────────
-   SCREEN VIEW MODAL
-───────────────────────────────────────── */
-const ScreenViewModal = ({ isOpen, onClose, theater, screens, selectedScreenIndex, onScreenChange }) => {
+const ScreenViewModal = ({ isOpen, onClose, theater, screens, selectedScreenIndex, onScreenChange, isDark }) => {
   const [hovered, setHovered] = useState(null);
+  const [selectedSeat, setSelectedSeat] = useState(null);
+  const [rippleEffect, setRippleEffect] = useState(null);
   const current = screens?.[selectedScreenIndex];
 
   const seatsByRow = useMemo(() => {
@@ -123,171 +67,141 @@ const ScreenViewModal = ({ isOpen, onClose, theater, screens, selectedScreenInde
       for (let i = row.startSeat; i <= row.endSeat; i++)
         all.push({ row: row.rowName, number: i, category: row.category, multiplier: row.priceMultiplier });
     });
-    return all.reduce((acc, s) => {
-      (acc[s.row] = acc[s.row] || []).push(s);
-      return acc;
-    }, {});
+    return all.reduce((acc, s) => ((acc[s.row] = acc[s.row] || []).push(s), acc), {});
   }, [current]);
 
   const total = useMemo(() => Object.values(seatsByRow).reduce((t, r) => t + r.length, 0), [seatsByRow]);
   const catCounts = useMemo(() => {
     const c = {};
-    Object.values(seatsByRow).flat().forEach(s => { c[s.category] = (c[s.category] || 0) + 1; });
+    Object.values(seatsByRow).flat().forEach(s => c[s.category] = (c[s.category] || 0) + 1);
     return c;
   }, [seatsByRow]);
+
+  const handleSeatClick = (seat) => {
+    setSelectedSeat(seat);
+    setRippleEffect(seat);
+    setTimeout(() => setRippleEffect(null), 500);
+  };
 
   if (!isOpen || !current) return null;
 
   return (
-    <div
-      onClick={e => e.target === e.currentTarget && onClose()}
-      style={{
-        position:'fixed', inset:0, zIndex:9999,
-        background:'rgba(0,0,0,.65)', backdropFilter:'blur(10px)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        padding:'1rem', overflowY:'auto',
-        animation:'tp-up .22s ease',
-      }}
-    >
-      <div
-        className="tp-scroll"
-        style={{
-          background:'var(--card)', border:'1px solid var(--card-border)',
-          borderRadius:24, width:'100%', maxWidth:860,
-          maxHeight:'92vh', overflowY:'auto',
-          boxShadow:'0 40px 100px rgba(0,0,0,.45)',
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          position:'sticky', top:0, zIndex:10,
-          background:'var(--card)', borderBottom:'1px solid var(--card-border)',
-          padding:'1.5rem 2rem', borderRadius:'24px 24px 0 0',
-        }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+    <div onClick={e => e.target === e.currentTarget && onClose()} className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 ${isDark ? 'bg-black/90' : 'bg-gray-900/60'}`}>
+      <div className={`rounded-2xl w-full max-w-[1200px] max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-300 ${isDark ? 'bg-card border border-card-border/30' : 'bg-gradient-to-br from-white via-gray-50 to-white border border-gray-200'}`}>
+        <div className={`sticky top-0 z-10 border-b rounded-t-2xl p-6 backdrop-blur-sm transition-all duration-300 ${isDark ? 'bg-card border-card-border/30' : 'bg-gradient-to-r from-white to-gray-50 border-gray-200'}`}>
+          <div className="flex justify-between items-start gap-3">
             <div>
-              {/* Accent bar */}
-              <div style={{ width:36, height:4, borderRadius:99, background:'var(--blue)', marginBottom:12 }} />
-              <h2 style={{ margin:0, fontSize:21, fontWeight:800, color:'var(--foreground)' }}>
-                {theater?.name}
-              </h2>
-              <p style={{ margin:'6px 0 0', fontSize:13, color:'var(--foreground)', opacity:.5, display:'flex', alignItems:'center', gap:4 }}>
-                <MdLocationOn style={{ color:'var(--blue)' }} />
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-10 h-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500" />
+                <div className="w-6 h-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+              </div>
+              <h2 className={`text-2xl font-extrabold font-poppins ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{theater?.name}</h2>
+              <p className={`text-xs mt-1.5 flex items-center gap-1 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+                <MdLocationOn className={`text-sm text-blue-500 animate-pulse`} />
                 {theater?.location}, {theater?.city}
               </p>
             </div>
-            <button className="tp-btn" onClick={onClose} style={{
-              background:'transparent', border:'1px solid var(--card-border)',
-              borderRadius:10, padding:'8px 10px', color:'var(--foreground)', opacity:.6,
-              display:'flex', alignItems:'center',
-            }}>
-              <FaTimes style={{ fontSize:14 }} />
+            <button onClick={onClose} className={`p-2 rounded-lg transition-all duration-300 group ${isDark ? 'border border-card-border/30 bg-card/50 text-foreground/60 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400' : 'border border-gray-200 bg-white/50 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'}`}>
+              <FaTimes className={`text-sm group-hover:rotate-90 transition-transform duration-300`} />
             </button>
           </div>
-
-          {/* Screen tabs */}
           {screens?.length > 1 && (
-            <div style={{ display:'flex', gap:8, marginTop:16, overflowX:'auto', paddingBottom:2 }}>
+            <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-thin">
               {screens.map((sc, idx) => (
-                <button key={sc._id} className="tp-btn" onClick={() => onScreenChange(idx)} style={{
-                  padding:'6px 16px', borderRadius:8, fontSize:13, fontWeight:600,
-                  border:'none', whiteSpace:'nowrap',
-                  background: selectedScreenIndex === idx ? 'var(--blue)' : 'var(--card-border)',
-                  color: selectedScreenIndex === idx ? '#fff' : 'var(--foreground)',
-                  opacity: selectedScreenIndex === idx ? 1 : .65,
-                  fontFamily:'inherit', transition:'all .2s',
-                }}>
-                  <MdScreenShare style={{ marginRight:6, verticalAlign:'middle', fontSize:12 }} />
-                  {sc.name}
+                <button key={sc._id} onClick={() => onScreenChange(idx)} className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 transform hover:scale-105 ${selectedScreenIndex === idx ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg" : isDark ? "bg-card/50 text-foreground/60 border border-card-border/30 hover:bg-card" : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200"}`}>
+                  <MdScreenShare className="inline mr-1.5 text-xs" /> {sc.name}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Body */}
-        <div style={{ padding:'2rem' }}>
-
-          {/* Stat chips */}
-          <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginBottom:28 }}>
+        <div className="p-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
             {[
-              { label:'Screen',      value:`#${current.screenNumber}`, v:'--blue'  },
-              { label:'Total Seats', value:total,                       v:'--green' },
-              ...Object.entries(catCounts).map(([cat, n]) => ({
-                label: SEAT_TYPES[cat]?.label || cat,
-                value: n,
-                v: SEAT_TYPES[cat]?.cssVar || '--blue',
-              })),
-            ].map((chip, i) => (
-              <div key={i} style={{
-                padding:'8px 16px', borderRadius:10,
-                border:`1.5px solid var(${chip.v})44`,
-                background:`var(${chip.v})11`,
-              }}>
-                <div style={{ fontSize:10, fontWeight:700, color:`var(${chip.v})`, textTransform:'uppercase', letterSpacing:'1px' }}>{chip.label}</div>
-                <div style={{ fontSize:22, fontWeight:900, color:`var(${chip.v})`, lineHeight:1.1 }}>{chip.value}</div>
-              </div>
-            ))}
+              { label: "Screen", value: `#${current.screenNumber}`, color: "blue", icon: MdScreenShare },
+              { label: "Total Seats", value: total, color: "green", icon: MdEventSeat },
+              ...Object.entries(catCounts).map(([cat, n]) => ({ label: SEAT_TYPES[cat]?.label || cat, value: n, color: SEAT_TYPES[cat]?.color || "blue", icon: SEAT_TYPES[cat]?.icon || MdEventSeat })),
+            ].map((chip, i) => {
+              const Icon = chip.icon;
+              return (
+                <div key={i} className={`relative group overflow-hidden px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 cursor-pointer animate-in slide-in-from-bottom duration-500 ${isDark ? `bg-gradient-to-br from-${chip.color}-900/20 to-card border border-${chip.color}-500/20 hover:border-${chip.color}-500/50` : `bg-gradient-to-br from-${chip.color}-50 to-white border border-${chip.color}-200 hover:border-${chip.color}-400`}`} style={{ animationDelay: `${i * 100}ms` }}>
+                  <div className={`absolute inset-0 bg-gradient-to-r from-${chip.color}-500/0 via-${chip.color}-500/10 to-${chip.color}-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
+                  <Icon className={`text-lg mb-1 ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-600`} animate-pulse`} />
+                  <div className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-600`}`}>{chip.label}</div>
+                  <div className={`text-2xl font-black leading-tight ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-700`}`}>{chip.value}</div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Cinema screen visual */}
-          <div style={{ marginBottom:32, textAlign:'center' }}>
-            <div style={{
-              height:6,
-              background:'linear-gradient(90deg,transparent 0%,var(--blue) 20%,var(--purple) 50%,var(--blue) 80%,transparent 100%)',
-              borderRadius:3,
-              boxShadow:'0 0 24px var(--blue), 0 0 48px var(--purple)',
-              opacity:.75,
-              marginBottom:8,
-            }} />
-            <div style={{
-              height:18,
-              background:'linear-gradient(180deg,var(--blue)18 0%,transparent 100%)',
-              borderRadius:'0 0 60% 60%',
-              marginBottom:8,
-            }} />
-            <span style={{ fontSize:9, fontWeight:800, letterSpacing:'4px', color:'var(--foreground)', opacity:.3, textTransform:'uppercase' }}>
-              ◄ &nbsp; ALL EYES THIS WAY &nbsp; ►
-            </span>
+          <div className="mb-10 text-center relative">
+            <div className="absolute inset-x-0 -top-10 flex justify-center gap-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="w-1 h-1 rounded-full bg-blue-400 animate-ping" style={{ animationDelay: `${i * 0.3}s`, animationDuration: '1.5s' }} />
+              ))}
+            </div>
+            <div className="relative">
+              <div className={`h-1.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full opacity-80 mb-2 animate-pulse shadow-[0_0_30px_#3b82f6]`} />
+              <div className={`h-6 bg-gradient-to-b from-blue-500/30 to-transparent rounded-b-[60%] mb-3`} />
+              <MdLocalMovies className={`absolute -top-8 left-1/2 transform -translate-x-1/2 text-2xl animate-bounce text-blue-400/50`} />
+              <span className={`text-[10px] font-extrabold tracking-[6px] uppercase relative inline-block ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+                ◄ SILVER SCREEN ►
+                <span className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pulse" />
+              </span>
+            </div>
           </div>
 
-          {/* Seat grid */}
-          <div className="tp-scroll" style={{ overflowX:'auto', paddingBottom:8 }}>
-            <div style={{ minWidth:'max-content' }}>
-              {Object.entries(seatsByRow).map(([rowName, seats]) => (
-                <div key={rowName} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                  <div style={{ width:24, textAlign:'center', fontSize:10, fontWeight:800, color:'var(--foreground)', opacity:.35, flexShrink:0 }}>
-                    {rowName}
+          <div className="overflow-x-auto pb-4 relative">
+            <div className="min-w-max">
+              {Object.entries(seatsByRow).map(([rowName, seats], rowIdx) => (
+                <div key={rowName} className="flex items-center gap-3 mb-3 group animate-in slide-in-from-left duration-500" style={{ animationDelay: `${rowIdx * 80}ms` }}>
+                  <div className="w-8 text-center">
+                    <div className={`text-xs font-black transition-colors duration-300 ${isDark ? 'text-foreground/40 group-hover:text-blue-400' : 'text-gray-400 group-hover:text-blue-600'}`}>
+                      {rowName}
+                    </div>
+                    <div className={`w-px h-8 bg-gradient-to-b from-blue-500/50 to-transparent mx-auto mt-1`} />
                   </div>
-                  <div style={{ display:'flex', gap:5 }}>
-                    {seats.map(seat => {
-                      const cfg  = SEAT_TYPES[seat.category] || SEAT_TYPES.NORMAL;
+                  <div className="flex gap-2 flex-wrap">
+                    {seats.map((seat, seatIdx) => {
+                      const cfg = SEAT_TYPES[seat.category] || SEAT_TYPES.NORMAL;
                       const isHov = hovered === seat;
+                      const isSelected = selectedSeat === seat;
+                      const isRipple = rippleEffect === seat;
+                      const Icon = cfg.icon;
+                      
                       return (
                         <div
                           key={`${seat.row}${seat.number}`}
-                          className="tp-seat"
                           onMouseEnter={() => setHovered(seat)}
                           onMouseLeave={() => setHovered(null)}
-                          title={`${seat.row}${seat.number} · ${cfg.label} · ${seat.multiplier}×`}
-                          style={{
-                            width:34, height:34, borderRadius:8,
-                            background: isHov ? `var(${cfg.cssVar})` : `var(${cfg.cssVar})20`,
-                            border:`1.5px solid var(${cfg.cssVar})`,
-                            color: isHov ? '#fff' : `var(${cfg.cssVar})`,
-                            display:'flex', alignItems:'center', justifyContent:'center',
-                            fontSize:10, fontWeight:800, position:'relative',
-                            boxShadow: isHov ? `0 6px 20px var(${cfg.cssVar})66` : 'none',
-                          }}
+                          onClick={() => handleSeatClick(seat)}
+                          className={`relative group/seat cursor-pointer transition-all duration-300 transform hover:scale-110 ${
+                            isRipple ? 'animate-in zoom-in duration-300' : ''
+                          }`}
                         >
-                          {seat.number}
-                          {/* category dot */}
-                          <span style={{
-                            position:'absolute', bottom:2, right:2,
-                            width:4, height:4, borderRadius:'50%',
-                            background:`var(${cfg.cssVar})`,
-                            opacity: isHov ? 0 : .6,
-                          }} />
+                          <div className={`relative w-10 h-10 rounded-lg flex flex-col items-center justify-center transition-all duration-300 ${
+                            isHov 
+                              ? `bg-${cfg.color}-500 text-white shadow-2xl scale-110 ring-2 ring-${cfg.color}-400 ring-offset-2 ring-offset-card`
+                              : isSelected
+                              ? `bg-${cfg.color}-500 text-white shadow-lg`
+                              : isDark
+                              ? `bg-${cfg.color}-900/30 border-2 border-${cfg.color}-700/30 text-${cfg.color}-400 hover:border-${cfg.color}-400`
+                              : `bg-${cfg.color}-50 border-2 border-${cfg.color}-200 text-${cfg.color}-600 hover:border-${cfg.color}-400`
+                          }`}>
+                            <Icon className={`text-xs ${isHov || isSelected ? 'text-white' : ''}`} />
+                            <span className="text-[8px] font-bold mt-0.5">{seat.number}</span>
+                          </div>
+                          {isSelected && (
+                            <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in zoom-in duration-200 ${isDark ? 'bg-card border border-card-border/30' : 'bg-gray-800 border border-gray-600'}`}>
+                              Selected!
+                            </div>
+                          )}
+                          {isHov && (
+                            <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in fade-in duration-150 z-20 ${isDark ? 'bg-card border border-card-border/30' : 'bg-gray-800 border border-gray-600'}`}>
+                              {cfg.label}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -297,90 +211,53 @@ const ScreenViewModal = ({ isOpen, onClose, theater, screens, selectedScreenInde
             </div>
           </div>
 
-          {/* Hover info */}
-          <div style={{ minHeight:60, margin:'16px 0' }}>
+          <div className="min-h-[80px] my-5">
             {hovered && (() => {
               const cfg = SEAT_TYPES[hovered.category] || SEAT_TYPES.NORMAL;
+              const Icon = cfg.icon;
               return (
-                <div style={{
-                  display:'flex', alignItems:'center', gap:14,
-                  padding:'12px 18px', borderRadius:12,
-                  border:`1.5px solid var(${cfg.cssVar})44`,
-                  background:`var(${cfg.cssVar})0e`,
-                  animation:'tp-up .18s ease',
-                }}>
-                  <div style={{
-                    width:40, height:40, borderRadius:10,
-                    background:`var(${cfg.cssVar})`,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:13, fontWeight:900, color:'#fff', flexShrink:0,
-                  }}>
-                    {hovered.row}{hovered.number}
+                <div className={`flex items-center gap-4 p-4 rounded-xl animate-in slide-in-from-bottom duration-300 shadow-lg ${isDark ? `bg-gradient-to-r from-${cfg.color}-900/30 to-card border-2 border-${cfg.color}-500/30` : `bg-gradient-to-r from-${cfg.color}-50 to-white border-2 border-${cfg.color}-300`}`}>
+                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-xl animate-bounce bg-${cfg.color}-500`}>
+                    <Icon className="text-white text-2xl" />
                   </div>
-                  <div>
-                    <div style={{ fontSize:14, fontWeight:700, color:'var(--foreground)' }}>
-                      Seat {hovered.row}{hovered.number}
-                    </div>
-                    <div style={{ fontSize:12, color:'var(--foreground)', opacity:.5, marginTop:2 }}>
-                      {cfg.label} &nbsp;·&nbsp; {hovered.multiplier}× price multiplier
-                    </div>
+                  <div className="flex-1">
+                    <div className={`text-lg font-black ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Seat {hovered.row}{hovered.number}</div>
+                    <div className={`text-sm mt-0.5 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{cfg.label} Category · {hovered.multiplier}× price multiplier</div>
                   </div>
-                  <div style={{
-                    marginLeft:'auto', fontSize:11, fontWeight:800,
-                    padding:'4px 12px', borderRadius:6,
-                    background:`var(${cfg.cssVar})`, color:'#fff',
-                  }}>
+                  <div className={`px-4 py-2 rounded-lg font-black text-lg shadow-lg bg-${cfg.color}-500 text-white`}>
                     {cfg.symbol}
                   </div>
                 </div>
               );
             })()}
+            {selectedSeat && !hovered && (
+              <div className={`flex items-center gap-4 p-4 rounded-xl animate-in fade-in duration-300 ${isDark ? 'bg-gradient-to-r from-green-900/30 to-card border-2 border-green-500/30' : 'bg-gradient-to-r from-green-50 to-white border-2 border-green-400'}`}>
+                <div className="w-14 h-14 rounded-xl bg-green-500 flex items-center justify-center shadow-xl">
+                  <FaCheckCircle className="text-white text-2xl" />
+                </div>
+                <div>
+                  <div className={`text-lg font-black ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Seat {selectedSeat.row}{selectedSeat.number} Selected!</div>
+                  <div className={`text-sm mt-0.5 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>Premium viewing experience</div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Legend */}
-          <div style={{ borderTop:'1px solid var(--card-border)', paddingTop:20 }}>
-            <p style={{ fontSize:10, fontWeight:700, color:'var(--foreground)', opacity:.35, textTransform:'uppercase', letterSpacing:'1.2px', marginBottom:14 }}>
-              Seat Categories
+          <div className={`border-t pt-6 mt-2 ${isDark ? 'border-card-border/30' : 'border-gray-200'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-[2px] mb-4 flex items-center gap-2 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+              <div className="w-8 h-px bg-gradient-to-r from-blue-500 to-transparent" />
+              SEAT CATEGORIES
+              <div className="w-8 h-px bg-gradient-to-r from-transparent to-blue-500" />
             </p>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
-              {Object.entries(SEAT_TYPES).map(([key, cfg]) => (
-                <div key={key} className="tp-legend">
-                  <div style={{
-                    width:28, height:28, borderRadius:7,
-                    background:`var(${cfg.cssVar})18`,
-                    border:`1.5px solid var(${cfg.cssVar})`,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:10, fontWeight:800, color:`var(${cfg.cssVar})`,
-                  }}>
-                    {cfg.symbol}
-                  </div>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'var(--foreground)' }}>{cfg.label}</div>
-                    <div style={{ fontSize:11, color:'var(--foreground)', opacity:.4 }}>{cfg.mult} price</div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-wrap gap-3 justify-center">
+              {Object.keys(SEAT_TYPES).map(key => <SeatLegend key={key} type={key} isDark={isDark} />)}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{
-          position:'sticky', bottom:0, background:'var(--card)',
-          borderTop:'1px solid var(--card-border)',
-          padding:'1.25rem 2rem', borderRadius:'0 0 24px 24px',
-        }}>
-          <button className="tp-btn" onClick={onClose} style={{
-            width:'100%', background:'transparent',
-            border:'1.5px solid var(--card-border)', borderRadius:12,
-            padding:'11px 0', color:'var(--foreground)',
-            fontWeight:700, fontSize:14, fontFamily:'inherit',
-            transition:'background .2s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background='var(--card-border)'}
-          onMouseLeave={e => e.currentTarget.style.background='transparent'}
-          >
-            Close
+        <div className={`sticky bottom-0 p-5 rounded-b-2xl transition-all duration-300 bg-card border-t ${isDark ? 'border-card-border/30' : 'border-gray-200'}`}>
+          <button onClick={onClose} className={`w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-300 transform hover:scale-[1.02] shadow-lg bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700`}>
+            Close Theater View
           </button>
         </div>
       </div>
@@ -388,145 +265,430 @@ const ScreenViewModal = ({ isOpen, onClose, theater, screens, selectedScreenInde
   );
 };
 
-/* ─────────────────────────────────────────
-   THEATER CARD
-───────────────────────────────────────── */
-const TheaterCard = ({ theater, onView, onEdit, onDelete, onStatusToggle }) => {
-  const isActive = theater.status === 'ACTIVE';
-  const totalScreens = theater.screens?.length || 0;
-  const totalSeats = useMemo(() =>
-    theater.screens?.reduce((t, s) =>
-      t + (s.seatRows?.reduce((sum, r) => sum + (r.endSeat - r.startSeat + 1), 0) || 0), 0
-    ) || 0, [theater.screens]);
+const AnimatedCounter = ({ value, isDark }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value) || 0;
+    if (start === end) return;
+    
+    const duration = 1000;
+    const increment = end / (duration / 16);
+    
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+    
+    return () => clearInterval(timer);
+  }, [value]);
 
   return (
-    <div className="tp-theater-card card" style={{ padding:0, overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 4px 16px rgba(0,0,0,.07)' }}>
-      
-      {/* Banner */}
-      <div style={{ position:'relative', height:114, overflow:'hidden', background:'linear-gradient(135deg,var(--blue) 0%,var(--indigo) 100%)' }}>
-        {/* Seat-grid pattern */}
-        <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:.1 }}
-          viewBox="0 0 280 114" preserveAspectRatio="xMidYMid slice">
-          {Array.from({length:7}).map((_,r) =>
-            Array.from({length:14}).map((_,c) => (
-              <rect key={`${r}-${c}`} x={c*21} y={r*16} width={14} height={10} rx={3} fill="white" opacity={((r+c)%2===0)?'.5':'.2'} />
-            ))
-          )}
-        </svg>
+    <div className={`text-[34px] font-black tracking-tighter leading-none transition-all duration-300 ${
+      isDark ? 'text-foreground' : 'text-gray-900'
+    }`}>
+      {count}
+    </div>
+  );
+};
 
-        {/* Status pill */}
-        <div style={{
-          position:'absolute', top:12, left:14,
-          display:'flex', alignItems:'center', gap:6,
-          padding:'4px 12px', borderRadius:20,
-          background: isActive ? 'rgba(22,163,74,.25)' : 'rgba(100,116,139,.2)',
-          border: isActive ? '1px solid rgba(74,222,128,.4)' : '1px solid rgba(148,163,184,.3)',
-          backdropFilter:'blur(4px)',
-        }}>
-          <span style={{
-            width:7, height:7, borderRadius:'50%',
-            background: isActive ? 'var(--green)' : '#94a3b8',
-            boxShadow: isActive ? '0 0 8px var(--green)' : 'none',
-          }} />
-          <span style={{ fontSize:10, fontWeight:700, color:'#fff', textTransform:'uppercase', letterSpacing:'.8px' }}>
-            {isActive ? 'Active' : 'Inactive'}
-          </span>
+const StatsCard = ({ label, value, icon: Icon, color, isDark }) => {
+  return (
+    <div className={`group rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105 ${
+      isDark ? 'bg-card border border-card-border/30 hover:border-${color}-500/50' : 'bg-white border border-gray-200 hover:border-${color}-500/50'
+    }`}>
+      <div className={`absolute inset-0 bg-gradient-to-r from-${color}-500/0 via-${color}-500/5 to-${color}-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
+      <div>
+        <div className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 transition-colors ${isDark ? 'text-foreground/40 group-hover:text-foreground/60' : 'text-gray-400 group-hover:text-gray-600'}`}>{label}</div>
+        <AnimatedCounter value={value} isDark={isDark} />
+      </div>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 ${
+        isDark ? `bg-${color}-500/10 border border-${color}-500/20` : `bg-${color}-50 border border-${color}-200`
+      }`}>
+        <Icon className={`text-xl transition-transform group-hover:scale-110 ${
+          isDark ? `text-${color}-400` : `text-${color}-600`
+        }`} />
+      </div>
+    </div>
+  );
+};
+
+const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, color, title, body, confirmLabel, isDark }) => {
+  if (!isOpen) return null;
+  return (
+    <div className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 ${isDark ? 'bg-black/80' : 'bg-gray-900/50'}`}>
+      <div className={`rounded-2xl p-8 max-w-md w-full shadow-2xl transform animate-in zoom-in duration-300 ${
+        isDark ? 'bg-card border border-card-border/30' : 'bg-gradient-to-br from-white to-gray-50 border border-gray-200'
+      }`}>
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 animate-bounce ${
+          isDark ? `bg-${color}-500/20 border border-${color}-500/30` : `bg-${color}-50 border border-${color}-200`
+        }`}>{icon}</div>
+        <h2 className={`text-xl font-extrabold font-poppins mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{title}</h2>
+        <p className={`text-sm mb-6 leading-relaxed ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{body}</p>
+        <div className="flex gap-2.5">
+          <button onClick={onConfirm} className={`flex-1 rounded-xl py-2.5 text-white font-bold text-sm transition-all transform hover:scale-105 bg-${color}-500 hover:opacity-90`}>{confirmLabel}</button>
+          <button onClick={onClose} className={`flex-1 rounded-xl py-2.5 font-bold text-sm transition-all bg-transparent border ${isDark ? 'border-card-border/30' : 'border-gray-200'} ${isDark ? 'text-foreground/60 hover:bg-card/50' : 'text-gray-600 hover:bg-gray-50'}`}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Edit Theater Modal Component
+const EditTheaterModal = ({ isOpen, onClose, theater, onUpdate, isDark }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    location: "",
+    city: "",
+    state: "",
+    pincode: "",
+    contactNumber: "",
+    hasRecliner: false,
+    hasWifi: false,
+    hasParking: false,
+    hasCafe: false,
+    hasWheelchair: false,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (theater) {
+      setFormData({
+        name: theater.name || "",
+        location: theater.location || "",
+        city: theater.city || "",
+        state: theater.state || "",
+        pincode: theater.pincode || "",
+        contactNumber: theater.contactNumber || "",
+        hasRecliner: theater.hasRecliner || false,
+        hasWifi: theater.hasWifi || false,
+        hasParking: theater.hasParking || false,
+        hasCafe: theater.hasCafe || false,
+        hasWheelchair: theater.hasWheelchair || false,
+      });
+    }
+  }, [theater]);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    // Validation for pincode - only numbers, max 6 digits
+    if (name === "pincode") {
+      const onlyNums = value.replace(/[^0-9]/g, '');
+      if (onlyNums.length <= 6) {
+        setFormData(prev => ({ ...prev, [name]: onlyNums }));
+      }
+      return;
+    }
+    
+    // Validation for contact number - only numbers, max 10 digits
+    if (name === "contactNumber") {
+      const onlyNums = value.replace(/[^0-9]/g, '');
+      if (onlyNums.length <= 10) {
+        setFormData(prev => ({ ...prev, [name]: onlyNums }));
+      }
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validations
+    if (!formData.name.trim()) {
+      toast.error("Theater name is required");
+      return;
+    }
+    if (!formData.location.trim()) {
+      toast.error("Location is required");
+      return;
+    }
+    if (!formData.city.trim()) {
+      toast.error("City is required");
+      return;
+    }
+    if (!formData.state.trim()) {
+      toast.error("State is required");
+      return;
+    }
+    if (!formData.contactNumber.trim()) {
+      toast.error("Contact number is required");
+      return;
+    }
+    if (formData.contactNumber.length !== 10) {
+      toast.error("Contact number must be exactly 10 digits");
+      return;
+    }
+    if (formData.pincode && formData.pincode.length !== 6) {
+      toast.error("Pincode must be exactly 6 digits");
+      return;
+    }
+
+    setIsSubmitting(true);
+    await onUpdate(theater._id, formData);
+    setIsSubmitting(false);
+  };
+
+  const BASIC_FIELDS = [
+    { name: "name", label: "Theater Name", placeholder: "e.g., PVR Cinemas", icon: FaBuilding, type: "text", required: true },
+    { name: "location", label: "Location / Area", placeholder: "e.g., Juhu", icon: FaMapMarkerAlt, type: "text", required: true },
+    { name: "city", label: "City", placeholder: "e.g., Mumbai", icon: FaCity, type: "text", required: true },
+    { name: "state", label: "State", placeholder: "e.g., Maharashtra", icon: FaFlag, type: "text", required: true },
+    { name: "pincode", label: "Pincode", placeholder: "400049", icon: null, type: "text", required: false, maxLength: 6 },
+    { name: "contactNumber", label: "Contact Number", placeholder: "9876543210", icon: FaPhone, type: "tel", required: true, maxLength: 10 },
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 ${isDark ? 'bg-black/80' : 'bg-gray-900/50'}`}>
+      <div className={`rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl transform animate-in zoom-in duration-300 ${
+        isDark ? 'bg-card border border-card-border/30' : 'bg-white border border-gray-200'
+      }`}>
+        <div className={`sticky top-0 z-10 border-b p-6 rounded-t-2xl ${isDark ? 'bg-card border-card-border/30' : 'bg-white border-gray-200'}`}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <FaEdit className="text-white text-sm" />
+              </div>
+              <div>
+                <h2 className={`text-xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Edit Theater</h2>
+                <p className={`text-xs ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Update theater information</p>
+              </div>
+            </div>
+            <button 
+              onClick={onClose} 
+              className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 ${isDark ? 'hover:bg-red-500/10 text-foreground/60 hover:text-red-400' : 'hover:bg-red-50 text-gray-500 hover:text-red-500'}`}
+            >
+              <FaTimes className="text-sm" />
+            </button>
+          </div>
         </div>
 
-        {/* Toggle */}
-        <button className="tp-btn" onClick={() => onStatusToggle(theater, isActive ? 'deactivate' : 'activate')}
-          style={{
-            position:'absolute', top:10, right:12,
-            background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.25)',
-            borderRadius:8, padding:'5px 7px', color:'#fff',
-            display:'flex', alignItems:'center',
-          }}
-          title={isActive ? 'Deactivate' : 'Activate'}
-        >
-          {isActive ? <FaTimesCircle style={{fontSize:13}} /> : <FaCheckCircle style={{fontSize:13}} />}
-        </button>
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {BASIC_FIELDS.map((field) => (
+              <div key={field.name}>
+                <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                  {!field.required && <span className="text-[9px] ml-1">(Optional)</span>}
+                </label>
+                <div className="relative">
+                  {field.icon && <field.icon className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-sm ${isDark ? 'text-foreground/40' : 'text-gray-400'}`} />}
+                  <input
+                    type={field.type}
+                    name={field.name}
+                    value={formData[field.name]}
+                    onChange={handleChange}
+                    placeholder={field.placeholder}
+                    maxLength={field.maxLength}
+                    className={`w-full ${field.icon ? 'pl-10' : 'px-4'} py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+                      isDark ? 'bg-background border border-card-border/30 text-foreground placeholder:text-foreground/40' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400'
+                    }`}
+                  />
+                </div>
+                {field.name === "contactNumber" && (
+                  <p className={`text-[10px] mt-1 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>{formData.contactNumber.length}/10 digits</p>
+                )}
+                {field.name === "pincode" && (
+                  <p className={`text-[10px] mt-1 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>{formData.pincode.length}/6 digits</p>
+                )}
+              </div>
+            ))}
+          </div>
 
-        {/* Name */}
-        <div style={{ position:'absolute', bottom:12, left:14, right:50 }}>
-          <h3 style={{
-            margin:0, fontSize:16, fontWeight:800, color:'#fff',
-            textShadow:'0 2px 8px rgba(0,0,0,.3)',
-            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-          }}>
+          <div className="mb-6">
+            <label className={`text-[11px] font-bold uppercase tracking-wider mb-3 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+              Amenities & Facilities
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {AMENITIES.map((amenity) => (
+                <label
+                  key={amenity.key}
+                  className={`relative flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
+                    formData[amenity.key]
+                      ? isDark 
+                        ? 'border-blue-500 bg-blue-500/10 shadow-sm'
+                        : 'border-blue-500 bg-blue-50'
+                      : isDark
+                      ? 'border-card-border/30 bg-background hover:border-blue-500/50'
+                      : 'border-gray-200 bg-gray-50 hover:border-blue-500/50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    name={amenity.key}
+                    checked={formData[amenity.key]}
+                    onChange={handleChange}
+                    className="absolute opacity-0 pointer-events-none"
+                  />
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                    formData[amenity.key]
+                      ? isDark ? 'bg-blue-500/20 border-2 border-blue-500/50' : 'bg-blue-100 border-2 border-blue-300'
+                      : isDark ? 'bg-background border border-card-border/30' : 'bg-white border border-gray-200'
+                  }`}>
+                    <amenity.icon className={`text-sm ${formData[amenity.key] ? 'text-blue-500' : isDark ? 'text-foreground/40' : 'text-gray-400'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <div className={`text-sm font-bold ${formData[amenity.key] ? 'text-blue-500' : isDark ? 'text-foreground/80' : 'text-gray-700'}`}>
+                      {amenity.name}
+                    </div>
+                    <div className={`text-[11px] mt-0.5 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+                      {amenity.desc}
+                    </div>
+                  </div>
+                  {formData[amenity.key] && (
+                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                      <FaCheckCircle className="text-white text-[10px]" />
+                    </div>
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 ${
+                isDark
+                  ? 'border border-card-border/30 bg-transparent text-foreground/60 hover:bg-card/50'
+                  : 'border border-gray-200 bg-transparent text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2 ${
+                isSubmitting
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30'
+              }`}
+            >
+              {isSubmitting ? (
+                <><FaSpinner className="animate-spin text-sm" /> Updating...</>
+              ) : (
+                <><FaSave className="text-sm" /> Update Theater</>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const TheaterCard = ({ theater, onView, onEdit, onDelete, onStatusToggle, isDark }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const isActive = theater.status === "ACTIVE";
+  const totalSeats = useMemo(() => theater.screens?.reduce((t, s) => t + (s.seatRows?.reduce((sum, r) => sum + (r.endSeat - r.startSeat + 1), 0) || 0), 0) || 0, [theater.screens]);
+
+  return (
+    <div 
+      className={`group rounded-2xl overflow-hidden flex flex-col shadow-md transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${
+        isDark ? 'bg-card border border-card-border/30 hover:border-blue-500/50' : 'bg-white border border-gray-200 hover:border-blue-500/50'
+      }`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative h-[120px] overflow-hidden">
+        <div className={`absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 transition-transform duration-700 ${isHovered ? 'scale-110' : 'scale-100'}`} />
+        <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 280 120" preserveAspectRatio="none">
+          <pattern id={`pattern-${theater._id}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+            <circle cx="20" cy="20" r="15" fill="white" opacity="0.1" />
+            <circle cx="0" cy="0" r="10" fill="white" opacity="0.05" />
+          </pattern>
+          <rect width="280" height="120" fill={`url(#pattern-${theater._id})`} />
+        </svg>
+        <div className={`absolute top-3 left-3.5 flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-sm transition-all duration-300 ${isHovered ? 'scale-105' : 'scale-100'} ${
+          isActive ? "bg-green-500/30 border border-green-400/50" : "bg-gray-500/30 border border-gray-400/50"
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-400 shadow-[0_0_8px_#4ade80] animate-pulse" : "bg-gray-400"}`} />
+          <span className="text-[10px] font-bold text-white uppercase tracking-wider">{isActive ? "Active" : "Inactive"}</span>
+        </div>
+        <button 
+          onClick={() => onStatusToggle(theater, isActive ? "deactivate" : "activate")} 
+          className={`absolute top-2.5 right-3 bg-white/20 border border-white/30 rounded-lg p-1.5 text-white transition-all duration-300 transform hover:scale-110 hover:bg-white/30 ${
+            isHovered ? 'opacity-100' : 'opacity-90'
+          }`}
+        >
+          {isActive ? <FaTimesCircle className="text-sm" /> : <FaCheckCircle className="text-sm" />}
+        </button>
+        <div className="absolute bottom-3 left-3.5 right-12">
+          <h3 className={`text-base font-extrabold text-white truncate drop-shadow-md font-poppins transition-all duration-300 ${isHovered ? 'scale-105 origin-left' : 'scale-100'}`}>
             {theater.name}
           </h3>
         </div>
       </div>
-
-      {/* Body */}
-      <div style={{ padding:'16px 18px 18px', flex:1, display:'flex', flexDirection:'column' }}>
-        {/* Location */}
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:14 }}>
-          <MdLocationOn style={{ color:'var(--blue)', fontSize:15, flexShrink:0 }} />
-          <span style={{ fontSize:12.5, color:'var(--foreground)', opacity:.55, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+      
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="flex items-center gap-1.5 mb-3.5">
+          <MdLocationOn className={`text-sm flex-shrink-0 transition-all duration-300 ${isHovered ? 'animate-pulse' : ''} text-blue-500`} />
+          <span className={`text-[12.5px] truncate transition-colors duration-300 ${isDark ? 'text-foreground/60 group-hover:text-foreground/80' : 'text-gray-600 group-hover:text-gray-800'}`}>
             {theater.location}, {theater.city}
           </span>
         </div>
-
-        {/* Stats */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:14 }}>
+        
+        <div className="grid grid-cols-3 gap-2 mb-3.5">
           {[
-            { icon:<MdTheaters  />, value:totalScreens,                          label:'Screens', color:'var(--blue)'   },
-            { icon:<FaTicketAlt />, value:totalSeats,                            label:'Seats',   color:'var(--green)'  },
-            { icon:<FaPhone     />, value:theater.contactNumber?.slice(-4)||'—', label:'Phone',   color:'var(--purple)' },
-          ].map((s,i) => (
-            <div key={i} style={{
-              borderRadius:10, padding:'8px 6px', textAlign:'center',
-              border:'1px solid var(--card-border)', background:'var(--background)',
-            }}>
-              <div style={{ fontSize:15, color:s.color, marginBottom:2 }}>{s.icon}</div>
-              <div style={{ fontSize:14, fontWeight:800, color:'var(--foreground)', lineHeight:1 }}>{s.value}</div>
-              <div style={{ fontSize:10, color:'var(--foreground)', opacity:.4, marginTop:2, fontWeight:600 }}>{s.label}</div>
+            { icon: <MdTheaters />, value: theater.screens?.length || 0, label: "Screens", color: "blue" },
+            { icon: <FaTicketAlt />, value: totalSeats, label: "Seats", color: "green" },
+            { icon: <FaPhone />, value: theater.contactNumber?.slice(-4) || "—", label: "Phone", color: "purple" },
+          ].map((s, i) => (
+            <div key={i} className={`rounded-xl py-2 px-1.5 text-center transition-all duration-300 ${
+              isDark ? 'bg-background/50 border border-card-border/30 group-hover:bg-background/80' : 'bg-gray-50 border border-gray-200 group-hover:bg-gray-100'
+            }`}>
+              <div className={`text-sm mb-0.5 mx-auto flex justify-center transition-all duration-300 group-hover:scale-110 ${isDark ? `text-${s.color}-400` : `text-${s.color}-600`}`}>
+                {s.icon}
+              </div>
+              <div className={`text-sm font-extrabold leading-tight ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{s.value}</div>
+              <div className={`text-[10px] mt-0.5 font-semibold ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>{s.label}</div>
             </div>
           ))}
         </div>
-
-        {/* Amenities */}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:16, minHeight:26 }}>
-          {AMENITIES.filter(a => theater[a.key]).map(({ icon:Icon, name }) => (
-            <div key={name} style={{
-              display:'flex', alignItems:'center', gap:5,
-              padding:'3px 10px', borderRadius:20,
-              border:'1px solid var(--card-border)',
-              background:'var(--background)',
-              fontSize:11, fontWeight:600, color:'var(--foreground)', opacity:.65,
-            }}>
-              <Icon style={{ fontSize:9 }} /> {name}
+        
+        <div className="flex flex-wrap gap-1.5 mb-4 min-h-[26px]">
+          {AMENITIES.filter(a => theater[a.key]).map(({ icon: Icon, name, color }) => (
+            <div key={name} className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all duration-300 hover:scale-105 ${
+              isDark ? `bg-${color}-900/30 border border-${color}-700/30 text-${color}-400 hover:border-${color}-500` : `bg-${color}-50 border border-${color}-200 text-${color}-600 hover:border-${color}-400`
+            }`}>
+              <Icon className="text-[9px]" /> {name}
             </div>
           ))}
           {!AMENITIES.some(a => theater[a.key]) && (
-            <span style={{ fontSize:12, color:'var(--foreground)', opacity:.28, fontStyle:'italic' }}>No amenities</span>
+            <span className={`text-xs italic ${isDark ? 'text-foreground/30' : 'text-gray-400'}`}>No amenities</span>
           )}
         </div>
-
-        {/* Actions */}
-        <div style={{ display:'flex', gap:8, marginTop:'auto' }}>
-          <button className="tp-btn" onClick={() => onView(theater)} style={{
-            flex:1, background:'var(--blue)', border:'none', borderRadius:10,
-            padding:'10px 12px', color:'#fff', fontWeight:700, fontSize:13,
-            display:'flex', alignItems:'center', justifyContent:'center', gap:7,
-            fontFamily:'inherit', boxShadow:'0 4px 14px var(--blue)44',
-          }}>
-            <MdEventSeat style={{ fontSize:15 }} /> View Layout
+        
+        <div className="flex gap-2 mt-auto">
+          <button 
+            onClick={() => onView(theater)} 
+            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl py-2.5 text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
+          >
+            <MdEventSeat className={`text-sm transition-all duration-300 ${isHovered ? 'animate-bounce' : ''}`} /> View Layout
           </button>
-          <button className="tp-btn" onClick={() => onEdit(theater)} style={{
-            background:'var(--background)', border:'1px solid var(--card-border)',
-            borderRadius:10, padding:'10px 12px',
-            color:'var(--foreground)', display:'flex', alignItems:'center', fontFamily:'inherit',
-          }} title="Edit">
-            <FaEdit style={{ fontSize:13 }} />
+          <button 
+            onClick={() => onEdit(theater)} 
+            className={`p-2.5 rounded-xl transition-all duration-300 hover:scale-105 border ${isDark ? 'border-card-border/30' : 'border-gray-200'} ${isDark ? 'bg-background/50 text-foreground/60 hover:bg-blue-500/10 hover:border-blue-500/50' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:border-blue-500/50'}`}
+          >
+            <FaEdit className="text-sm" />
           </button>
-          <button className="tp-btn" onClick={() => onDelete(theater)} style={{
-            background:'var(--background)', border:'1px solid var(--card-border)',
-            borderRadius:10, padding:'10px 12px',
-            color:'var(--red)', display:'flex', alignItems:'center', fontFamily:'inherit',
-          }} title="Delete">
-            <FaTrash style={{ fontSize:13 }} />
+          <button 
+            onClick={() => onDelete(theater)} 
+            className={`p-2.5 rounded-xl transition-all duration-300 hover:scale-105 border ${isDark ? 'border-card-border/30' : 'border-gray-200'} ${isDark ? 'bg-background/50 text-red-500 hover:bg-red-500/10 hover:border-red-500/50' : 'bg-gray-50 text-red-500 hover:bg-red-50 hover:border-red-500/50'}`}
+          >
+            <FaTrash className="text-sm" />
           </button>
         </div>
       </div>
@@ -534,348 +696,310 @@ const TheaterCard = ({ theater, onView, onEdit, onDelete, onStatusToggle }) => {
   );
 };
 
-/* ─────────────────────────────────────────
-   SHARED CONFIRM MODAL
-───────────────────────────────────────── */
-const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, accentVar, title, body, confirmLabel }) => {
-  if (!isOpen) return null;
-  return (
-    <div style={{
-      position:'fixed', inset:0, zIndex:9999,
-      background:'rgba(0,0,0,.6)', backdropFilter:'blur(8px)',
-      display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem',
-      animation:'tp-up .2s ease',
-    }}>
-      <div style={{
-        background:'var(--card)', border:'1px solid var(--card-border)',
-        borderRadius:20, padding:'2rem', maxWidth:400, width:'100%',
-        boxShadow:'0 32px 80px rgba(0,0,0,.35)',
-      }}>
-        <div style={{
-          width:52, height:52, borderRadius:14,
-          background:`var(${accentVar})18`,
-          border:`1px solid var(${accentVar})44`,
-          display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18,
-        }}>
-          {icon}
-        </div>
-        <h2 style={{ margin:'0 0 8px', fontSize:20, fontWeight:800, color:'var(--foreground)' }}>{title}</h2>
-        <p style={{ margin:'0 0 24px', fontSize:14, color:'var(--foreground)', opacity:.55, lineHeight:1.6 }}>{body}</p>
-        <div style={{ display:'flex', gap:10 }}>
-          <button className="tp-btn" onClick={onConfirm} style={{
-            flex:1, background:`var(${accentVar})`, border:'none', borderRadius:10,
-            padding:'11px 0', color:'#fff', fontWeight:700, fontSize:14, fontFamily:'inherit',
-          }}>
-            {confirmLabel}
-          </button>
-          <button className="tp-btn" onClick={onClose} style={{
-            flex:1, background:'transparent', border:'1.5px solid var(--card-border)',
-            borderRadius:10, padding:'11px 0', color:'var(--foreground)',
-            fontWeight:700, fontSize:14, fontFamily:'inherit',
-          }}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ─────────────────────────────────────────
-   STATS CARD
-───────────────────────────────────────── */
-const StatsCard = ({ label, value, icon:Icon, accentVar }) => (
-  <div className="tp-stat-card card" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', boxShadow:'0 2px 10px rgba(0,0,0,.05)' }}>
-    <div>
-      <div style={{ fontSize:10, fontWeight:700, color:'var(--foreground)', opacity:.4, textTransform:'uppercase', letterSpacing:'1px', marginBottom:6 }}>{label}</div>
-      <div style={{ fontSize:34, fontWeight:900, color:'var(--foreground)', letterSpacing:'-1.5px', lineHeight:1 }}>{value}</div>
-    </div>
-    <div style={{
-      width:50, height:50, borderRadius:14, flexShrink:0,
-      background:`var(${accentVar})18`, border:`1.5px solid var(${accentVar})33`,
-      display:'flex', alignItems:'center', justifyContent:'center',
-    }}>
-      <Icon style={{ fontSize:22, color:`var(${accentVar})` }} />
-    </div>
-  </div>
-);
-
-/* ─────────────────────────────────────────
-   MAIN PAGE
-───────────────────────────────────────── */
 export default function TheatersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [cityFilter, setCityFilter] = useState("ALL");
+  const [deletingTheater, setDeletingTheater] = useState(null);
+  const [statusTheater, setStatusTheater] = useState(null);
+  const [statusAction, setStatusAction] = useState("");
+  const [selectedTheater, setSelectedTheater] = useState(null);
+  const [editingTheater, setEditingTheater] = useState(null);
+  const [selectedScreenIdx, setSelectedScreenIdx] = useState(0);
+  const [isLayoutOpen, setIsLayoutOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [searchTerm,       setSearchTerm]       = useState('');
-  const [statusFilter,     setStatusFilter]     = useState('ALL');
-  const [cityFilter,       setCityFilter]       = useState('ALL');
-  const [deletingTheater,  setDeletingTheater]  = useState(null);
-  const [statusTheater,    setStatusTheater]    = useState(null);
-  const [statusAction,     setStatusAction]     = useState('');
-  const [selectedTheater,  setSelectedTheater]  = useState(null);
-  const [selectedScreenIdx,setSelectedScreenIdx]= useState(0);
-  const [isLayoutOpen,     setIsLayoutOpen]     = useState(false);
-
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['allTheatersAdmin'],
+  const { data, refetch } = useQuery({
+    queryKey: ["allTheatersAdmin"],
     queryFn: getAllTheatersAdmin,
   });
   const theaters = data?.data || [];
 
-  const cities = useMemo(() => {
-    const s = new Set();
-    theaters.forEach(t => t.city && s.add(t.city));
-    return ['ALL', ...Array.from(s).sort()];
-  }, [theaters]);
-
-  const filtered = useMemo(() =>
-    theaters.filter(t => {
-      const q = searchTerm.toLowerCase();
-      return (
-        (!q || [t.name,t.location,t.city].some(v => v?.toLowerCase().includes(q))) &&
-        (statusFilter === 'ALL' || t.status  === statusFilter) &&
-        (cityFilter   === 'ALL' || t.city    === cityFilter)
-      );
-    }), [theaters, searchTerm, statusFilter, cityFilter]);
+  const cities = useMemo(() => ["ALL", ...new Set(theaters.map(t => t.city).filter(Boolean))].sort(), [theaters]);
+  const filtered = useMemo(() => theaters.filter(t => {
+    const q = searchTerm.toLowerCase();
+    return (!q || [t.name, t.location, t.city].some(v => v?.toLowerCase().includes(q))) &&
+      (statusFilter === "ALL" || t.status === statusFilter) &&
+      (cityFilter === "ALL" || t.city === cityFilter);
+  }), [theaters, searchTerm, statusFilter, cityFilter]);
 
   const stats = useMemo(() => ({
-    total:    theaters.length,
-    active:   theaters.filter(t => t.status === 'ACTIVE').length,
-    inactive: theaters.filter(t => t.status === 'INACTIVE').length,
-    screens:  theaters.reduce((s,t) => s + (t.screens?.length||0), 0),
-    cities:   new Set(theaters.map(t => t.city)).size,
+    total: theaters.length,
+    active: theaters.filter(t => t.status === "ACTIVE").length,
+    inactive: theaters.filter(t => t.status === "INACTIVE").length,
+    screens: theaters.reduce((s, t) => s + (t.screens?.length || 0), 0),
+    cities: new Set(theaters.map(t => t.city)).size,
   }), [theaters]);
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteTheater,
-    onSuccess: () => { queryClient.invalidateQueries(['allTheatersAdmin']); toast.success('Theater deleted'); setDeletingTheater(null); },
-    onError: err => toast.error(err.response?.data?.message || 'Delete failed'),
+  const deleteMutation = useMutation({ 
+    mutationFn: deleteTheater, 
+    onSuccess: () => { 
+      queryClient.invalidateQueries(["allTheatersAdmin"]); 
+      toast.success("Theater deleted successfully!"); 
+      setDeletingTheater(null); 
+    }, 
+    onError: err => toast.error(err.response?.data?.message || "Delete failed") 
+  });
+  
+  const statusMutation = useMutation({ 
+    mutationFn: ({ id, data }) => updateTheater(id, data), 
+    onSuccess: () => { 
+      queryClient.invalidateQueries(["allTheatersAdmin"]); 
+      toast.success(`Theater ${statusAction === "activate" ? "activated" : "deactivated"} successfully!`); 
+      setStatusTheater(null); 
+      setStatusAction(""); 
+    }, 
+    onError: err => toast.error(err.response?.data?.message || "Update failed") 
   });
 
-  const statusMutation = useMutation({
+  const updateMutation = useMutation({
     mutationFn: ({ id, data }) => updateTheater(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['allTheatersAdmin']);
-      toast.success(`Theater ${statusAction === 'activate' ? 'activated' : 'deactivated'}`);
-      setStatusTheater(null); setStatusAction('');
+      queryClient.invalidateQueries(["allTheatersAdmin"]);
+      toast.success("Theater updated successfully!");
+      setIsEditModalOpen(false);
+      setEditingTheater(null);
     },
-    onError: err => toast.error(err.response?.data?.message || 'Update failed'),
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update theater");
+    }
   });
 
-  const handleStatusToggle = (theater, action) => { setStatusTheater(theater); setStatusAction(action); };
-  const confirmStatus = () => statusTheater && statusMutation.mutate({
-    id: statusTheater._id,
-    data: { status: statusAction === 'activate' ? 'ACTIVE' : 'INACTIVE' },
-  });
+  const hasFilters = searchTerm || statusFilter !== "ALL" || cityFilter !== "ALL";
+  const clearFilters = useCallback(() => { 
+    setSearchTerm(""); 
+    setStatusFilter("ALL"); 
+    setCityFilter("ALL"); 
+  }, []);
 
-  const hasFilters = searchTerm || statusFilter !== 'ALL' || cityFilter !== 'ALL';
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
-  /* Loading */
-  if (isLoading) return (
-    <div className="tp" style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--background)' }}>
-      <Styles />
-      <div style={{ textAlign:'center' }}>
-        <div style={{ width:42, height:42, margin:'0 auto 14px', border:'3px solid var(--card-border)', borderTopColor:'var(--blue)', borderRadius:'50%', animation:'tp-spin .8s linear infinite' }} />
-        <p style={{ color:'var(--foreground)', opacity:.45, fontWeight:600, fontSize:14 }}>Loading theaters…</p>
-      </div>
-    </div>
-  );
+  const handleEditClick = (theater) => {
+    setEditingTheater(theater);
+    setIsEditModalOpen(true);
+  };
 
-  /* Error */
-  if (error) return (
-    <div className="tp" style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--background)', padding:'1rem' }}>
-      <Styles />
-      <div className="card" style={{ maxWidth:400, width:'100%', textAlign:'center' }}>
-        <p style={{ color:'var(--red)', fontSize:14, marginBottom:16 }}>{error.message}</p>
-        <button className="tp-btn" onClick={() => refetch()} style={{ background:'var(--blue)', border:'none', borderRadius:10, padding:'10px 24px', color:'#fff', fontWeight:700, fontFamily:'inherit' }}>Retry</button>
-      </div>
-    </div>
-  );
+  const handleUpdateTheater = async (id, data) => {
+    await updateMutation.mutateAsync({ id, data });
+  };
 
   return (
-    <div className="tp" style={{ background:'var(--background)', minHeight:'100vh' }}>
-      <Styles />
-      <Toaster position="top-right" toastOptions={{
-        style:{ fontFamily:'Sora,system-ui,sans-serif', fontWeight:600, borderRadius:12, fontSize:13, background:'var(--card)', color:'var(--foreground)', border:'1px solid var(--card-border)' }
-      }} />
-
-      {/* ══ HEADER ══ */}
-      <div style={{
-        background:'var(--card)', borderBottom:'1px solid var(--card-border)',
-        position:'sticky', top:0, zIndex:100,
-        boxShadow:'0 4px 20px rgba(0,0,0,.06)',
-      }}>
-        <div style={{ maxWidth:1400, margin:'0 auto', padding:'0 2rem' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 0', flexWrap:'wrap', gap:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-              <div style={{
-                width:46, height:46, borderRadius:14,
-                background:'linear-gradient(135deg,var(--blue),var(--indigo))',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                boxShadow:'0 4px 16px var(--blue)44',
-              }}>
-                <FaBuilding style={{ color:'#fff', fontSize:18 }} />
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+      <Toaster 
+        position="top-right" 
+        toastOptions={{ 
+          className: `!rounded-xl !text-sm !font-semibold !shadow-xl ${
+            isDark ? '!bg-card !text-foreground !border-card-border/30' : '!bg-white !text-gray-900 !border-gray-200'
+          }`,
+          duration: 3000,
+        }} 
+      />
+      
+      {/* Header */}
+      <div className={`sticky top-0 z-[100] border-b shadow-lg transition-all duration-300 ${
+        isDark ? 'bg-card/90 backdrop-blur-md border-card-border/30' : 'bg-white/90 backdrop-blur-md border-gray-200'
+      }`}>
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="flex items-center justify-between py-4 flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                  <GiTheaterCurtains className="text-white text-xl animate-pulse" />
+                </div>
               </div>
               <div>
-                <h1 style={{ margin:0, fontSize:22, fontWeight:900, color:'var(--foreground)', letterSpacing:'-.5px' }}>
+                <h1 className={`text-2xl font-black tracking-tight transition-colors duration-300 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
                   Theater Management
                 </h1>
-                <p style={{ margin:0, fontSize:12.5, color:'var(--foreground)', opacity:.4, fontWeight:500 }}>
-                  Manage theaters, screens &amp; seat layouts
+                <p className={`text-xs font-medium transition-colors duration-300 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+                  Manage theaters, screens & seat layouts like a pro
                 </p>
               </div>
             </div>
-            <button className="tp-btn" onClick={() => router.push('/admin/theaters/add')} style={{
-              display:'flex', alignItems:'center', gap:8,
-              background:'var(--blue)', border:'none', borderRadius:12,
-              padding:'11px 22px', color:'#fff', fontWeight:800, fontSize:14,
-              fontFamily:'inherit', whiteSpace:'nowrap',
-              boxShadow:'0 4px 16px var(--blue)44',
-            }}>
-              <FaPlus style={{ fontSize:11 }} /> Add Theater
-            </button>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
+                  isDark ? 'bg-card border border-card-border/30 text-foreground/60 hover:text-blue-400' : 'bg-gray-100 border border-gray-200 text-gray-600 hover:text-blue-600'
+                }`}
+              >
+                <FaSpinner className={`text-sm ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+              
+              <button
+                onClick={() => router.push("/admin/theaters/add")}
+                className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
+              >
+                <FaPlus className="text-xs" />
+                <span>Add Theater</span>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* ══ BODY ══ */}
-      <div style={{ maxWidth:1400, margin:'0 auto', padding:'2rem' }}>
-
-        {/* Stats */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:16, marginBottom:28 }}>
-          <StatsCard label="Total Theaters" value={stats.total}    icon={FaBuilding}     accentVar="--blue"   />
-          <StatsCard label="Active"          value={stats.active}   icon={FaCheckCircle}  accentVar="--green"  />
-          <StatsCard label="Inactive"        value={stats.inactive} icon={FaTimesCircle}  accentVar="--red"    />
-          <StatsCard label="Total Screens"   value={stats.screens}  icon={MdTheaters}     accentVar="--purple" />
-          <StatsCard label="Cities"          value={stats.cities}   icon={FaMapMarkerAlt} accentVar="--yellow" />
+      
+      <div className="max-w-7xl mx-auto p-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+          <StatsCard label="Total Theaters" value={stats.total} icon={FaBuilding} color="blue" isDark={isDark} />
+          <StatsCard label="Active" value={stats.active} icon={FaCheckCircle} color="green" isDark={isDark} />
+          <StatsCard label="Inactive" value={stats.inactive} icon={FaTimesCircle} color="red" isDark={isDark} />
+          <StatsCard label="Total Screens" value={stats.screens} icon={MdTheaters} color="purple" isDark={isDark} />
+          <StatsCard label="Cities" value={stats.cities} icon={FaMapMarkerAlt} color="yellow" isDark={isDark} />
         </div>
-
-        {/* Filter bar */}
-        <div className="card" style={{ padding:'1.25rem 1.5rem', marginBottom:28, display:'flex', flexWrap:'wrap', gap:12, alignItems:'center', boxShadow:'0 2px 10px rgba(0,0,0,.05)' }}>
-          {/* Search */}
-          <div style={{ flex:1, minWidth:220, position:'relative' }}>
-            <FaSearch style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:'var(--foreground)', opacity:.3, fontSize:12, pointerEvents:'none' }} />
-            <input
-              type="text" placeholder="Search theaters, cities, locations…"
-              value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-              className="tp-input"
-              style={{
-                width:'100%', paddingLeft:36, paddingRight:14, paddingTop:10, paddingBottom:10,
-                border:'1.5px solid var(--card-border)', borderRadius:10,
-                fontSize:13, color:'var(--foreground)', background:'var(--card)',
-                fontFamily:'Sora,system-ui,sans-serif', fontWeight:500,
-              }}
+        
+        {/* Filters */}
+        <div className={`rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300 ${
+          isDark ? 'bg-card border border-card-border/30' : 'bg-white border border-gray-200'
+        }`}>
+          <div className="flex-1 min-w-[220px] relative">
+            <FaSearch className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${isDark ? 'text-foreground/40' : 'text-gray-400'}`} />
+            <input 
+              type="text" 
+              placeholder="Search theaters, cities, locations…" 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+              className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+                isDark ? 'bg-background border border-card-border/30 text-foreground placeholder:text-foreground/40' : 'bg-white border border-gray-200 text-gray-900 placeholder-gray-400'
+              }`} 
             />
           </div>
-
-          {/* Status select */}
-          <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="tp-select">
-              <option value="ALL">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-            <FaChevronDown style={{ position:'absolute', right:12, fontSize:9, color:'var(--foreground)', opacity:.4, pointerEvents:'none' }} />
-          </div>
-
-          {/* City select */}
-          <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
-            <select value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="tp-select">
-              {cities.map(c => <option key={c} value={c}>{c === 'ALL' ? 'All Cities' : c}</option>)}
-            </select>
-            <FaChevronDown style={{ position:'absolute', right:12, fontSize:9, color:'var(--foreground)', opacity:.4, pointerEvents:'none' }} />
-          </div>
-
+          
+          <select 
+            value={statusFilter} 
+            onChange={e => setStatusFilter(e.target.value)} 
+            className={`appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+              isDark ? 'bg-background border border-card-border/30 text-foreground' : 'bg-white border border-gray-200 text-gray-900'
+            }`}
+          >
+            <option value="ALL">All Status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+          
+          <select 
+            value={cityFilter} 
+            onChange={e => setCityFilter(e.target.value)} 
+            className={`appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+              isDark ? 'bg-background border border-card-border/30 text-foreground' : 'bg-white border border-gray-200 text-gray-900'
+            }`}
+          >
+            {cities.map(c => <option key={c} value={c}>{c === "ALL" ? "All Cities" : c}</option>)}
+          </select>
+          
           {hasFilters && (
-            <button className="tp-btn" onClick={() => { setSearchTerm(''); setStatusFilter('ALL'); setCityFilter('ALL'); }}
-              style={{
-                padding:'10px 14px', borderRadius:10, fontFamily:'inherit',
-                background:'transparent', border:'1.5px solid var(--red)44',
-                color:'var(--red)', fontWeight:700, fontSize:12,
-                display:'flex', alignItems:'center', gap:6,
-              }}>
-              <FaTimes style={{ fontSize:10 }} /> Clear
+            <button 
+              onClick={clearFilters} 
+              className="px-3.5 py-2.5 rounded-xl border border-red-500/30 bg-transparent text-red-500 font-bold text-xs flex items-center gap-1.5 hover:bg-red-500/10 transition-all duration-300 hover:scale-105"
+            >
+              <FaTimes className="text-[10px]" /> Clear
             </button>
           )}
-
-          <div style={{ marginLeft:'auto', fontSize:12, color:'var(--foreground)', opacity:.35, fontWeight:600 }}>
-            {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+          
+          <div className={`ml-auto text-xs font-semibold ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </div>
         </div>
-
-        {/* Grid */}
+        
+        {/* Theater Grid */}
         {filtered.length === 0 ? (
-          <div className="card" style={{ textAlign:'center', padding:'5rem 2rem', boxShadow:'0 2px 10px rgba(0,0,0,.05)' }}>
-            <div style={{
-              width:68, height:68, borderRadius:18, margin:'0 auto 20px',
-              background:'var(--background)', border:'1px solid var(--card-border)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-            }}>
-              <FaBuilding style={{ fontSize:26, color:'var(--foreground)', opacity:.18 }} />
+          <div className={`rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300 ${
+            isDark ? 'bg-card border border-card-border/30' : 'bg-white border border-gray-200'
+          }`}>
+            <div className={`w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+              isDark ? 'bg-background/50' : 'bg-gray-50'
+            }`}>
+              <FaBuilding className={`text-3xl ${isDark ? 'text-foreground/20' : 'text-gray-300'}`} />
             </div>
-            <h3 style={{ margin:'0 0 8px', fontSize:18, fontWeight:800, color:'var(--foreground)' }}>No theaters found</h3>
-            <p style={{ margin:'0 0 24px', fontSize:14, color:'var(--foreground)', opacity:.4 }}>
-              {hasFilters ? 'Try adjusting your filters' : 'Add your first theater to get started'}
+            <h3 className={`text-lg font-extrabold mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>No theaters found</h3>
+            <p className={`text-sm mb-6 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+              {hasFilters ? "Try adjusting your filters" : "Add your first theater to get started"}
             </p>
             {!hasFilters && (
-              <button className="tp-btn" onClick={() => router.push('/admin/theaters/add')} style={{
-                background:'var(--blue)', border:'none', borderRadius:10, padding:'11px 24px',
-                color:'#fff', fontWeight:700, display:'inline-flex', alignItems:'center', gap:8, fontFamily:'inherit',
-              }}>
-                <FaPlus style={{ fontSize:11 }} /> Add Theater
+              <button 
+                onClick={() => router.push("/admin/theaters/add")} 
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
+              >
+                <FaPlus className="text-[11px]" /> Add Theater
               </button>
             )}
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(310px,1fr))', gap:22 }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((theater, idx) => (
-              <div key={theater._id} className="tp-fade" style={{ animationDelay:`${idx * 55}ms` }}>
-                <TheaterCard
-                  theater={theater}
-                  onView={t => { setSelectedTheater(t); setSelectedScreenIdx(0); setIsLayoutOpen(true); }}
-                  onEdit={t => router.push(`/admin/theaters/edit/${t._id}`)}
-                  onDelete={t => setDeletingTheater(t)}
-                  onStatusToggle={handleStatusToggle}
+              <div 
+                key={theater._id} 
+                className="animate-in fade-in slide-in-from-bottom-4 duration-500" 
+                style={{ animationDelay: `${idx * 50}ms` }}
+              >
+                <TheaterCard 
+                  theater={theater} 
+                  onView={t => { setSelectedTheater(t); setSelectedScreenIdx(0); setIsLayoutOpen(true); }} 
+                  onEdit={t => handleEditClick(t)} 
+                  onDelete={t => setDeletingTheater(t)} 
+                  onStatusToggle={(t, a) => { setStatusTheater(t); setStatusAction(a); }} 
+                  isDark={isDark}
                 />
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* ══ MODALS ══ */}
-      <ConfirmModal
-        isOpen={!!deletingTheater}
-        onClose={() => setDeletingTheater(null)}
-        onConfirm={() => deletingTheater && deleteMutation.mutate(deletingTheater._id)}
-        icon={<FaTrash style={{ color:'var(--red)', fontSize:20 }} />}
-        accentVar="--red"
-        title="Delete Theater"
-        body={<>Delete <strong style={{ color:'var(--foreground)' }}>{deletingTheater?.name}</strong>? This cannot be undone.</>}
-        confirmLabel="Delete"
+      
+      <ConfirmModal 
+        isOpen={!!deletingTheater} 
+        onClose={() => setDeletingTheater(null)} 
+        onConfirm={() => deletingTheater && deleteMutation.mutate(deletingTheater._id)} 
+        icon={<FaTrash className="text-red-500 text-xl" />} 
+        color="red" 
+        title="Delete Theater" 
+        body={<>Delete <strong className="font-bold">{deletingTheater?.name}</strong>? This action cannot be undone.</>} 
+        confirmLabel="Delete" 
+        isDark={isDark}
       />
-
-      <ConfirmModal
-        isOpen={!!statusTheater}
-        onClose={() => { setStatusTheater(null); setStatusAction(''); }}
-        onConfirm={confirmStatus}
-        icon={statusAction === 'activate'
-          ? <FaCheckCircle style={{ color:'var(--green)', fontSize:20 }} />
-          : <FaTimesCircle style={{ color:'var(--yellow)', fontSize:20 }} />}
-        accentVar={statusAction === 'activate' ? '--green' : '--yellow'}
-        title={statusAction === 'activate' ? 'Activate Theater' : 'Deactivate Theater'}
-        body={<>Are you sure you want to {statusAction} <strong style={{ color:'var(--foreground)' }}>{statusTheater?.name}</strong>?</>}
-        confirmLabel={statusAction === 'activate' ? 'Activate' : 'Deactivate'}
+      
+      <ConfirmModal 
+        isOpen={!!statusTheater} 
+        onClose={() => { setStatusTheater(null); setStatusAction(""); }} 
+        onConfirm={() => statusTheater && statusMutation.mutate({ id: statusTheater._id, data: { status: statusAction === "activate" ? "ACTIVE" : "INACTIVE" } })} 
+        icon={statusAction === "activate" ? <FaCheckCircle className="text-green-500 text-xl" /> : <FaTimesCircle className="text-yellow-500 text-xl" />} 
+        color={statusAction === "activate" ? "green" : "yellow"} 
+        title={statusAction === "activate" ? "Activate Theater" : "Deactivate Theater"} 
+        body={<>Are you sure you want to {statusAction} <strong className="font-bold">{statusTheater?.name}</strong>?</>} 
+        confirmLabel={statusAction === "activate" ? "Activate" : "Deactivate"} 
+        isDark={isDark}
       />
-
-      <ScreenViewModal
-        isOpen={isLayoutOpen}
-        onClose={() => { setIsLayoutOpen(false); setSelectedTheater(null); setSelectedScreenIdx(0); }}
-        theater={selectedTheater}
-        screens={selectedTheater?.screens || []}
-        selectedScreenIndex={selectedScreenIdx}
+      
+      <EditTheaterModal
+        isOpen={isEditModalOpen}
+        onClose={() => { setIsEditModalOpen(false); setEditingTheater(null); }}
+        theater={editingTheater}
+        onUpdate={handleUpdateTheater}
+        isDark={isDark}
+      />
+      
+      <ScreenViewModal 
+        isOpen={isLayoutOpen} 
+        onClose={() => { setIsLayoutOpen(false); setSelectedTheater(null); setSelectedScreenIdx(0); }} 
+        theater={selectedTheater} 
+        screens={selectedTheater?.screens || []} 
+        selectedScreenIndex={selectedScreenIdx} 
         onScreenChange={setSelectedScreenIdx}
+        isDark={isDark}
       />
     </div>
   );
