@@ -1,29 +1,759 @@
-"use client"
-import React, { useState } from 'react'
+"use client";
+
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { getAllShowsAdmin, updateShowStatus, deleteShow } from "@/app/services/adminCommunication";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from 'react-hot-toast';
-import Image from 'next/image';
+import { toast, Toaster } from "react-hot-toast";
 import { 
   FaCalendar, FaClock, FaMapMarkerAlt, FaTicketAlt, FaFilm, 
   FaStar, FaLanguage, FaTags, FaChair, FaInfoCircle, FaEdit, 
-  FaTrash, FaEye, FaEyeSlash, FaCheckCircle, FaTimesCircle
+  FaTrash, FaEye, FaEyeSlash, FaCheckCircle, FaTimesCircle,
+  FaSpinner, FaSearch, FaTimes, FaPlus, FaCrown, FaRegGem
 } from 'react-icons/fa';
-import { MdTheaters, MdScreenShare } from 'react-icons/md';
+import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat, MdLocalMovies } from 'react-icons/md';
+import { GiFilmProjector } from 'react-icons/gi';
+import useTheme from "@/app/hooks/useTheme";
 
-function ShowsManagement() {
-  const [selectedShow, setSelectedShow] = useState(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [showToEdit, setShowToEdit] = useState(null);
-  const [showToDelete, setShowToDelete] = useState(null);
-  const [imageErrors, setImageErrors] = useState({});
+const SEAT_TYPES = {
+  NORMAL: { label: "Standard", color: "blue", symbol: "S", mult: "1×", icon: MdEventSeat },
+  EXECUTIVE: { label: "Executive", color: "green", symbol: "E", mult: "1.5×", icon: FaStar },
+  PREMIUM: { label: "Premium", color: "purple", symbol: "P", mult: "2×", icon: FaRegGem },
+  VIP: { label: "VIP", color: "yellow", symbol: "V", mult: "3×", icon: FaCrown },
+};
+
+// Animated Counter Component
+const AnimatedCounter = ({ value, isDark }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value) || 0;
+    if (start === end) return;
+    
+    const duration = 1000;
+    const increment = end / (duration / 16);
+    
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+    
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return (
+    <div className={`text-[34px] font-black tracking-tighter leading-none transition-all duration-300 ${
+      isDark ? 'text-foreground' : 'text-gray-900'
+    }`}>
+      {count}
+    </div>
+  );
+};
+
+// Stats Card Component with Animated Counter
+const StatsCard = ({ label, value, icon: Icon, color, isDark }) => (
+  <div className={`group rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105 ${
+    isDark ? 'bg-card border border-gray-800 hover:border-blue-500/50 hover:shadow-blue-500/10' : 'bg-white border border-gray-200 hover:border-${color}-500/50'
+  }`}>
+    <div className={`absolute inset-0 bg-gradient-to-r from-${color}-500/0 via-${color}-500/5 to-${color}-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
+    <div>
+      <div className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 transition-colors ${isDark ? 'text-foreground/40 group-hover:text-foreground/60' : 'text-gray-400 group-hover:text-gray-600'}`}>{label}</div>
+      <AnimatedCounter value={value} isDark={isDark} />
+    </div>
+    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 ${
+      isDark ? `bg-${color}-500/10 border border-gray-800` : `bg-${color}-50 border border-${color}-200`
+    }`}>
+      <Icon className={`text-xl transition-transform group-hover:scale-110 ${
+        isDark ? `text-${color}-400` : `text-${color}-600`
+      }`} />
+    </div>
+  </div>
+);
+
+const SeatLegend = ({ type, isDark }) => {
+  const cfg = SEAT_TYPES[type];
+  const Icon = cfg.icon;
+  
+  return (
+    <div className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${
+      isDark ? 'bg-card/50 border border-gray-800 hover:shadow-lg hover:shadow-blue-500/20' : 'bg-white/50 border border-gray-200 hover:shadow-lg hover:shadow-blue-500/10'
+    }`}>
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold transition-transform group-hover:scale-110 ${
+        isDark ? `bg-${cfg.color}-900/30 border border-gray-800 text-${cfg.color}-400` : `bg-${cfg.color}-50 border border-${cfg.color}-200 text-${cfg.color}-600`
+      }`}>
+        <Icon className="text-xs" />
+      </div>
+      <div>
+        <div className={`text-sm font-bold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{cfg.label}</div>
+        <div className={`text-[11px] ${isDark ? 'text-foreground/60' : 'text-gray-400'}`}>{cfg.mult} price</div>
+      </div>
+    </div>
+  );
+};
+
+const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
+  const [hovered, setHovered] = useState(null);
+  const [selectedSeat, setSelectedSeat] = useState(null);
+  const [rippleEffect, setRippleEffect] = useState(null);
+
+  const getSeatsByRow = useMemo(() => {
+    if (!show?.seatCategories) return {};
+    
+    const all = [];
+    show.seatCategories.forEach(category => {
+      category.rows?.forEach(row => {
+        row.seats?.forEach(seat => {
+          all.push({
+            row: row.rowName,
+            number: seat.seatNumber,
+            category: category.category,
+            isBooked: seat.isBooked
+          });
+        });
+      });
+    });
+    
+    return all.reduce((acc, s) => {
+      if (!acc[s.row]) acc[s.row] = [];
+      acc[s.row].push(s);
+      return acc;
+    }, {});
+  }, [show]);
+
+  const total = useMemo(() => Object.values(getSeatsByRow).reduce((t, r) => t + r.length, 0), [getSeatsByRow]);
+  
+  const catCounts = useMemo(() => {
+    const c = {};
+    Object.values(getSeatsByRow).flat().forEach(s => c[s.category] = (c[s.category] || 0) + 1);
+    return c;
+  }, [getSeatsByRow]);
+
+  const handleSeatClick = (seat) => {
+    if (!seat.isBooked) {
+      setSelectedSeat(seat);
+      setRippleEffect(seat);
+      setTimeout(() => setRippleEffect(null), 500);
+    }
+  };
+
+  if (!isOpen || !show) return null;
+
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()} className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 ${isDark ? 'bg-black/90' : 'bg-gray-900/60'}`}>
+      <div className={`rounded-2xl w-full max-w-[1200px] max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-300 ${
+        isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
+      }`}>
+        <div className={`sticky top-0 z-10 border-b rounded-t-2xl p-6 backdrop-blur-sm transition-all duration-300 ${
+          isDark ? 'bg-card border-gray-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex justify-between items-start gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-10 h-1 rounded-full bg-gradient-primary" />
+                <div className="w-6 h-1 rounded-full bg-gradient-primary" />
+              </div>
+              <h2 className={`text-2xl font-extrabold font-poppins ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{show.movie?.name}</h2>
+              <p className={`text-xs mt-1.5 flex items-center gap-1 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+                <MdLocationOn className="text-blue-500 text-sm animate-pulse" />
+                {show.theaterId?.name}, {show.theaterId?.location}
+              </p>
+            </div>
+            <button onClick={onClose} className={`p-2 rounded-lg transition-all duration-300 group ${
+              isDark ? 'border border-gray-800 bg-card/50 text-foreground/60 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400' : 'border border-gray-200 bg-white/50 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+            }`}>
+              <FaTimes className="text-sm group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+            {[
+              { label: "Screen", value: `#${show.screenNumber}`, color: "blue", icon: MdScreenShare },
+              { label: "Total Seats", value: total, color: "green", icon: MdEventSeat },
+              ...Object.entries(catCounts).map(([cat, n]) => ({ 
+                label: SEAT_TYPES[cat]?.label || cat, 
+                value: n, 
+                color: SEAT_TYPES[cat]?.color || "blue", 
+                icon: SEAT_TYPES[cat]?.icon || MdEventSeat 
+              })),
+            ].map((chip, i) => {
+              const Icon = chip.icon;
+              return (
+                <div key={i} className={`relative group overflow-hidden px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 cursor-pointer animate-in slide-in-from-bottom duration-500 ${
+                  isDark ? `bg-gradient-to-br from-${chip.color}-900/20 to-card border border-gray-800 hover:border-${chip.color}-500/50` : `bg-gradient-to-br from-${chip.color}-50 to-white border border-${chip.color}-200 hover:border-${chip.color}-400`
+                }`} style={{ animationDelay: `${i * 100}ms` }}>
+                  <div className={`absolute inset-0 bg-gradient-to-r from-${chip.color}-500/0 via-${chip.color}-500/10 to-${chip.color}-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
+                  <Icon className={`text-lg mb-1 ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-600`} animate-pulse`} />
+                  <div className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-600`}`}>{chip.label}</div>
+                  <div className={`text-2xl font-black leading-tight ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-700`}`}>{chip.value}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mb-10 text-center relative">
+            <div className="absolute inset-x-0 -top-10 flex justify-center gap-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="w-1 h-1 rounded-full bg-blue-400 animate-ping" style={{ animationDelay: `${i * 0.3}s`, animationDuration: '1.5s' }} />
+              ))}
+            </div>
+            <div className="relative">
+              <div className="h-1.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full opacity-80 mb-2 animate-pulse shadow-[0_0_30px_#3b82f6]" />
+              <div className="h-6 bg-gradient-to-b from-blue-500/30 to-transparent rounded-b-[60%] mb-3" />
+              <MdLocalMovies className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-2xl animate-bounce text-blue-400/50" />
+              <span className={`text-[10px] font-extrabold tracking-[6px] uppercase relative inline-block ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+                ◄ SILVER SCREEN ►
+                <span className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pulse" />
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto pb-4 relative">
+            <div className="min-w-max">
+              {Object.entries(getSeatsByRow).sort().map(([rowName, seats], rowIdx) => (
+                <div key={rowName} className="flex items-center gap-3 mb-3 group animate-in slide-in-from-left duration-500" style={{ animationDelay: `${rowIdx * 80}ms` }}>
+                  <div className="w-8 text-center">
+                    <div className={`text-xs font-black transition-colors duration-300 ${isDark ? 'text-foreground/40 group-hover:text-blue-400' : 'text-gray-400 group-hover:text-blue-600'}`}>
+                      {rowName}
+                    </div>
+                    <div className="w-px h-8 bg-gradient-to-b from-blue-500/50 to-transparent mx-auto mt-1" />
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {seats.sort((a, b) => a.number - b.number).map((seat, seatIdx) => {
+                      const cfg = SEAT_TYPES[seat.category] || SEAT_TYPES.NORMAL;
+                      const isHov = hovered === seat;
+                      const isSelected = selectedSeat === seat;
+                      const isRipple = rippleEffect === seat;
+                      const Icon = cfg.icon;
+                      
+                      return (
+                        <div
+                          key={`${seat.row}${seat.number}`}
+                          onMouseEnter={() => setHovered(seat)}
+                          onMouseLeave={() => setHovered(null)}
+                          onClick={() => handleSeatClick(seat)}
+                          className={`relative group/seat cursor-pointer transition-all duration-300 transform hover:scale-110 ${
+                            isRipple ? 'animate-in zoom-in duration-300' : ''
+                          }`}
+                        >
+                          <div className={`relative w-10 h-10 rounded-lg flex flex-col items-center justify-center transition-all duration-300 ${
+                            seat.isBooked 
+                              ? `${isDark ? 'bg-red-500/20 border border-red-500/50 text-red-400 cursor-not-allowed' : 'bg-red-100 border-2 border-red-300 text-red-500 cursor-not-allowed'}`
+                              : isHov 
+                                ? `bg-${cfg.color}-500 text-white shadow-2xl scale-110 ring-2 ring-${cfg.color}-400 ring-offset-2 ring-offset-card`
+                                : isSelected
+                                ? `bg-${cfg.color}-500 text-white shadow-lg`
+                                : isDark
+                                ? `bg-${cfg.color}-900/30 border border-gray-800 text-${cfg.color}-400 hover:bg-${cfg.color}-500 hover:text-white hover:border-${cfg.color}-500`
+                                : `bg-${cfg.color}-50 border-2 border-${cfg.color}-200 text-${cfg.color}-600 hover:bg-${cfg.color}-500 hover:text-white`
+                          }`}>
+                            <Icon className={`text-xs ${isHov || isSelected ? 'text-white' : ''}`} />
+                            <span className="text-[8px] font-bold mt-0.5">{seat.number}</span>
+                          </div>
+                          {isSelected && (
+                            <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in zoom-in duration-200 ${
+                              isDark ? 'bg-gray-900 border border-gray-800' : 'bg-gray-800 border border-gray-600'
+                            }`}>
+                              Selected!
+                            </div>
+                          )}
+                          {isHov && (
+                            <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in fade-in duration-150 z-20 ${
+                              isDark ? 'bg-gray-900 border border-gray-800' : 'bg-gray-800 border border-gray-600'
+                            }`}>
+                              {cfg.label}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="min-h-[80px] my-5">
+            {hovered && !hovered.isBooked && (() => {
+              const cfg = SEAT_TYPES[hovered.category] || SEAT_TYPES.NORMAL;
+              const Icon = cfg.icon;
+              return (
+                <div className={`flex items-center gap-4 p-4 rounded-xl animate-in slide-in-from-bottom duration-300 shadow-lg ${
+                  isDark ? `bg-gradient-to-r from-${cfg.color}-900/30 to-card border border-${cfg.color}-500/30` : `bg-gradient-to-r from-${cfg.color}-50 to-white border-2 border-${cfg.color}-300`
+                }`}>
+                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-xl animate-bounce bg-${cfg.color}-500`}>
+                    <Icon className="text-white text-2xl" />
+                  </div>
+                  <div className="flex-1">
+                    <div className={`text-lg font-black ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Seat {hovered.row}{hovered.number}</div>
+                    <div className={`text-sm mt-0.5 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{cfg.label} Category</div>
+                  </div>
+                  <div className={`px-4 py-2 rounded-lg font-black text-lg shadow-lg bg-${cfg.color}-500 text-white`}>
+                    {cfg.symbol}
+                  </div>
+                </div>
+              );
+            })()}
+            {selectedSeat && !hovered && (
+              <div className={`flex items-center gap-4 p-4 rounded-xl animate-in fade-in duration-300 ${
+                isDark ? 'bg-gradient-to-r from-green-900/30 to-card border border-green-500/30' : 'bg-gradient-to-r from-green-50 to-white border-2 border-green-400'
+              }`}>
+                <div className="w-14 h-14 rounded-xl bg-green-500 flex items-center justify-center shadow-xl">
+                  <FaCheckCircle className="text-white text-2xl" />
+                </div>
+                <div>
+                  <div className={`text-lg font-black ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Seat {selectedSeat.row}{selectedSeat.number} Selected!</div>
+                  <div className={`text-sm mt-0.5 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>Premium viewing experience</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`border-t pt-6 mt-2 ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-[2px] mb-4 flex items-center gap-2 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+              <div className="w-8 h-px bg-gradient-primary" />
+              SEAT CATEGORIES
+              <div className="w-8 h-px bg-gradient-primary" />
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              {Object.keys(SEAT_TYPES).map(key => <SeatLegend key={key} type={key} isDark={isDark} />)}
+            </div>
+          </div>
+        </div>
+
+        <div className={`sticky bottom-0 p-5 rounded-b-2xl transition-all duration-300 bg-card border-t ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+          <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-300 transform hover:scale-[1.02] shadow-lg btn-gradient-danger">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Edit Show Modal
+const EditShowModal = ({ isOpen, onClose, show, onUpdate, isDark }) => {
+  const [formData, setFormData] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setFormData({
+        showDate: new Date(show.showDate).toISOString().split('T')[0],
+        startTime: show.startTime,
+        endTime: show.endTime,
+        status: show.status,
+      });
+    }
+  }, [show]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    await onUpdate(show._id, formData);
+    setIsSubmitting(false);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()} className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 ${isDark ? 'bg-black/90' : 'bg-gray-900/60'}`}>
+      <div className={`rounded-2xl w-full max-w-md shadow-2xl transition-all duration-300 ${
+        isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
+      }`}>
+        <div className={`sticky top-0 z-10 border-b rounded-t-2xl p-6 ${
+          isDark ? 'bg-card border-gray-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+                <FaEdit className="text-white text-sm" />
+              </div>
+              <div>
+                <h2 className={`text-xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Edit Show</h2>
+                <p className={`text-xs ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>{show?.movie?.name}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className={`p-2 rounded-lg transition-all hover:scale-105 ${
+              isDark ? 'hover:bg-red-500/10 text-foreground/60 hover:text-red-400' : 'hover:bg-red-50 text-gray-500 hover:text-red-500'
+            }`}>
+              <FaTimes className="text-sm" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Show Date</label>
+            <input
+              type="date"
+              name="showDate"
+              value={formData.showDate || ''}
+              onChange={handleChange}
+              required
+              className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
+              }`}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Start Time</label>
+              <input
+                type="time"
+                name="startTime"
+                value={formData.startTime || ''}
+                onChange={handleChange}
+                required
+                className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                  isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
+                }`}
+              />
+            </div>
+            <div>
+              <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>End Time</label>
+              <input
+                type="time"
+                name="endTime"
+                value={formData.endTime || ''}
+                onChange={handleChange}
+                required
+                className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                  isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
+                }`}
+              />
+            </div>
+          </div>
+          <div>
+            <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Status</label>
+            <select
+              name="status"
+              value={formData.status || ''}
+              onChange={handleChange}
+              className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${
+                isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
+              }`}
+            >
+              <option value="BOOKING_OPEN">Booking Open</option>
+              <option value="BOOKING_CLOSED">Booking Closed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button type="submit" disabled={isSubmitting} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+              isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'btn-gradient-primary text-white shadow-lg'
+            }`}>
+              {isSubmitting ? <><FaSpinner className="animate-spin text-sm" /> Updating...</> : <>Save Changes</>}
+            </button>
+            <button type="button" onClick={onClose} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+              isDark ? 'border border-gray-800 text-foreground/60 hover:bg-card/50' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Confirm Modal
+const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, color, title, body, confirmLabel, isDark, isLoading }) => {
+  if (!isOpen) return null;
+  return (
+    <div className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 ${isDark ? 'bg-black/80' : 'bg-gray-900/50'}`}>
+      <div className={`rounded-2xl p-8 max-w-md w-full shadow-2xl transform animate-in zoom-in duration-300 ${
+        isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
+      }`}>
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 animate-bounce ${
+          isDark ? `bg-${color}-500/20 border border-gray-800` : `bg-${color}-50 border border-${color}-200`
+        }`}>{icon}</div>
+        <h2 className={`text-xl font-extrabold mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{title}</h2>
+        <p className={`text-sm mb-6 leading-relaxed ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{body}</p>
+        <div className="flex gap-2.5">
+          <button onClick={onConfirm} disabled={isLoading} className={`flex-1 rounded-xl py-2.5 text-white font-bold text-sm transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed bg-${color}-500 hover:opacity-90`}>{isLoading ? 'Deleting...' : confirmLabel}</button>
+          <button onClick={onClose} className={`flex-1 rounded-xl py-2.5 font-bold text-sm transition-all ${
+            isDark ? 'border border-gray-800 text-foreground/60 hover:bg-card/50' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Show Card Component
+const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case 'BOOKING_OPEN':
+        return { color: 'green', text: 'Booking Open', icon: FaCheckCircle, bgClass: 'bg-green-500/20 border border-green-500/50 text-green-400' };
+      case 'BOOKING_CLOSED':
+        return { color: 'yellow', text: 'Booking Closed', icon: FaEyeSlash, bgClass: 'bg-yellow-500/20 border border-yellow-500/50 text-yellow-400' };
+      case 'CANCELLED':
+        return { color: 'red', text: 'Cancelled', icon: FaTimesCircle, bgClass: 'bg-red-500/20 border border-red-500/50 text-red-400' };
+      default:
+        return { color: 'gray', text: status, icon: FaInfoCircle, bgClass: 'bg-gray-500/20 border border-gray-500/50 text-gray-400' };
+    }
+  };
+  
+  const statusConfig = getStatusBadge(show.status);
+  const StatusIcon = statusConfig.icon;
+  
+  const posterUrl = show.movie?.poster?.startsWith('data:') 
+    ? show.movie.poster 
+    : show.movie?.poster 
+      ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${show.movie.poster}`
+      : null;
+
+  const getPriceRange = () => {
+    const prices = show.seatCategories?.map(cat => cat.pricePerSeat) || [];
+    if (prices.length === 0) return 'N/A';
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return min === max ? `₹${min}` : `₹${min} - ₹${max}`;
+  };
+
+  const getCategoryColor = (category) => {
+    switch(category) {
+      case 'NORMAL': return 'blue';
+      case 'EXECUTIVE': return 'green';
+      case 'PREMIUM': return 'purple';
+      case 'VIP': return 'yellow';
+      default: return 'gray';
+    }
+  };
+
+  const getCategoryIcon = (category) => {
+    switch(category) {
+      case 'NORMAL': return MdEventSeat;
+      case 'EXECUTIVE': return FaStar;
+      case 'PREMIUM': return FaRegGem;
+      case 'VIP': return FaCrown;
+      default: return FaChair;
+    }
+  };
+
+  return (
+    <div 
+      className={`group rounded-2xl overflow-hidden flex flex-col shadow-md transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${
+        isDark ? 'bg-card border border-gray-800 hover:border-blue-500/50' : 'bg-white border border-gray-200 hover:border-blue-500/50'
+      }`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="flex flex-col lg:flex-row">
+        {/* Left Side - Poster */}
+        <div className="lg:w-72 relative overflow-hidden bg-gradient-primary min-h-[320px]">
+          <div className={`absolute inset-0 bg-gradient-primary transition-transform duration-700 ${isHovered ? 'scale-110' : 'scale-100'}`} />
+          {posterUrl && !imageError ? (
+            <img 
+              src={posterUrl}
+              alt={show.movie?.name}
+              className="w-full h-full object-cover relative z-10"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full relative z-10">
+              <FaFilm className="text-6xl text-white/50" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-20" />
+          {show.movie?.isTrending && (
+            <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/80 backdrop-blur-sm border border-red-400/50">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider">🔥 Trending</span>
+            </div>
+          )}
+          <div className="absolute bottom-3 left-3 z-30 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm">
+            <FaStar className="text-yellow-400 text-[10px]" />
+            <span className="text-[10px] font-bold text-white">{show.movie?.rating || 'N/A'}</span>
+          </div>
+        </div>
+
+        {/* Right Side - All Details */}
+        <div className="flex-1 p-5">
+          <div className="flex flex-wrap justify-between items-start gap-3 mb-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 flex-wrap mb-2">
+                <h2 className={`text-xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                  {show.movie?.name || 'Movie Title'}
+                </h2>
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${statusConfig.bgClass}`}>
+                  <StatusIcon className="text-[8px]" />
+                  {statusConfig.text}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs">
+                <span className="flex items-center gap-1 text-foreground/60">
+                  <FaStar className="text-yellow-500 text-[11px]" /> {show.movie?.rating || 'N/A'}
+                </span>
+                <span className="flex items-center gap-1 text-foreground/60">
+                  <FaClock className="text-blue-400 text-[11px]" /> {show.movie?.duration || 'N/A'} mins
+                </span>
+                <span className="flex items-center gap-1 text-foreground/60">
+                  <FaLanguage className="text-green-400 text-[11px]" /> {show.movie?.language || 'Unknown'}
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  isDark ? 'bg-gray-800 border border-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {show.movie?.genre || 'General'}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-black text-green-500">{getPriceRange()}</div>
+              <div className="text-[10px] text-foreground/40">per ticket</div>
+            </div>
+          </div>
+
+          <p className={`text-xs mb-4 line-clamp-2 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+            {show.movie?.description || 'No description available'}
+          </p>
+
+          <div className={`py-3 mb-3 border-t border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <MdTheaters className="text-red-500 text-sm" />
+                  <span className={`text-sm font-semibold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                    {show.theaterId?.name || 'Theater Name'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-foreground/60">
+                  <MdLocationOn className="text-blue-500 text-[11px]" />
+                  <span>{show.theaterId?.location}</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <MdScreenShare className="text-purple-500 text-sm" />
+                  <span className="text-sm text-foreground/80">Screen {show.screenNumber}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-foreground/60">
+                  <FaChair className="text-green-500 text-[11px]" />
+                  <span>{show.availableSeats} seats available out of {show.totalSeats}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-4 mb-3 text-xs text-foreground/60">
+            <div className="flex items-center gap-1.5">
+              <FaCalendar className="text-blue-400 text-[11px]" />
+              <span>{new Date(show.showDate).toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <FaClock className="text-green-400 text-[11px]" />
+              <span>{show.startTime} - {show.endTime}</span>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider mb-2 text-foreground/40 flex items-center gap-2">
+              <FaTags className="text-xs" /> Seat Categories
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {show.seatCategories?.slice(0, 4).map((category) => {
+                const catColor = getCategoryColor(category.category);
+                const CategoryIcon = getCategoryIcon(category.category);
+                return (
+                  <div key={category.category} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${
+                    isDark ? `bg-${catColor}-900/30 border border-gray-800 text-${catColor}-400` : `bg-${catColor}-50 border border-${catColor}-200 text-${catColor}-600`
+                  }`}>
+                    <CategoryIcon className="text-[8px]" />
+                    {category.category}: ₹{category.pricePerSeat}
+                  </div>
+                );
+              })}
+              {show.seatCategories?.length > 4 && (
+                <div className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                  isDark ? 'bg-gray-800 border border-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  +{show.seatCategories.length - 4}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-auto">
+            <button onClick={() => onViewSeats(show)} className="flex-1 btn-gradient-primary rounded-xl py-2 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
+              <FaTicketAlt className="text-[10px]" /> View Seats
+            </button>
+            <button onClick={() => onEdit(show)} className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
+              isDark ? 'border border-gray-800 bg-card/50 text-foreground/60 hover:bg-yellow-500/10 hover:border-yellow-500/50' : 'border border-gray-200 bg-gray-50 text-gray-600 hover:bg-yellow-50 hover:border-yellow-500/50'
+            }`}>
+              <FaEdit className="text-xs" />
+            </button>
+            <button onClick={() => onStatusToggle(show)} className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
+              isDark ? 'border border-gray-800 bg-card/50 hover:bg-green-500/10 hover:border-green-500/50' : 'border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-500/50'
+            }`}>
+              {show.status === 'BOOKING_OPEN' ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+            </button>
+            <button onClick={() => onDelete(show)} className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
+              isDark ? 'border border-gray-800 bg-card/50 text-red-500 hover:bg-red-500/10 hover:border-red-500/50' : 'border border-gray-200 bg-gray-50 text-red-500 hover:bg-red-50 hover:border-red-500/50'
+            }`}>
+              <FaTrash className="text-xs" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Loading Component
+const LoadingSpinner = ({ isDark }) => (
+  <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+    <div className="text-center">
+      <div className="relative w-16 h-16 mx-auto mb-4">
+        <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-purple-500 border-b-pink-500 border-l-indigo-500 animate-spin" />
+        <div className="absolute inset-2 rounded-full bg-gradient-primary animate-pulse" />
+      </div>
+      <p className={`font-semibold text-sm animate-pulse ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>Loading shows...</p>
+    </div>
+  </div>
+);
+
+// Main Component
+export default function ShowsManagement() {
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [selectedShow, setSelectedShow] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingShow, setEditingShow] = useState(null);
+  const [deletingShow, setDeletingShow] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['allShows'],
     queryFn: getAllShowsAdmin
   });
+
+  const shows = data?.data || [];
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, statusData }) => updateShowStatus(id, statusData),
@@ -36,24 +766,35 @@ function ShowsManagement() {
     }
   });
 
+  const updateShowMutation = useMutation({
+    mutationFn: ({ id, data }) => updateShowStatus(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['allShows']);
+      toast.success('Show updated successfully');
+      setIsEditModalOpen(false);
+      setEditingShow(null);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to update show');
+    }
+  });
+
   const deleteShowMutation = useMutation({
     mutationFn: (id) => deleteShow(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['allShows']);
       toast.success('Show deleted successfully');
       setIsDeleteModalOpen(false);
-      setShowToDelete(null);
+      setDeletingShow(null);
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || 'Failed to delete show');
     }
   });
 
-  const shows = data?.data || [];
-
-  const handleStatusChange = (showId, currentStatus) => {
+  const handleStatusToggle = (show) => {
     let newStatus;
-    switch(currentStatus) {
+    switch(show.status) {
       case 'BOOKING_OPEN':
         newStatus = 'BOOKING_CLOSED';
         break;
@@ -66,507 +807,180 @@ function ShowsManagement() {
       default:
         newStatus = 'BOOKING_OPEN';
     }
-    
-    updateStatusMutation.mutate({ id: showId, statusData: { status: newStatus } });
-  };
-
-  const handleDelete = () => {
-    if (showToDelete) {
-      deleteShowMutation.mutate(showToDelete);
-    }
+    updateStatusMutation.mutate({ id: show._id, statusData: { status: newStatus } });
   };
 
   const handleEdit = (show) => {
-    setShowToEdit(show);
+    setEditingShow(show);
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    toast.success('Show updated successfully');
-    setIsEditModalOpen(false);
+  const handleUpdateShow = async (id, data) => {
+    await updateShowMutation.mutateAsync({ id, data });
   };
 
-  const handleImageError = (showId) => {
-    setImageErrors(prev => ({ ...prev, [showId]: true }));
+  const handleDeleteClick = (show) => {
+    setDeletingShow(show);
+    setIsDeleteModalOpen(true);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading shows...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center bg-red-100 dark:bg-red-900/20 text-red-600 p-6 rounded-lg">
-          <p className="font-semibold">Error loading shows</p>
-          <p className="text-sm">{error.message}</p>
-          <button 
-            onClick={() => refetch()} 
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (shows.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <FaFilm className="text-gray-400 text-6xl mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-400">No shows available</h3>
-          <p className="text-gray-500 mt-2">Create a new show to get started</p>
-        </div>
-      </div>
-    );
-  }
-
-  const getPriceRange = (show) => {
-    const prices = show.seatCategories?.map(cat => cat.pricePerSeat) || [];
-    if (prices.length === 0) return 'N/A';
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    return min === max ? `₹${min}` : `₹${min} - ₹${max}`;
-  };
-
-  const getStatusBadge = (status) => {
-    switch(status) {
-      case 'BOOKING_OPEN':
-        return { color: 'bg-green-500', text: 'Booking Open', icon: FaCheckCircle };
-      case 'BOOKING_CLOSED':
-        return { color: 'bg-yellow-500', text: 'Booking Closed', icon: FaEyeSlash };
-      case 'CANCELLED':
-        return { color: 'bg-red-500', text: 'Cancelled', icon: FaTimesCircle };
-      default:
-        return { color: 'bg-gray-500', text: status, icon: FaInfoCircle };
+  const handleDeleteConfirm = () => {
+    if (deletingShow) {
+      deleteShowMutation.mutate(deletingShow._id);
     }
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
+  const filtered = useMemo(() => shows.filter(show => {
+    const q = searchTerm.toLowerCase();
+    return (!q || show.movie?.name?.toLowerCase().includes(q) || show.theaterId?.name?.toLowerCase().includes(q)) &&
+      (statusFilter === "ALL" || show.status === statusFilter);
+  }), [shows, searchTerm, statusFilter]);
+
+  const stats = useMemo(() => ({
+    total: shows.length,
+    bookingOpen: shows.filter(s => s.status === 'BOOKING_OPEN').length,
+    bookingClosed: shows.filter(s => s.status === 'BOOKING_CLOSED').length,
+    cancelled: shows.filter(s => s.status === 'CANCELLED').length,
+    totalSeats: shows.reduce((total, show) => total + (show.totalSeats || 0), 0),
+  }), [shows]);
+
+  const hasFilters = searchTerm || statusFilter !== "ALL";
+  const clearFilters = useCallback(() => { 
+    setSearchTerm(""); 
+    setStatusFilter("ALL"); 
+  }, []);
+
+  if (isLoading) return <LoadingSpinner isDark={isDark} />;
+
+  if (error) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center p-4 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+        <div className={`rounded-2xl max-w-md w-full text-center p-8 shadow-xl ${
+          isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
+        }`}>
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+            <FaTimesCircle className="text-red-500 text-4xl" />
+          </div>
+          <h3 className={`text-lg font-extrabold mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Failed to Load</h3>
+          <p className={`text-sm mb-6 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{error.message}</p>
+          <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl btn-gradient-primary text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+      <Toaster position="top-right" toastOptions={{ 
+        className: `!rounded-xl !text-sm !font-semibold !shadow-xl ${
+          isDark ? '!bg-card !text-foreground !border-gray-800' : '!bg-white !text-gray-900 !border-gray-200'
+        }`, 
+        duration: 3000 
+      }} />
+      
       {/* Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-800 text-white sticky top-0 z-10 shadow-lg p-4 md:p-6">
-        <div className="container mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Shows Management</h1>
-            <p className="text-red-100 text-sm mt-1">Manage your movie screenings</p>
+      <div className={`sticky top-0 z-[100] shadow-lg transition-all duration-300 ${
+        isDark ? 'bg-card/90 backdrop-blur-md border-b border-gray-800' : 'bg-white/90 backdrop-blur-md border-b border-gray-200'
+      }`}>
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="flex items-center justify-between py-4 flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-primary animate-pulse blur-lg opacity-50" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-xl">
+                  <GiFilmProjector className="text-white text-xl animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Shows Management</h1>
+                <p className={`text-xs font-medium ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>Manage movie screenings & seat availability</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={handleRefresh} disabled={isRefreshing} className={`p-2 rounded-xl transition-all hover:scale-105 ${
+                isDark ? 'bg-card border border-gray-800 text-foreground/60 hover:text-blue-400' : 'bg-gray-100 border border-gray-200 text-gray-600 hover:text-blue-600'
+              }`}>
+                <FaSpinner className={`text-sm ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+              <button onClick={() => router.push('/admin/shows/create')} className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gradient-primary text-white font-bold text-sm shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
+                <FaPlus className="text-xs" /> Create New Show
+              </button>
+            </div>
           </div>
-          <button 
-            onClick={() => window.location.href = '/admin/shows/create'}
-            className="bg-white text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition"
-          >
-            + Create New Show
-          </button>
         </div>
       </div>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Total Shows</p>
-            <p className="text-2xl font-bold text-red-600">{shows.length}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Total Movies</p>
-            <p className="text-2xl font-bold text-blue-600">{new Set(shows.map(s => s.movie?.name)).size}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Total Theaters</p>
-            <p className="text-2xl font-bold text-green-600">{new Set(shows.map(s => s.theaterId?.name)).size}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Available Seats</p>
-            <p className="text-2xl font-bold text-purple-600">
-              {shows.reduce((total, show) => total + (show.availableSeats || 0), 0)}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Booked Seats</p>
-            <p className="text-2xl font-bold text-orange-600">
-              {shows.reduce((total, show) => total + (show.bookedSeatsCount || 0), 0)}
-            </p>
-          </div>
+      
+      <div className="max-w-7xl mx-auto p-8">
+        {/* Stats Cards with Animated Counter */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <StatsCard label="Total Shows" value={stats.total} icon={FaFilm} color="purple" isDark={isDark} />
+          <StatsCard label="Booking Open" value={stats.bookingOpen} icon={FaCheckCircle} color="green" isDark={isDark} />
+          <StatsCard label="Booking Closed" value={stats.bookingClosed} icon={FaEyeSlash} color="yellow" isDark={isDark} />
+          <StatsCard label="Cancelled" value={stats.cancelled} icon={FaTimesCircle} color="red" isDark={isDark} />
+          <StatsCard label="Total Seats" value={stats.totalSeats} icon={FaChair} color="blue" isDark={isDark} />
         </div>
-
+        
+        {/* Search and Filter */}
+        <div className={`rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300 ${
+          isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
+        }`}>
+          <div className="flex-1 min-w-[220px] relative">
+            <FaSearch className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${isDark ? 'text-foreground/40' : 'text-gray-400'}`} />
+            <input type="text" placeholder="Search by movie or theater..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+              isDark ? 'bg-background border border-gray-800 text-foreground placeholder:text-foreground/40' : 'bg-white border border-gray-200 text-gray-900 placeholder-gray-400'
+            }`} />
+          </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-white border border-gray-200 text-gray-900'
+          }`}>
+            <option value="ALL">All Status</option>
+            <option value="BOOKING_OPEN">Booking Open</option>
+            <option value="BOOKING_CLOSED">Booking Closed</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          {hasFilters && <button onClick={clearFilters} className="px-3.5 py-2.5 rounded-xl border border-red-500/30 bg-transparent text-red-500 font-bold text-xs flex items-center gap-1.5 hover:bg-red-500/10 transition-all hover:scale-105"><FaTimes className="text-[10px]" /> Clear</button>}
+          <div className={`ml-auto text-xs font-semibold ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>{filtered.length} show{filtered.length !== 1 ? "s" : ""}</div>
+        </div>
+        
         {/* Shows Grid */}
-        <div className="space-y-6">
-          {shows.map((show) => {
-            const StatusIcon = getStatusBadge(show.status).icon;
-            const posterUrl = show.movie?.poster?.startsWith('data:') 
-              ? show.movie.poster 
-              : show.movie?.poster 
-                ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${show.movie.poster}`
-                : null;
-            
-            return (
-              <div key={show._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition">
-                <div className="flex flex-col lg:flex-row">
-                  {/* Poster Section */}
-                  <div className="lg:w-64 relative bg-gradient-to-br from-purple-600 to-blue-600 min-h-[256px]">
-                    {posterUrl && !imageErrors[show._id] ? (
-                      <div className="relative w-full h-64 lg:h-full">
-                        <img 
-                          src={posterUrl}
-                          alt={show.movie?.name}
-                          className="w-full h-full object-cover"
-                          onError={() => handleImageError(show._id)}
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-64 lg:h-full">
-                        <FaFilm className="text-6xl text-white/50" />
-                      </div>
-                    )}
-                    {show.movie?.isTrending && (
-                      <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold z-10">
-                        🔥 Trending
-                      </div>
-                    )}
-                    <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs z-10">
-                      {show.movie?.rating} ⭐
-                    </div>
-                  </div>
-
-                  {/* Movie Details */}
-                  <div className="flex-1 p-6">
-                    <div className="flex flex-wrap justify-between items-start gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h2 className="text-2xl font-bold">{show.movie?.name || 'Movie Title'}</h2>
-                          <div className={`${getStatusBadge(show.status).color} text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1`}>
-                            <StatusIcon className="text-xs" />
-                            {getStatusBadge(show.status).text}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-3 mb-4">
-                          <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-                            <FaStar className="text-yellow-500" /> {show.movie?.rating || 'N/A'}
-                          </span>
-                          <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-                            <FaClock /> {show.movie?.duration || 'N/A'} mins
-                          </span>
-                          <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-                            <FaLanguage /> {show.movie?.language || 'Unknown'}
-                          </span>
-                          <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs">
-                            {show.movie?.genre || 'General'}
-                          </span>
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-                          {show.movie?.description || 'No description available'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-green-600">
-                          {getPriceRange(show)}
-                        </div>
-                        <p className="text-xs text-gray-500">per ticket</p>
-                      </div>
-                    </div>
-
-                    {/* Theater Info */}
-                    <div className="border-t dark:border-gray-700 pt-4 mt-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-2">
-                            <MdTheaters className="text-red-500 text-lg" />
-                            <span className="font-semibold">{show.theaterId?.name || 'Theater Name'}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm">
-                            <FaMapMarkerAlt className="text-red-500" />
-                            <span>{show.theaterId?.location}</span>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
-                            <MdScreenShare className="text-blue-500" />
-                            <span className="text-sm">Screen {show.screenNumber}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm">
-                            <FaChair className="text-green-500" />
-                            <span>{show.availableSeats} seats available out of {show.totalSeats}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <FaCalendar /> {new Date(show.showDate).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <FaClock /> {show.startTime} - {show.endTime}
-                        </div>
-                      </div>
-
-                      {/* Seat Categories Summary */}
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                          <FaTags /> Seat Categories:
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                          {show.seatCategories?.map((category) => (
-                            <div key={category.category} className="flex items-center gap-2">
-                              <div className={`w-3 h-3 rounded-full ${
-                                category.category === 'NORMAL' ? 'bg-green-500' :
-                                category.category === 'EXECUTIVE' ? 'bg-blue-500' :
-                                category.category === 'PREMIUM' ? 'bg-purple-500' : 'bg-yellow-500'
-                              }`} />
-                              <span className="text-sm">
-                                {category.category}: ₹{category.pricePerSeat} ({category.availableSeats}/{category.totalSeats})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-3">
-                      <button 
-                        onClick={() => setSelectedShow(show)}
-                        className="flex-1 min-w-[100px] bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition"
-                      >
-                        <FaTicketAlt /> View Seats
-                      </button>
-                      <button 
-                        onClick={() => handleEdit(show)}
-                        className="flex-1 min-w-[80px] bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition"
-                      >
-                        <FaEdit /> Edit
-                      </button>
-                      <button 
-                        onClick={() => handleStatusChange(show._id, show.status)}
-                        className={`flex-1 min-w-[120px] ${show.status === 'BOOKING_OPEN' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'} text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition`}
-                      >
-                        {show.status === 'BOOKING_OPEN' ? <FaEyeSlash /> : <FaEye />}
-                        {show.status === 'BOOKING_OPEN' ? 'Close' : 'Open'} Booking
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setShowToDelete(show._id);
-                          setIsDeleteModalOpen(true);
-                        }}
-                        className="flex-1 min-w-[80px] bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition"
-                      >
-                        <FaTrash /> Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
+        {filtered.length === 0 ? (
+          <div className={`rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300 ${
+            isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
+          }`}>
+            <div className={`w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-background/50' : 'bg-gray-50'}`}>
+              <FaFilm className={`text-3xl ${isDark ? 'text-foreground/20' : 'text-gray-300'}`} />
+            </div>
+            <h3 className={`text-lg font-extrabold mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>No shows found</h3>
+            <p className={`text-sm mb-6 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{hasFilters ? "Try adjusting your filters" : "Create your first show to get started"}</p>
+            {!hasFilters && <button onClick={() => router.push('/admin/shows/create')} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl btn-gradient-primary text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"><FaPlus className="text-[11px]" /> Create Show</button>}
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {filtered.map((show, idx) => (
+              <div key={show._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
+                <ShowCard 
+                  show={show}
+                  onViewSeats={(s) => { setSelectedShow(s); setIsViewModalOpen(true); }}
+                  onEdit={handleEdit}
+                  onDelete={handleDeleteClick}
+                  onStatusToggle={handleStatusToggle}
+                  isDark={isDark}
+                />
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* View Seats Modal - Keep existing code */}
-      {selectedShow && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white dark:bg-gray-800 p-4 border-b dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold">Seat Map - {selectedShow.movie?.name}</h2>
-              <button onClick={() => setSelectedShow(null)} className="p-1 hover:bg-gray-100 rounded text-2xl">
-                ✕
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="mb-6">
-                <h3 className="font-bold text-lg">{selectedShow.theaterId?.name}</h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Screen {selectedShow.screenNumber} | {selectedShow.startTime} - {selectedShow.endTime} | {new Date(selectedShow.showDate).toLocaleDateString()}
-                </p>
-              </div>
-              
-              {selectedShow.seatCategories?.map((category) => (
-                <div key={category.category} className="mb-8">
-                  <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full ${
-                      category.category === 'NORMAL' ? 'bg-green-500' :
-                      category.category === 'EXECUTIVE' ? 'bg-blue-500' :
-                      category.category === 'PREMIUM' ? 'bg-purple-500' : 'bg-yellow-500'
-                    }`} />
-                    {category.category} - ₹{category.pricePerSeat}
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <div className="min-w-max">
-                      {category.rows?.map((row) => (
-                        <div key={row.rowName} className="mb-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-bold w-8">Row {row.rowName}</span>
-                            <div className="flex flex-wrap gap-1">
-                              {row.seats?.map((seat) => (
-                                <div
-                                  key={seat.seatNumber}
-                                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-semibold ${
-                                    seat.isBooked 
-                                      ? 'bg-red-500 text-white cursor-not-allowed' 
-                                      : 'bg-green-500 text-white hover:bg-green-600'
-                                  }`}
-                                >
-                                  {seat.seatNumber}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                <div className="flex justify-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 bg-green-500 rounded"></div>
-                    <span className="text-sm">Available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 bg-red-500 rounded"></div>
-                    <span className="text-sm">Booked</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 text-center text-sm text-gray-500">
-                Total Seats: {selectedShow.totalSeats} | Available: {selectedShow.availableSeats} | Booked: {selectedShow.bookedSeatsCount}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal - Keep existing code */}
-      {isEditModalOpen && showToEdit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white dark:bg-gray-800 p-4 border-b dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold">Edit Show</h2>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-1 hover:bg-gray-100 rounded text-2xl">
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Movie Name</label>
-                <input
-                  type="text"
-                  defaultValue={showToEdit.movie?.name}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                  readOnly
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Show Date</label>
-                <input
-                  type="date"
-                  defaultValue={new Date(showToEdit.showDate).toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Start Time</label>
-                  <input
-                    type="time"
-                    defaultValue={showToEdit.startTime}
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">End Time</label>
-                  <input
-                    type="time"
-                    defaultValue={showToEdit.endTime}
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
-                <select
-                  defaultValue={showToEdit.status}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                >
-                  <option value="BOOKING_OPEN">Booking Open</option>
-                  <option value="BOOKING_CLOSED">Booking Closed</option>
-                  <option value="CANCELLED">Cancelled</option>
-                </select>
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700"
-                >
-                  Save Changes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                  <FaTrash className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Delete Show</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-6">
-                  Are you sure you want to delete this show? This action cannot be undone.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleteShowMutation.isPending}
-                    className="flex-1 bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50"
-                  >
-                    {deleteShowMutation.isPending ? 'Deleting...' : 'Delete'}
-                  </button>
-                  <button
-                    onClick={() => setIsDeleteModalOpen(false)}
-                    className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-400"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ViewSeatsModal isOpen={isViewModalOpen} onClose={() => { setIsViewModalOpen(false); setSelectedShow(null); }} show={selectedShow} isDark={isDark} />
+      <EditShowModal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); setEditingShow(null); }} show={editingShow} onUpdate={handleUpdateShow} isDark={isDark} />
+      <ConfirmModal isOpen={isDeleteModalOpen} onClose={() => { setIsDeleteModalOpen(false); setDeletingShow(null); }} onConfirm={handleDeleteConfirm} icon={<FaTrash className="text-red-500 text-xl" />} color="red" title="Delete Show" body={<>Delete <strong>{deletingShow?.movie?.name}</strong>? This action cannot be undone.</>} confirmLabel="Delete" isDark={isDark} isLoading={deleteShowMutation.isPending} />
     </div>
-  )
+  );
 }
-
-export default ShowsManagement;
