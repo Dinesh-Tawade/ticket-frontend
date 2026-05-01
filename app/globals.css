@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+
+
 /* 🌞 Light Theme */
 :root {
   --background: #ffffff;
@@ -77,3 +79,7 @@ body {
 .bg-red { background: var(--red); }
 .bg-yellow { background: var(--yellow); }
 .bg-indigo { background: var(--indigo); }
+
+
+
+
