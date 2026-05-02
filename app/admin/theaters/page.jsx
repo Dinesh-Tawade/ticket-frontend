@@ -794,7 +794,7 @@ export default function TheatersPage() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-red-500 to-gray-100'}`}>
       <Toaster 
         position="top-right" 
         toastOptions={{ 
