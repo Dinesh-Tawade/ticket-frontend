@@ -42,11 +42,11 @@ export default function Sidebar() {
     () => [
       { name: "Dashboard", path: "/admin/dashboard", icon: MdDashboard },
       { name: "Theaters", path: "/admin/theaters", icon: FaFilm },
-      { name: "Admins", path: "/admin/admins", icon: RiAdminLine },
+      // { name: "Admins", path: "/admin/admins", icon: RiAdminLine },
       { name: "Shows", path: "/admin/shows", icon: SiMyshows },
-      { name: "Theater Rows", path: "/admin/theater-rows", icon: FaArrowsAlt },
+      // { name: "Theater Rows", path: "/admin/theater-rows", icon: FaArrowsAlt },
       { name: "Users", path: "/admin/users", icon: FaUser },
-      { name: "Vendors", path: "/admin/vendors", icon: FaBuilding },
+      // { name: "Vendors", path: "/admin/vendors", icon: FaBuilding },
     ],
     []
   );
