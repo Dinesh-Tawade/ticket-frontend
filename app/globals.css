@@ -1,25 +1,40 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-
-
-/* 🌞 Light Theme */
+/* =========================
+   🌞 LIGHT THEME
+========================= */
 :root {
-  --background: #ffffff;
-  --foreground: z#203d81;
+  --background: #f1f5f9;
+  --foreground: #1e293b;
 
-  --card: #ffffff;
-  --card-border: #0b1f3a; /* navy border */
+  --card: #f9fafb;
+  --card-border: rgba(15, 23, 42, 0.08);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 
+  /* Colors */
   --blue: #2563eb;
   --green: #16a34a;
   --purple: #9333ea;
   --red: #dc2626;
   --yellow: #ca8a04;
   --indigo: #4f46e5;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --gradient-primary-hover: linear-gradient(135deg, #2563eb, #7c3aed);
+
+  --gradient-success: linear-gradient(135deg, #10b981, #34d399);
+  --gradient-danger: linear-gradient(135deg, #ef4444, #f97316);
+  --gradient-warning: linear-gradient(135deg, #f59e0b, #fbbf24);
+  --gradient-info: linear-gradient(135deg, #06b6d4, #22d3ee);
+
+  --gradient-card-light: linear-gradient(135deg, #ffffff, #f8fafc);
 }
 
-/* 🌙 Dark Theme */
+/* =========================
+   🌙 DARK THEME
+========================= */
 .dark {
   --background: #0b1f3a;
   --foreground: #e2e8f0;
@@ -33,202 +48,135 @@
   --red: #f87171;
   --yellow: #facc15;
   --indigo: #818cf8;
+
+  --gradient-card-light: linear-gradient(135deg, #1e293b, #0f172a);
 }
 
-/* 🌍 Base */
+/* =========================
+   🌍 BASE STYLES
+========================= */
 body {
   background: var(--background);
   color: var(--foreground);
-  transition: background 0.3s ease, color 0.3s ease;
   font-family: "Inter", system-ui, sans-serif;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
-/* 🧊 Card */
-.card {
+/* =========================
+   🧊 CORE UI SYSTEM
+========================= */
+
+/* 🔥 Premium Card */
+.card-premium {
+  @apply rounded-2xl border backdrop-blur-md;
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: 16px;
-  padding: 24px;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
 
-.card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+.card-premium:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
 }
 
-/* 🎨 Colors */
+/* 🎯 Stat Card */
+.stat-card {
+  @apply rounded-2xl border p-5 flex flex-col gap-2 backdrop-blur-md;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  transition: all 0.25s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+}
+
+/* 🔘 Icon Badge */
+.icon-badge {
+  @apply w-10 h-10 flex items-center justify-center rounded-xl;
+  background: rgba(255,255,255,0.06);
+}
+
+/* 📊 Progress */
+.progress-bar {
+  @apply w-full h-2 rounded-full overflow-hidden;
+  background: rgba(255,255,255,0.08);
+}
+
+.progress-fill {
+  @apply h-full rounded-full transition-all duration-500;
+}
+
+/* ✨ Typography */
+.section-title {
+  @apply text-lg font-semibold tracking-tight;
+}
+
+.text-muted {
+  opacity: 0.6;
+  font-size: 0.875rem;
+}
+
+/* =========================
+   🎨 COLOR UTILITIES
+========================= */
 .text-blue { color: var(--blue); }
 .text-green { color: var(--green); }
 .text-purple { color: var(--purple); }
 .text-red { color: var(--red); }
 .text-yellow { color: var(--yellow); }
 .text-indigo { color: var(--indigo); }
-.bg-black { background: var(--black); }
 
-
-/* Accent line */
-.accent {
-  height: 4px;
-  width: 40px;
-  border-radius: 999px;
-  margin-top: 12px;
-}
-.bg-blue { background: var(--blue); }
-.bg-green { background: var(--green); }
-.bg-purple { background: var(--purple); }
-.bg-red { background: var(--red); }
-.bg-yellow { background: var(--yellow); }
-.bg-indigo { background: var(--indigo); }
-
-
-
-
-/* gradients.css or globals.css */
-
-/* Gradient Variables */
-:root {
-  /* Primary Gradients */
-  --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  --gradient-primary-hover: linear-gradient(135deg, #2563eb, #7c3aed);
-  
-  /* Success Gradients */
-  --gradient-success: linear-gradient(135deg, #10b981, #34d399);
-  --gradient-success-hover: linear-gradient(135deg, #059669, #10b981);
-  
-  /* Danger Gradients */
-  --gradient-danger: linear-gradient(135deg, #ef4444, #f97316);
-  --gradient-danger-hover: linear-gradient(135deg, #dc2626, #ea580c);
-  
-  /* Warning Gradients */
-  --gradient-warning: linear-gradient(135deg, #f59e0b, #fbbf24);
-  --gradient-warning-hover: linear-gradient(135deg, #d97706, #f59e0b);
-  
-  /* Info Gradients */
-  --gradient-info: linear-gradient(135deg, #06b6d4, #22d3ee);
-  --gradient-info-hover: linear-gradient(135deg, #0891b2, #06b6d4);
-  
-  /* Card Gradients */
-  --gradient-card-light: linear-gradient(135deg, #ffffff, #f8fafc);
-  --gradient-card-dark: linear-gradient(135deg, #1e293b, #0f172a);
-  
-  /* Hero Gradients */
-  --gradient-hero: linear-gradient(135deg, #4f46e5, #8b5cf6, #ec4899);
-  --gradient-theater: linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1);
-  
-  /* Badge Gradients */
-  --gradient-badge-blue: linear-gradient(135deg, #eff6ff, #dbeafe);
-  --gradient-badge-green: linear-gradient(135deg, #f0fdf4, #dcfce7);
-  --gradient-badge-purple: linear-gradient(135deg, #faf5ff, #f3e8ff);
-  --gradient-badge-yellow: linear-gradient(135deg, #fffbeb, #fef3c7);
-  --gradient-badge-red: linear-gradient(135deg, #fef2f2, #fee2e2);
-  
-  /* Dark Mode Gradients */
-  --gradient-card-light-dark: linear-gradient(135deg, #1e293b, #0f172a);
-  --gradient-badge-blue-dark: linear-gradient(135deg, #1e3a5f, #1e2a4a);
-  --gradient-badge-green-dark: linear-gradient(135deg, #14532d, #1a3a2a);
-  --gradient-badge-purple-dark: linear-gradient(135deg, #3b0764, #2e1065);
-  --gradient-badge-yellow-dark: linear-gradient(135deg, #713f12, #5c3500);
-  --gradient-badge-red-dark: linear-gradient(135deg, #7f1d1d, #5c1a1a);
-}
-
-/* Utility Classes for Gradients */
+/* =========================
+   🌈 GRADIENT UTILITIES
+========================= */
 .bg-gradient-primary {
   background: var(--gradient-primary);
 }
-.bg-gradient-primary-hover {
-  background: var(--gradient-primary-hover);
-}
+
 .bg-gradient-success {
   background: var(--gradient-success);
 }
+
 .bg-gradient-danger {
   background: var(--gradient-danger);
 }
+
 .bg-gradient-warning {
   background: var(--gradient-warning);
 }
+
 .bg-gradient-info {
   background: var(--gradient-info);
 }
-.bg-gradient-hero {
-  background: var(--gradient-hero);
-}
-.bg-gradient-theater {
-  background: var(--gradient-theater);
-}
 
-/* Card Gradients */
 .bg-gradient-card {
   background: var(--gradient-card-light);
 }
-.dark .bg-gradient-card {
-  background: var(--gradient-card-dark);
-}
 
-/* Badge Gradients */
-.bg-gradient-badge-blue {
-  background: var(--gradient-badge-blue);
-}
-.dark .bg-gradient-badge-blue {
-  background: var(--gradient-badge-blue-dark);
-}
-
-.bg-gradient-badge-green {
-  background: var(--gradient-badge-green);
-}
-.dark .bg-gradient-badge-green {
-  background: var(--gradient-badge-green-dark);
-}
-
-.bg-gradient-badge-purple {
-  background: var(--gradient-badge-purple);
-}
-.dark .bg-gradient-badge-purple {
-  background: var(--gradient-badge-purple-dark);
-}
-
-.bg-gradient-badge-yellow {
-  background: var(--gradient-badge-yellow);
-}
-.dark .bg-gradient-badge-yellow {
-  background: var(--gradient-badge-yellow-dark);
-}
-
-.bg-gradient-badge-red {
-  background: var(--gradient-badge-red);
-}
-.dark .bg-gradient-badge-red {
-  background: var(--gradient-badge-red-dark);
-}
-
-/* Button Gradients */
-.btn-gradient-primary {
+/* =========================
+   🔘 BUTTON SYSTEM
+========================= */
+.btn-primary {
+  @apply px-4 py-2 rounded-xl text-white font-medium;
   background: var(--gradient-primary);
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
-.btn-gradient-primary:hover {
+
+.btn-primary:hover {
   background: var(--gradient-primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
 }
 
-.btn-gradient-success {
-  background: var(--gradient-success);
-  transition: all 0.3s ease;
-}
-.btn-gradient-success:hover {
-  background: var(--gradient-success-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.5);
+/* =========================
+   ✨ SCROLLBAR (OPTIONAL)
+========================= */
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.btn-gradient-danger {
-  background: var(--gradient-danger);
-  transition: all 0.3s ease;
-}
-.btn-gradient-danger:hover {
-  background: var(--gradient-danger-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.5);
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 10px;
 }
