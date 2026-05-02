@@ -217,3 +217,9 @@ export const getAdminCommunications = async () => {
     throw error;
   }
 };
+
+// ==================== DASHBOARD STATS for theater dashboard ====================
+export const getDashboardStatsOwner = async () => {
+  const res = await axios.get(`${BE_URL}/theater-owner/dashboard-stats`, getAuthHeader());
+  return res.data;
+};
