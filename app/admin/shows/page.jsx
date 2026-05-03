@@ -48,59 +48,74 @@ const AnimatedCounter = ({ value, isDark }) => {
   }, [value]);
 
   return (
-    <div className={`text-[34px] font-black tracking-tighter leading-none transition-all duration-300 ${
-      isDark ? 'text-foreground' : 'text-gray-900'
-    }`}>
+    <div className="text-[34px] font-black tracking-tighter leading-none transition-all duration-300" style={{ color: "var(--foreground)" }}>
       {count}
     </div>
   );
 };
 
 // Stats Card Component with Animated Counter
-const StatsCard = ({ label, value, icon: Icon, color, isDark }) => (
-  <div className={`group rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105 ${
-    isDark ? 'bg-card border border-gray-800 hover:border-blue-500/50 hover:shadow-blue-500/10' : 'bg-white border border-gray-200 hover:border-${color}-500/50'
-  }`}>
+const StatsCard = ({ label, value, icon: Icon, color }) => (
+  <div className={`group rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105 bg-card border`}
+    style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
     <div className={`absolute inset-0 bg-gradient-to-r from-${color}-500/0 via-${color}-500/5 to-${color}-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
     <div>
-      <div className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 transition-colors ${isDark ? 'text-foreground/40 group-hover:text-foreground/60' : 'text-gray-400 group-hover:text-gray-600'}`}>{label}</div>
-      <AnimatedCounter value={value} isDark={isDark} />
+      <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 transition-colors" style={{ color: "var(--foreground)", opacity: 0.4 }}>{label}</div>
+      <AnimatedCounter value={value} />
     </div>
-    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 ${
-      isDark ? `bg-${color}-500/10 border border-gray-800` : `bg-${color}-50 border border-${color}-200`
-    }`}>
-      <Icon className={`text-xl transition-transform group-hover:scale-110 ${
-        isDark ? `text-${color}-400` : `text-${color}-600`
-      }`} />
+    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 bg-${color}-500/10 border`}
+      style={{ borderColor: "var(--card-border)" }}>
+      <Icon className={`text-xl transition-transform group-hover:scale-110 text-${color}-400`} />
     </div>
   </div>
 );
 
-const SeatLegend = ({ type, isDark }) => {
+const SeatLegend = ({ type }) => {
   const cfg = SEAT_TYPES[type];
   const Icon = cfg.icon;
-  
+
   return (
-    <div className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${
-      isDark ? 'bg-card/50 border border-gray-800 hover:shadow-lg hover:shadow-blue-500/20' : 'bg-white/50 border border-gray-200 hover:shadow-lg hover:shadow-blue-500/10'
-    }`}>
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold transition-transform group-hover:scale-110 ${
-        isDark ? `bg-${cfg.color}-900/30 border border-gray-800 text-${cfg.color}-400` : `bg-${cfg.color}-50 border border-${cfg.color}-200 text-${cfg.color}-600`
-      }`}>
-        <Icon className="text-xs" />
+    <div className="group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer border hover:shadow-lg hover:shadow-blue-500/20"
+      style={{ background: "rgba(var(--card), 0.5)", borderColor: "var(--card-border)" }}>
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold transition-transform group-hover:scale-110 bg-${cfg.color}-900/30 border`}
+        style={{ borderColor: "var(--card-border)" }}>
+        <Icon className={`text-xs text-${cfg.color}-400`} />
       </div>
       <div>
-        <div className={`text-sm font-bold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{cfg.label}</div>
-        <div className={`text-[11px] ${isDark ? 'text-foreground/60' : 'text-gray-400'}`}>{cfg.mult} price</div>
+        <div className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{cfg.label}</div>
+        <div className="text-[11px]" style={{ color: "var(--foreground)", opacity: 0.6 }}>{cfg.mult} price</div>
       </div>
     </div>
   );
 };
 
-const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
+const ViewSeatsModal = ({ isOpen, onClose, show }) => {
   const [hovered, setHovered] = useState(null);
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [rippleEffect, setRippleEffect] = useState(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [showModal, setShowModal] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowModal(true);
+      const timer = setTimeout(() => setIsClosing(false), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => setShowModal(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) handleClose();
+  };
 
   const getSeatsByRow = useMemo(() => {
     if (!show?.seatCategories) return {};
@@ -142,31 +157,29 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
     }
   };
 
-  if (!isOpen || !show) return null;
+  if (!showModal || !show) return null;
 
   return (
-    <div onClick={e => e.target === e.currentTarget && onClose()} className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 ${isDark ? 'bg-black/90' : 'bg-gray-900/60'}`}>
-      <div className={`rounded-2xl w-full max-w-[1200px] max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-300 ${
-        isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
-      }`}>
-        <div className={`sticky top-0 z-10 border-b rounded-t-2xl p-6 backdrop-blur-sm transition-all duration-300 ${
-          isDark ? 'bg-card border-gray-800' : 'bg-white border-gray-200'
-        }`}>
+    <div onClick={handleBackdropClick} className="fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.8)", opacity: isClosing ? 0 : 1, transition: "opacity 200ms ease-out" }}>
+      <div className="rounded-2xl w-full max-w-[1200px] max-h-[90vh] overflow-y-auto shadow-2xl"
+        style={{ background: "var(--card)", border: "1px solid var(--card-border)", opacity: isClosing ? 0 : 1, transform: isClosing ? "translateY(16px)" : "translateY(0)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
+        <div className="sticky top-0 z-10 border-b rounded-t-2xl p-6 backdrop-blur-sm transition-all duration-300"
+          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <div className="flex justify-between items-start gap-3">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-10 h-1 rounded-full bg-gradient-primary" />
                 <div className="w-6 h-1 rounded-full bg-gradient-primary" />
               </div>
-              <h2 className={`text-2xl font-extrabold font-poppins ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{show.movie?.name}</h2>
-              <p className={`text-xs mt-1.5 flex items-center gap-1 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+              <h2 className="text-2xl font-extrabold font-poppins" style={{ color: "var(--foreground)" }}>{show.movie?.name}</h2>
+              <p className="text-xs mt-1.5 flex items-center gap-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                 <MdLocationOn className="text-blue-500 text-sm animate-pulse" />
                 {show.theaterId?.name}, {show.theaterId?.location}
               </p>
             </div>
-            <button onClick={onClose} className={`p-2 rounded-lg transition-all duration-300 group ${
-              isDark ? 'border border-gray-800 bg-card/50 text-foreground/60 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400' : 'border border-gray-200 bg-white/50 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
-            }`}>
+            <button onClick={onClose} className="p-2 rounded-lg transition-all duration-300 group border bg-card/50"
+              style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}>
               <FaTimes className="text-sm group-hover:rotate-90 transition-transform duration-300" />
             </button>
           </div>
@@ -186,13 +199,12 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
             ].map((chip, i) => {
               const Icon = chip.icon;
               return (
-                <div key={i} className={`relative group overflow-hidden px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 cursor-pointer animate-in slide-in-from-bottom duration-500 ${
-                  isDark ? `bg-gradient-to-br from-${chip.color}-900/20 to-card border border-gray-800 hover:border-${chip.color}-500/50` : `bg-gradient-to-br from-${chip.color}-50 to-white border border-${chip.color}-200 hover:border-${chip.color}-400`
-                }`} style={{ animationDelay: `${i * 100}ms` }}>
+                <div key={i} className={`relative group overflow-hidden px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 cursor-pointer animate-in slide-in-from-bottom duration-500 bg-gradient-to-br border`}
+                  style={{ background: `linear-gradient(to bottom right, rgba(var(--${chip.color}-500), 0.1), var(--card))`, borderColor: "var(--card-border)", animationDelay: `${i * 100}ms` }}>
                   <div className={`absolute inset-0 bg-gradient-to-r from-${chip.color}-500/0 via-${chip.color}-500/10 to-${chip.color}-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
-                  <Icon className={`text-lg mb-1 ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-600`} animate-pulse`} />
-                  <div className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-600`}`}>{chip.label}</div>
-                  <div className={`text-2xl font-black leading-tight ${isDark ? `text-${chip.color}-400` : `text-${chip.color}-700`}`}>{chip.value}</div>
+                  <Icon className={`text-lg mb-1 text-${chip.color}-400 animate-pulse`} />
+                  <div className={`text-[9px] font-bold uppercase tracking-wider text-${chip.color}-400`}>{chip.label}</div>
+                  <div className={`text-2xl font-black leading-tight text-${chip.color}-400`}>{chip.value}</div>
                 </div>
               );
             })}
@@ -208,7 +220,7 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
               <div className="h-1.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full opacity-80 mb-2 animate-pulse shadow-[0_0_30px_#3b82f6]" />
               <div className="h-6 bg-gradient-to-b from-blue-500/30 to-transparent rounded-b-[60%] mb-3" />
               <MdLocalMovies className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-2xl animate-bounce text-blue-400/50" />
-              <span className={`text-[10px] font-extrabold tracking-[6px] uppercase relative inline-block ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+              <span className="text-[10px] font-extrabold tracking-[6px] uppercase relative inline-block" style={{ color: "var(--foreground)", opacity: 0.4 }}>
                 ◄ SILVER SCREEN ►
                 <span className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pulse" />
               </span>
@@ -220,7 +232,7 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
               {Object.entries(getSeatsByRow).sort().map(([rowName, seats], rowIdx) => (
                 <div key={rowName} className="flex items-center gap-3 mb-3 group animate-in slide-in-from-left duration-500" style={{ animationDelay: `${rowIdx * 80}ms` }}>
                   <div className="w-8 text-center">
-                    <div className={`text-xs font-black transition-colors duration-300 ${isDark ? 'text-foreground/40 group-hover:text-blue-400' : 'text-gray-400 group-hover:text-blue-600'}`}>
+                    <div className="text-xs font-black transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.4 }}>
                       {rowName}
                     </div>
                     <div className="w-px h-8 bg-gradient-to-b from-blue-500/50 to-transparent mx-auto mt-1" />
@@ -245,29 +257,26 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
                         >
                           <div className={`relative w-10 h-10 rounded-lg flex flex-col items-center justify-center transition-all duration-300 ${
                             seat.isBooked 
-                              ? `${isDark ? 'bg-red-500/20 border border-red-500/50 text-red-400 cursor-not-allowed' : 'bg-red-100 border-2 border-red-300 text-red-500 cursor-not-allowed'}`
+                              ? 'bg-red-500/20 border border-red-500/50 text-red-400 cursor-not-allowed'
                               : isHov 
                                 ? `bg-${cfg.color}-500 text-white shadow-2xl scale-110 ring-2 ring-${cfg.color}-400 ring-offset-2 ring-offset-card`
                                 : isSelected
                                 ? `bg-${cfg.color}-500 text-white shadow-lg`
-                                : isDark
-                                ? `bg-${cfg.color}-900/30 border border-gray-800 text-${cfg.color}-400 hover:bg-${cfg.color}-500 hover:text-white hover:border-${cfg.color}-500`
-                                : `bg-${cfg.color}-50 border-2 border-${cfg.color}-200 text-${cfg.color}-600 hover:bg-${cfg.color}-500 hover:text-white`
-                          }`}>
+                                : `bg-${cfg.color}-900/30 border text-${cfg.color}-400 hover:bg-${cfg.color}-500 hover:text-white hover:border-${cfg.color}-500`
+                          }`}
+                            style={!seat.isBooked && !isHov && !isSelected ? { borderColor: "var(--card-border)" } : {}}>
                             <Icon className={`text-xs ${isHov || isSelected ? 'text-white' : ''}`} />
                             <span className="text-[8px] font-bold mt-0.5">{seat.number}</span>
                           </div>
                           {isSelected && (
-                            <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in zoom-in duration-200 ${
-                              isDark ? 'bg-gray-900 border border-gray-800' : 'bg-gray-800 border border-gray-600'
-                            }`}>
+                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in zoom-in duration-200 bg-gray-900 border"
+                              style={{ borderColor: "var(--card-border)" }}>
                               Selected!
                             </div>
                           )}
                           {isHov && (
-                            <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in fade-in duration-150 z-20 ${
-                              isDark ? 'bg-gray-900 border border-gray-800' : 'bg-gray-800 border border-gray-600'
-                            }`}>
+                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap animate-in fade-in duration-150 z-20 bg-gray-900 border"
+                              style={{ borderColor: "var(--card-border)" }}>
                               {cfg.label}
                             </div>
                           )}
@@ -285,15 +294,14 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
               const cfg = SEAT_TYPES[hovered.category] || SEAT_TYPES.NORMAL;
               const Icon = cfg.icon;
               return (
-                <div className={`flex items-center gap-4 p-4 rounded-xl animate-in slide-in-from-bottom duration-300 shadow-lg ${
-                  isDark ? `bg-gradient-to-r from-${cfg.color}-900/30 to-card border border-${cfg.color}-500/30` : `bg-gradient-to-r from-${cfg.color}-50 to-white border-2 border-${cfg.color}-300`
-                }`}>
+                <div className={`flex items-center gap-4 p-4 rounded-xl animate-in slide-in-from-bottom duration-300 shadow-lg bg-gradient-to-r border`}
+                  style={{ background: `linear-gradient(to right, rgba(var(--${cfg.color}-500), 0.1), var(--card))`, borderColor: `rgba(var(--${cfg.color}-500), 0.3)` }}>
                   <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-xl animate-bounce bg-${cfg.color}-500`}>
                     <Icon className="text-white text-2xl" />
                   </div>
                   <div className="flex-1">
-                    <div className={`text-lg font-black ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Seat {hovered.row}{hovered.number}</div>
-                    <div className={`text-sm mt-0.5 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{cfg.label} Category</div>
+                    <div className="text-lg font-black" style={{ color: "var(--foreground)" }}>Seat {hovered.row}{hovered.number}</div>
+                    <div className="text-sm mt-0.5" style={{ color: "var(--foreground)", opacity: 0.6 }}>{cfg.label} Category</div>
                   </div>
                   <div className={`px-4 py-2 rounded-lg font-black text-lg shadow-lg bg-${cfg.color}-500 text-white`}>
                     {cfg.symbol}
@@ -302,34 +310,35 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
               );
             })()}
             {selectedSeat && !hovered && (
-              <div className={`flex items-center gap-4 p-4 rounded-xl animate-in fade-in duration-300 ${
-                isDark ? 'bg-gradient-to-r from-green-900/30 to-card border border-green-500/30' : 'bg-gradient-to-r from-green-50 to-white border-2 border-green-400'
-              }`}>
+              <div className="flex items-center gap-4 p-4 rounded-xl animate-in fade-in duration-300 bg-gradient-to-r border"
+                style={{ background: "linear-gradient(to right, rgba(34,197,94,0.1), var(--card))", borderColor: "rgba(34,197,94,0.3)" }}>
                 <div className="w-14 h-14 rounded-xl bg-green-500 flex items-center justify-center shadow-xl">
                   <FaCheckCircle className="text-white text-2xl" />
                 </div>
                 <div>
-                  <div className={`text-lg font-black ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Seat {selectedSeat.row}{selectedSeat.number} Selected!</div>
-                  <div className={`text-sm mt-0.5 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>Premium viewing experience</div>
+                  <div className="text-lg font-black" style={{ color: "var(--foreground)" }}>Seat {selectedSeat.row}{selectedSeat.number} Selected!</div>
+                  <div className="text-sm mt-0.5" style={{ color: "var(--foreground)", opacity: 0.6 }}>Premium viewing experience</div>
                 </div>
               </div>
             )}
           </div>
 
-          <div className={`border-t pt-6 mt-2 ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-            <p className={`text-[10px] font-bold uppercase tracking-[2px] mb-4 flex items-center gap-2 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+          <div className="border-t pt-6 mt-2" style={{ borderColor: "var(--card-border)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-[2px] mb-4 flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.4 }}>
               <div className="w-8 h-px bg-gradient-primary" />
               SEAT CATEGORIES
               <div className="w-8 h-px bg-gradient-primary" />
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
-              {Object.keys(SEAT_TYPES).map(key => <SeatLegend key={key} type={key} isDark={isDark} />)}
+              {Object.keys(SEAT_TYPES).map(key => <SeatLegend key={key} type={key} />)}
             </div>
           </div>
         </div>
 
-        <div className={`sticky bottom-0 p-5 rounded-b-2xl transition-all duration-300 bg-card border-t ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-          <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-300 transform hover:scale-[1.02] shadow-lg btn-gradient-danger">
+        <div className="sticky bottom-0 p-5 rounded-b-2xl transition-all duration-300 bg-card border-t"
+          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all duration-300 transform hover:scale-[1.02] shadow-lg bg-gradient-to-r from-blue-500 to-blue-600 border"
+            style={{ borderColor: "var(--card-border)" }}>
             Close
           </button>
         </div>
@@ -339,9 +348,32 @@ const ViewSeatsModal = ({ isOpen, onClose, show, isDark }) => {
 };
 
 // Edit Show Modal
-const EditShowModal = ({ isOpen, onClose, show, onUpdate, isDark }) => {
+const EditShowModal = ({ isOpen, onClose, show, onUpdate }) => {
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [showModal, setShowModal] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowModal(true);
+      const timer = setTimeout(() => setIsClosing(false), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => setShowModal(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) handleClose();
+  };
 
   useEffect(() => {
     if (show) {
@@ -366,29 +398,27 @@ const EditShowModal = ({ isOpen, onClose, show, onUpdate, isDark }) => {
     setIsSubmitting(false);
   };
 
-  if (!isOpen) return null;
+  if (!showModal) return null;
 
   return (
-    <div onClick={e => e.target === e.currentTarget && onClose()} className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 ${isDark ? 'bg-black/90' : 'bg-gray-900/60'}`}>
-      <div className={`rounded-2xl w-full max-w-md shadow-2xl transition-all duration-300 ${
-        isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
-      }`}>
-        <div className={`sticky top-0 z-10 border-b rounded-t-2xl p-6 ${
-          isDark ? 'bg-card border-gray-800' : 'bg-white border-gray-200'
-        }`}>
+    <div onClick={handleBackdropClick} className="fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.8)", opacity: isClosing ? 0 : 1, transition: "opacity 200ms ease-out" }}>
+      <div className="rounded-2xl w-full max-w-md shadow-2xl"
+        style={{ background: "var(--card)", border: "1px solid var(--card-border)", opacity: isClosing ? 0 : 1, transform: isClosing ? "translateY(16px)" : "translateY(0)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
+        <div className="sticky top-0 z-10 border-b rounded-t-2xl p-6"
+          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
                 <FaEdit className="text-white text-sm" />
               </div>
               <div>
-                <h2 className={`text-xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Edit Show</h2>
-                <p className={`text-xs ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>{show?.movie?.name}</p>
+                <h2 className="text-xl font-extrabold" style={{ color: "var(--foreground)" }}>Edit Show</h2>
+                <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>{show?.movie?.name}</p>
               </div>
             </div>
-            <button onClick={onClose} className={`p-2 rounded-lg transition-all hover:scale-105 ${
-              isDark ? 'hover:bg-red-500/10 text-foreground/60 hover:text-red-400' : 'hover:bg-red-50 text-gray-500 hover:text-red-500'
-            }`}>
+            <button onClick={onClose} className="p-2 rounded-lg transition-all hover:scale-105 hover:bg-red-500/10"
+              style={{ color: "var(--foreground)", opacity: 0.6 }}>
               <FaTimes className="text-sm" />
             </button>
           </div>
@@ -396,55 +426,51 @@ const EditShowModal = ({ isOpen, onClose, show, onUpdate, isDark }) => {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Show Date</label>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>Show Date</label>
             <input
               type="date"
               name="showDate"
               value={formData.showDate || ''}
               onChange={handleChange}
               required
-              className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-              }`}
+              className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
+              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Start Time</label>
+              <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>Start Time</label>
               <input
                 type="time"
                 name="startTime"
                 value={formData.startTime || ''}
                 onChange={handleChange}
                 required
-                className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                  isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                }`}
+                className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
               />
             </div>
             <div>
-              <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>End Time</label>
+              <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>End Time</label>
               <input
                 type="time"
                 name="endTime"
                 value={formData.endTime || ''}
                 onChange={handleChange}
                 required
-                className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                  isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                }`}
+                className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
               />
             </div>
           </div>
           <div>
-            <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Status</label>
+            <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>Status</label>
             <select
               name="status"
               value={formData.status || ''}
               onChange={handleChange}
-              className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${
-                isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-              }`}
+              className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer bg-background border"
+              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
             >
               <option value="BOOKING_OPEN">Booking Open</option>
               <option value="BOOKING_CLOSED">Booking Closed</option>
@@ -452,14 +478,14 @@ const EditShowModal = ({ isOpen, onClose, show, onUpdate, isDark }) => {
             </select>
           </div>
           <div className="flex gap-3 pt-4">
-            <button type="submit" disabled={isSubmitting} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-              isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'btn-gradient-primary text-white shadow-lg'
-            }`}>
+            <button type="submit" disabled={isSubmitting} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 border ${
+              isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
+            }`}
+              style={{ borderColor: isSubmitting ? undefined : "var(--card-border)" }}>
               {isSubmitting ? <><FaSpinner className="animate-spin text-sm" /> Updating...</> : <>Save Changes</>}
             </button>
-            <button type="button" onClick={onClose} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
-              isDark ? 'border border-gray-800 text-foreground/60 hover:bg-card/50' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}>Cancel</button>
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-sm transition-all border"
+              style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}>Cancel</button>
           </div>
         </form>
       </div>
@@ -468,23 +494,46 @@ const EditShowModal = ({ isOpen, onClose, show, onUpdate, isDark }) => {
 };
 
 // Confirm Modal
-const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, color, title, body, confirmLabel, isDark, isLoading }) => {
-  if (!isOpen) return null;
+const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, color, title, body, confirmLabel, isLoading }) => {
+  const [isClosing, setIsClosing] = useState(false);
+  const [showModal, setShowModal] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowModal(true);
+      const timer = setTimeout(() => setIsClosing(false), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => setShowModal(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
+  const handleConfirm = () => {
+    onConfirm();
+  };
+
+  if (!showModal) return null;
+
   return (
-    <div className={`fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 ${isDark ? 'bg-black/80' : 'bg-gray-900/50'}`}>
-      <div className={`rounded-2xl p-8 max-w-md w-full shadow-2xl transform animate-in zoom-in duration-300 ${
-        isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
-      }`}>
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 animate-bounce ${
-          isDark ? `bg-${color}-500/20 border border-gray-800` : `bg-${color}-50 border border-${color}-200`
-        }`}>{icon}</div>
-        <h2 className={`text-xl font-extrabold mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{title}</h2>
-        <p className={`text-sm mb-6 leading-relaxed ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{body}</p>
+    <div className="fixed inset-0 z-[9999] backdrop-blur-md flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.8)", opacity: isClosing ? 0 : 1, transition: "opacity 200ms ease-out" }}>
+      <div className="rounded-2xl p-8 max-w-md w-full shadow-2xl"
+        style={{ background: "var(--card)", border: "1px solid var(--card-border)", opacity: isClosing ? 0 : 1, transform: isClosing ? "scale(0.95)" : "scale(1)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 animate-bounce bg-${color}-500/20 border`}
+          style={{ borderColor: "var(--card-border)" }}>{icon}</div>
+        <h2 className="text-xl font-extrabold mb-2" style={{ color: "var(--foreground)" }}>{title}</h2>
+        <p className="text-sm mb-6 leading-relaxed" style={{ color: "var(--foreground)", opacity: 0.6 }}>{body}</p>
         <div className="flex gap-2.5">
-          <button onClick={onConfirm} disabled={isLoading} className={`flex-1 rounded-xl py-2.5 text-white font-bold text-sm transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed bg-${color}-500 hover:opacity-90`}>{isLoading ? 'Deleting...' : confirmLabel}</button>
-          <button onClick={onClose} className={`flex-1 rounded-xl py-2.5 font-bold text-sm transition-all ${
-            isDark ? 'border border-gray-800 text-foreground/60 hover:bg-card/50' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-          }`}>Cancel</button>
+          <button onClick={handleConfirm} disabled={isLoading} className={`flex-1 rounded-xl py-2.5 text-white font-bold text-sm transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed bg-${color}-500 hover:opacity-90`}>{isLoading ? 'Deleting...' : confirmLabel}</button>
+          <button onClick={handleClose} className="flex-1 rounded-xl py-2.5 font-bold text-sm transition-all border"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}>Cancel</button>
         </div>
       </div>
     </div>
@@ -492,7 +541,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, color, title, body, co
 };
 
 // Show Card Component
-const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark }) => {
+const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
   
@@ -548,9 +597,8 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark 
 
   return (
     <div 
-      className={`group rounded-2xl overflow-hidden flex flex-col shadow-md transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${
-        isDark ? 'bg-card border border-gray-800 hover:border-blue-500/50' : 'bg-white border border-gray-200 hover:border-blue-500/50'
-      }`}
+      className="group rounded-2xl overflow-hidden flex flex-col shadow-md transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl bg-card border hover:border-blue-500/50"
+      style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -587,7 +635,7 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark 
           <div className="flex flex-wrap justify-between items-start gap-3 mb-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h2 className={`text-xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                <h2 className="text-xl font-extrabold" style={{ color: "var(--foreground)" }}>
                   {show.movie?.name || 'Movie Title'}
                 </h2>
                 <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${statusConfig.bgClass}`}>
@@ -605,9 +653,8 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark 
                 <span className="flex items-center gap-1 text-foreground/60">
                   <FaLanguage className="text-green-400 text-[11px]" /> {show.movie?.language || 'Unknown'}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                  isDark ? 'bg-gray-800 border border-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
-                }`}>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-800 border"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}>
                   {show.movie?.genre || 'General'}
                 </span>
               </div>
@@ -618,16 +665,16 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark 
             </div>
           </div>
 
-          <p className={`text-xs mb-4 line-clamp-2 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+          <p className="text-xs mb-4 line-clamp-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
             {show.movie?.description || 'No description available'}
           </p>
 
-          <div className={`py-3 mb-3 border-t border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+          <div className="py-3 mb-3 border-t border-b" style={{ borderColor: "var(--card-border)" }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <MdTheaters className="text-red-500 text-sm" />
-                  <span className={`text-sm font-semibold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                  <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
                     {show.theaterId?.name || 'Theater Name'}
                   </span>
                 </div>
@@ -674,18 +721,16 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark 
                 const catColor = getCategoryColor(category.category);
                 const CategoryIcon = getCategoryIcon(category.category);
                 return (
-                  <div key={category.category} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${
-                    isDark ? `bg-${catColor}-900/30 border border-gray-800 text-${catColor}-400` : `bg-${catColor}-50 border border-${catColor}-200 text-${catColor}-600`
-                  }`}>
+                  <div key={category.category} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-${catColor}-900/30 border text-${catColor}-400`}
+                    style={{ borderColor: "var(--card-border)" }}>
                     <CategoryIcon className="text-[8px]" />
                     {category.category}: ₹{category.pricePerSeat}
                   </div>
                 );
               })}
               {show.seatCategories?.length > 4 && (
-                <div className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                  isDark ? 'bg-gray-800 border border-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
-                }`}>
+                <div className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-800 border"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}>
                   +{show.seatCategories.length - 4}
                 </div>
               )}
@@ -693,22 +738,20 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark 
           </div>
 
           <div className="flex gap-2 mt-auto">
-            <button onClick={() => onViewSeats(show)} className="flex-1 btn-gradient-primary rounded-xl py-2 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
+            <button onClick={() => onViewSeats(show)} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl py-2 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border"
+              style={{ borderColor: "var(--card-border)" }}>
               <FaTicketAlt className="text-[10px]" /> View Seats
             </button>
-            <button onClick={() => onEdit(show)} className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
-              isDark ? 'border border-gray-800 bg-card/50 text-foreground/60 hover:bg-yellow-500/10 hover:border-yellow-500/50' : 'border border-gray-200 bg-gray-50 text-gray-600 hover:bg-yellow-50 hover:border-yellow-500/50'
-            }`}>
+            <button onClick={() => onEdit(show)} className="p-2 rounded-xl transition-all duration-300 hover:scale-105 border bg-card/50 hover:bg-yellow-500/10 hover:border-yellow-500/50"
+              style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}>
               <FaEdit className="text-xs" />
             </button>
-            <button onClick={() => onStatusToggle(show)} className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
-              isDark ? 'border border-gray-800 bg-card/50 hover:bg-green-500/10 hover:border-green-500/50' : 'border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-500/50'
-            }`}>
+            <button onClick={() => onStatusToggle(show)} className="p-2 rounded-xl transition-all duration-300 hover:scale-105 border bg-card/50 hover:bg-green-500/10 hover:border-green-500/50"
+              style={{ borderColor: "var(--card-border)" }}>
               {show.status === 'BOOKING_OPEN' ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
             </button>
-            <button onClick={() => onDelete(show)} className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
-              isDark ? 'border border-gray-800 bg-card/50 text-red-500 hover:bg-red-500/10 hover:border-red-500/50' : 'border border-gray-200 bg-gray-50 text-red-500 hover:bg-red-50 hover:border-red-500/50'
-            }`}>
+            <button onClick={() => onDelete(show)} className="p-2 rounded-xl transition-all duration-300 hover:scale-105 border bg-card/50 text-red-500 hover:bg-red-500/10 hover:border-red-500/50"
+              style={{ borderColor: "var(--card-border)" }}>
               <FaTrash className="text-xs" />
             </button>
           </div>
@@ -719,14 +762,14 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle, isDark 
 };
 
 // Loading Component
-const LoadingSpinner = ({ isDark }) => (
-  <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+const LoadingSpinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background" style={{ background: "var(--background)" }}>
     <div className="text-center">
       <div className="relative w-16 h-16 mx-auto mb-4">
         <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-purple-500 border-b-pink-500 border-l-indigo-500 animate-spin" />
         <div className="absolute inset-2 rounded-full bg-gradient-primary animate-pulse" />
       </div>
-      <p className={`font-semibold text-sm animate-pulse ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>Loading shows...</p>
+      <p className="font-semibold text-sm animate-pulse" style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading shows...</p>
     </div>
   </div>
 );
@@ -735,9 +778,7 @@ const LoadingSpinner = ({ isDark }) => (
 export default function ShowsManagement() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedShow, setSelectedShow] = useState(null);
@@ -856,38 +897,37 @@ export default function ShowsManagement() {
     setStatusFilter("ALL"); 
   }, []);
 
-  if (isLoading) return <LoadingSpinner isDark={isDark} />;
+  if (isLoading) return <LoadingSpinner />;
 
   if (error) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-4 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
-        <div className={`rounded-2xl max-w-md w-full text-center p-8 shadow-xl ${
-          isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
-        }`}>
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
-            <FaTimesCircle className="text-red-500 text-4xl" />
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background" style={{ background: "var(--background)" }}>
+        <div className="rounded-2xl max-w-md w-full text-center p-8 shadow-xl bg-card border"
+          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-background/50"
+            style={{ background: "rgba(var(--background), 0.5)" }}>
+            <FaFilm className="text-3xl" style={{ color: "var(--foreground)", opacity: 0.2 }} />
           </div>
-          <h3 className={`text-lg font-extrabold mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Failed to Load</h3>
-          <p className={`text-sm mb-6 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{error.message}</p>
-          <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl btn-gradient-primary text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all">Retry</button>
+          <h3 className="text-lg font-extrabold mb-2" style={{ color: "var(--foreground)" }}>Failed to Load</h3>
+          <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>{error.message}</p>
+          <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all border"
+            style={{ borderColor: "var(--card-border)" }}>Retry</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
-      <Toaster position="top-right" toastOptions={{ 
-        className: `!rounded-xl !text-sm !font-semibold !shadow-xl ${
-          isDark ? '!bg-card !text-foreground !border-gray-800' : '!bg-white !text-gray-900 !border-gray-200'
-        }`, 
-        duration: 3000 
+    <div className="min-h-screen transition-colors duration-300 bg-background" style={{ background: "var(--background)" }}>
+      <Toaster position="top-right" toastOptions={{
+        className: "!rounded-xl !text-sm !font-semibold !shadow-xl !bg-card !text-foreground !border",
+        style: { borderColor: "var(--card-border)" },
+        duration: 3000
       }} />
       
       {/* Header */}
-      <div className={`sticky top-0 z-[100] shadow-lg transition-all duration-300 ${
-        isDark ? 'bg-card/90 backdrop-blur-md border-b border-gray-800' : 'bg-white/90 backdrop-blur-md border-b border-gray-200'
-      }`}>
+      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl"
+        style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
         <div className="max-w-7xl mx-auto px-8">
           <div className="flex items-center justify-between py-4 flex-wrap gap-3">
             <div className="flex items-center gap-4">
@@ -898,18 +938,31 @@ export default function ShowsManagement() {
                 </div>
               </div>
               <div>
-                <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-foreground' : 'text-gray-900'}`}>Shows Management</h1>
-                <p className={`text-xs font-medium ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>Manage movie screenings & seat availability</p>
+                <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
+                  Shows Management
+                </h1>
+                <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  Manage movie screenings & seat availability
+                </p>
               </div>
             </div>
+
             <div className="flex items-center gap-3">
-              <button onClick={handleRefresh} disabled={isRefreshing} className={`p-2 rounded-xl transition-all hover:scale-105 ${
-                isDark ? 'bg-card border border-gray-800 text-foreground/60 hover:text-blue-400' : 'bg-gray-100 border border-gray-200 text-gray-600 hover:text-blue-600'
-              }`}>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-2 rounded-xl transition-all duration-300 hover:scale-105 border"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              >
                 <FaSpinner className={`text-sm ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
-              <button onClick={() => router.push('/admin/shows/create')} className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gradient-primary text-white font-bold text-sm shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
-                <FaPlus className="text-xs" /> Create New Show
+              
+              <button
+                onClick={() => router.push('/admin/shows/create')}
+                className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border"
+                style={{ borderColor: "var(--card-border)" }}
+              >
+                <FaPlus className="text-[11px]" /> Create New Show
               </button>
             </div>
           </div>
@@ -919,58 +972,55 @@ export default function ShowsManagement() {
       <div className="max-w-7xl mx-auto p-8">
         {/* Stats Cards with Animated Counter */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <StatsCard label="Total Shows" value={stats.total} icon={FaFilm} color="purple" isDark={isDark} />
-          <StatsCard label="Booking Open" value={stats.bookingOpen} icon={FaCheckCircle} color="green" isDark={isDark} />
-          <StatsCard label="Booking Closed" value={stats.bookingClosed} icon={FaEyeSlash} color="yellow" isDark={isDark} />
-          <StatsCard label="Cancelled" value={stats.cancelled} icon={FaTimesCircle} color="red" isDark={isDark} />
-          <StatsCard label="Total Seats" value={stats.totalSeats} icon={FaChair} color="blue" isDark={isDark} />
+          <StatsCard label="Total Shows" value={stats.total} icon={FaFilm} color="purple" />
+          <StatsCard label="Booking Open" value={stats.bookingOpen} icon={FaCheckCircle} color="green" />
+          <StatsCard label="Booking Closed" value={stats.bookingClosed} icon={FaEyeSlash} color="yellow" />
+          <StatsCard label="Cancelled" value={stats.cancelled} icon={FaTimesCircle} color="red" />
+          <StatsCard label="Total Seats" value={stats.totalSeats} icon={FaChair} color="blue" />
         </div>
         
         {/* Search and Filter */}
-        <div className={`rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300 ${
-          isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
-        }`}>
+        <div className="rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300 bg-card border"
+          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <div className="flex-1 min-w-[220px] relative">
-            <FaSearch className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${isDark ? 'text-foreground/40' : 'text-gray-400'}`} />
-            <input type="text" placeholder="Search by movie or theater..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-              isDark ? 'bg-background border border-gray-800 text-foreground placeholder:text-foreground/40' : 'bg-white border border-gray-200 text-gray-900 placeholder-gray-400'
-            }`} />
+            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: "var(--foreground)", opacity: 0.4 }} />
+            <input type="text" placeholder="Search by movie or theater..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
+              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} />
           </div>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-white border border-gray-200 text-gray-900'
-          }`}>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border"
+            style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
             <option value="ALL">All Status</option>
             <option value="BOOKING_OPEN">Booking Open</option>
             <option value="BOOKING_CLOSED">Booking Closed</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
           {hasFilters && <button onClick={clearFilters} className="px-3.5 py-2.5 rounded-xl border border-red-500/30 bg-transparent text-red-500 font-bold text-xs flex items-center gap-1.5 hover:bg-red-500/10 transition-all hover:scale-105"><FaTimes className="text-[10px]" /> Clear</button>}
-          <div className={`ml-auto text-xs font-semibold ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>{filtered.length} show{filtered.length !== 1 ? "s" : ""}</div>
+          <div className="ml-auto text-xs font-semibold" style={{ color: "var(--foreground)", opacity: 0.4 }}>{filtered.length} show{filtered.length !== 1 ? "s" : ""}</div>
         </div>
         
         {/* Shows Grid */}
         {filtered.length === 0 ? (
-          <div className={`rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300 ${
-            isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
-          }`}>
-            <div className={`w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-background/50' : 'bg-gray-50'}`}>
-              <FaFilm className={`text-3xl ${isDark ? 'text-foreground/20' : 'text-gray-300'}`} />
+          <div className="rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300 bg-card border"
+            style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-background/50"
+              style={{ background: "rgba(var(--background), 0.5)" }}>
+              <FaFilm className="text-3xl" style={{ color: "var(--foreground)", opacity: 0.2 }} />
             </div>
-            <h3 className={`text-lg font-extrabold mb-2 ${isDark ? 'text-foreground' : 'text-gray-900'}`}>No shows found</h3>
-            <p className={`text-sm mb-6 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>{hasFilters ? "Try adjusting your filters" : "Create your first show to get started"}</p>
-            {!hasFilters && <button onClick={() => router.push('/admin/shows/create')} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl btn-gradient-primary text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"><FaPlus className="text-[11px]" /> Create Show</button>}
+            <h3 className="text-lg font-extrabold mb-2" style={{ color: "var(--foreground)" }}>No shows found</h3>
+            <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>{hasFilters ? "Try adjusting your filters" : "Create your first show to get started"}</p>
+            {!hasFilters && <button onClick={() => router.push('/admin/shows/create')} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all hover:-translate-y-0.5 border"
+              style={{ borderColor: "var(--card-border)" }}><FaPlus className="text-[11px]" /> Create Show</button>}
           </div>
         ) : (
           <div className="space-y-5">
             {filtered.map((show, idx) => (
               <div key={show._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
-                <ShowCard 
+                <ShowCard
                   show={show}
                   onViewSeats={(s) => { setSelectedShow(s); setIsViewModalOpen(true); }}
                   onEdit={handleEdit}
                   onDelete={handleDeleteClick}
                   onStatusToggle={handleStatusToggle}
-                  isDark={isDark}
                 />
               </div>
             ))}
@@ -978,9 +1028,9 @@ export default function ShowsManagement() {
         )}
       </div>
 
-      <ViewSeatsModal isOpen={isViewModalOpen} onClose={() => { setIsViewModalOpen(false); setSelectedShow(null); }} show={selectedShow} isDark={isDark} />
-      <EditShowModal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); setEditingShow(null); }} show={editingShow} onUpdate={handleUpdateShow} isDark={isDark} />
-      <ConfirmModal isOpen={isDeleteModalOpen} onClose={() => { setIsDeleteModalOpen(false); setDeletingShow(null); }} onConfirm={handleDeleteConfirm} icon={<FaTrash className="text-red-500 text-xl" />} color="red" title="Delete Show" body={<>Delete <strong>{deletingShow?.movie?.name}</strong>? This action cannot be undone.</>} confirmLabel="Delete" isDark={isDark} isLoading={deleteShowMutation.isPending} />
+      <ViewSeatsModal isOpen={isViewModalOpen} onClose={() => { setIsViewModalOpen(false); setSelectedShow(null); }} show={selectedShow} />
+      <EditShowModal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); setEditingShow(null); }} show={editingShow} onUpdate={handleUpdateShow} />
+      <ConfirmModal isOpen={isDeleteModalOpen} onClose={() => { setIsDeleteModalOpen(false); setDeletingShow(null); }} onConfirm={handleDeleteConfirm} icon={<FaTrash className="text-red-500 text-xl" />} color="red" title="Delete Show" body={<>Delete <strong>{deletingShow?.movie?.name}</strong>? This action cannot be undone.</>} confirmLabel="Delete" isLoading={deleteShowMutation.isPending} />
     </div>
   );
 }

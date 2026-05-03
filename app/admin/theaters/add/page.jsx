@@ -52,13 +52,14 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, totalColumns }) => {
   const cfg = SEAT_TYPES[row.category] || SEAT_TYPES.NORMAL;
 
   return (
-    <div className="grid grid-cols-[60px_1fr_80px_80px_80px_42px] gap-2 bg-background border border-border rounded-xl p-2.5 items-center hover:border-blue-500/50 transition-colors animate-in fade-in duration-300" style={{ animationDelay: `${index * 30}ms` }}>
+    <div className="grid grid-cols-[60px_1fr_80px_80px_80px_42px] gap-2 bg-background border rounded-xl p-2.5 items-center transition-colors animate-in fade-in duration-300" style={{ animationDelay: `${index * 30}ms`, borderColor: "var(--card-border)" }}>
       <input
         type="text"
         value={row.rowName}
         onChange={e => onUpdate(index, { ...row, rowName: e.target.value.toUpperCase() })}
         maxLength={2}
-        className="w-full px-2 py-2 bg-background border border-border rounded-lg text-center font-extrabold text-base focus:outline-none focus:border-blue-500 transition-colors"
+        className="w-full px-2 py-2 bg-background border rounded-lg text-center font-extrabold text-base focus:outline-none transition-colors"
+        style={{ borderColor: "var(--card-border)" }}
         placeholder="A"
       />
       <div className="relative">
@@ -68,7 +69,8 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, totalColumns }) => {
             const cat = e.target.value;
             onUpdate(index, { ...row, category: cat, endSeat: cat === "VIP" ? Math.min(10, totalColumns) : totalColumns, priceMultiplier: { NORMAL: 1, EXECUTIVE: 1.5, PREMIUM: 2, VIP: 3 }[cat] });
           }}
-          className="w-full px-3 py-2 pr-8 bg-background border border-border rounded-lg text-sm font-semibold appearance-none cursor-pointer focus:outline-none focus:border-blue-500 transition-colors"
+          className="w-full px-3 py-2 pr-8 bg-background border rounded-lg text-sm font-semibold appearance-none cursor-pointer focus:outline-none transition-colors"
+          style={{ borderColor: "var(--card-border)" }}
         >
           {Object.entries(SEAT_TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
@@ -80,7 +82,8 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, totalColumns }) => {
         value={row.startSeat} 
         min={1}
         onChange={e => onUpdate(index, { ...row, startSeat: parseInt(e.target.value) })}
-        className="px-2 py-2 bg-background border border-border rounded-lg text-center text-sm focus:outline-none focus:border-blue-500 transition-colors" 
+        className="px-2 py-2 bg-background border rounded-lg text-center text-sm focus:outline-none focus:border-[#3b82f6] transition-colors"
+        style={{ borderColor: "var(--card-border)" }}
       />
       <input 
         type="number" 
@@ -93,14 +96,16 @@ const SeatRowConfig = ({ row, index, onUpdate, onDelete, totalColumns }) => {
           if (v < row.startSeat) v = row.startSeat;
           onUpdate(index, { ...row, endSeat: v });
         }}
-        className="px-2 py-2 bg-background border border-border rounded-lg text-center text-sm focus:outline-none focus:border-blue-500 transition-colors" 
+        className="px-2 py-2 bg-background border rounded-lg text-center text-sm focus:outline-none focus:border-[#3b82f6] transition-colors"
+        style={{ borderColor: "var(--card-border)" }}
       />
       <input 
         type="number" 
         step="0.5" 
         value={row.priceMultiplier}
         onChange={e => onUpdate(index, { ...row, priceMultiplier: parseFloat(e.target.value) })}
-        className="px-2 py-2 bg-background border border-border rounded-lg text-center text-sm focus:outline-none focus:border-blue-500 transition-colors" 
+        className="px-2 py-2 bg-background border rounded-lg text-center text-sm focus:outline-none focus:border-[#3b82f6] transition-colors"
+        style={{ borderColor: "var(--card-border)" }}
       />
       <button onClick={() => onDelete(index)} className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20 transition-colors">
         <FaTrash className="text-[11px]" />
@@ -114,14 +119,15 @@ const ScreenCard = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, 
   const totalSeats = screen.seatRows.reduce((s, r) => s + (r.endSeat - r.startSeat + 1), 0);
 
   return (
-    <div className="border border-border rounded-2xl overflow-hidden animate-in fade-in duration-300" style={{ animationDelay: `${index * 80}ms` }}>
+    <div className="bg-card border rounded-2xl overflow-hidden animate-in fade-in duration-300" style={{ animationDelay: `${index * 80}ms`, borderColor: "var(--card-border)", background: "var(--card)" }}>
       <div
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${open ? 'bg-blue-500/5 border-b border-border' : ''}`}
-      >
+        className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${open ? 'border-b' : ''}`}
+        style={open ? { background: "rgba(59,130,246,0.05)", borderColor: "var(--card-border)" } : {}}>
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
-            <MdScreenShare className="text-white text-lg" />
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
+            style={{ background: "var(--gradient-primary)", boxShadow: "0 10px 15px -3px rgba(99,102,241,0.2)" }}>
+            <MdScreenShare className="text-lg" style={{ color: "white" }} />
           </div>
           <div>
             <div className="font-extrabold text-foreground">{screen.name}</div>
@@ -134,7 +140,7 @@ const ScreenCard = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, 
           <button onClick={e => { e.stopPropagation(); onRemove(index); }} className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-xs font-bold hover:bg-red-500/20 transition-colors">
             <FaTrash className="inline mr-1.5 text-[10px]" /> Remove
           </button>
-          <div className={`w-7 h-7 rounded-lg bg-border flex items-center justify-center text-foreground/45 text-xs transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
+          <div className={`w-7 h-7 rounded-lg bg-border/50 flex items-center justify-center text-foreground/45 text-xs transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
             <FaChevronDown />
           </div>
         </div>
@@ -149,7 +155,8 @@ const ScreenCard = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, 
                 value={screen.name} 
                 onChange={e => onUpdate(index, { name: e.target.value })} 
                 placeholder="e.g. Screen 1" 
-                className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-500 transition-colors" 
+                className="w-full px-4 py-3 bg-background border rounded-xl text-sm font-semibold focus:outline-none focus:border-[#3b82f6] transition-colors" 
+                style={{ borderColor: "var(--card-border)" }}
               />
             </div>
             <div>
@@ -169,7 +176,8 @@ const ScreenCard = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, 
                     })) 
                   });
                 }} 
-                className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-500 transition-colors" 
+                className="w-full px-4 py-3 bg-background border rounded-xl text-sm font-semibold focus:outline-none focus:border-[#3b82f6] transition-colors" 
+                style={{ borderColor: "var(--card-border)" }}
               />
             </div>
           </div>
@@ -180,7 +188,7 @@ const ScreenCard = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, 
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-[60px_1fr_80px_80px_80px_42px] gap-2 pb-2 mb-2 border-b border-border">
+          <div className="grid grid-cols-[60px_1fr_80px_80px_80px_42px] gap-2 pb-2 mb-2 border-b" style={{ borderColor: "var(--card-border)" }}>
             {["Row", "Category", "Start", "End", "Price ×", ""].map((h, i) => (
               <div key={i} className="text-[10px] font-bold text-foreground/30 uppercase tracking-wider text-center">{h}</div>
             ))}
@@ -199,7 +207,7 @@ const ScreenCard = ({ screen, index, onUpdate, onRemove, onAddRow, onRemoveRow, 
           </div>
           <button 
             onClick={() => onAddRow(index)} 
-            className="mt-3 w-full py-2.5 rounded-xl border border-dashed border-border bg-transparent text-foreground/50 font-bold text-sm flex items-center justify-center gap-2 hover:border-blue-500 hover:text-blue-500 hover:opacity-100 transition-all"
+            className="mt-3 w-full py-2.5 rounded-xl border border-dashed border-[var(--card-border)] bg-transparent text-foreground/50 font-bold text-sm flex items-center justify-center gap-2 hover:opacity-100 transition-all"
           >
             <FaPlus className="text-[10px]" /> Add Row
           </button>
@@ -217,13 +225,15 @@ const StepIndicator = ({ current }) => (
       return (
         <React.Fragment key={s.id}>
           <div className="flex flex-col items-center gap-2 z-[1]">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${done ? 'bg-green-500 border-2 border-green-500 shadow-lg shadow-green-500/30' : active ? 'bg-blue-500 border-2 border-blue-500 shadow-lg shadow-blue-500/30' : 'bg-background border-2 border-border'}`}>
-              {done ? <FaCheckCircle className="text-white text-base" /> : <s.icon className={`text-base ${active ? 'text-white' : 'text-foreground/25'}`} />}
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${done ? 'bg-green-500 border-2 border-green-500 shadow-lg shadow-green-500/30' : active ? 'bg-blue-500 border-2 border-blue-500 shadow-lg shadow-blue-500/30' : 'bg-background border-2'}`}
+              style={!(done || active) ? { borderColor: "var(--card-border)" } : {}}>
+              {done ? <FaCheckCircle className="text-base" style={{ color: "white" }} /> : <s.icon className="text-base" style={{ color: active ? "white" : "var(--foreground)", opacity: active ? 1 : 0.25 }} />}
             </div>
-            <span className={`text-[11px] font-bold uppercase tracking-wide whitespace-nowrap ${active || done ? 'text-foreground' : 'text-foreground/30'}`}>{s.label}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wide whitespace-nowrap" style={{ color: "var(--foreground)", opacity: active || done ? 1 : 0.3 }}>{s.label}</span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className={`h-0.5 w-20 mb-5 transition-all duration-500 ${current > s.id ? 'bg-gradient-to-r from-green-500 to-blue-500' : 'bg-border'}`} />
+            <div className={`h-0.5 w-20 mb-5 transition-all duration-500 ${current > s.id ? 'bg-gradient-to-r from-green-500 to-blue-500' : ''}`}
+              style={!(current > s.id) ? { background: "var(--card-border)" } : {}} />
           )}
         </React.Fragment>
       );
@@ -409,27 +419,29 @@ export default function AddTheaterPage() {
 
   return (
     <div className="min-h-screen bg-background font-sans">
-      <Toaster position="top-right" toastOptions={{ className: "!bg-card !text-foreground !border-border !rounded-xl !text-sm !font-semibold" }} />
+      <Toaster position="top-right" toastOptions={{ className: "!bg-card !text-foreground !rounded-xl !text-sm !font-semibold", style: { border: "1px solid var(--card-border)" } }} />
       
-      {/* Header with dark mode support */}
-      <div className="sticky top-0 z-[100] bg-blue border-b border-border shadow-sm dark:bg-gray-900 dark:border-gray-800">
+      {/* Header */}
+      <div className="relative border-b shadow-sm rounded-xl"
+        style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
         <div className="max-w-7xl mx-auto px-8">
           <div className="flex items-center justify-between py-4 flex-wrap gap-3">
             <div className="flex items-center gap-3.5">
-              <button 
-                onClick={() => router.back()} 
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-transparent text-foreground font-semibold text-sm hover:bg-border/30 transition-colors"
-              >
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border bg-transparent font-semibold text-sm hover:bg-border/30 transition-colors"
+                style={{ color: "var(--foreground)", borderColor: "var(--card-border)" }}>
                 <FaArrowLeft className="text-xs" /> Back
               </button>
-              <div className="w-px h-8 bg-border" />
+              <div className="w-px h-8 bg-border/50" />
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-900 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <MdTheaters className="text-white text-lg" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+                  style={{ background: "var(--gradient-primary)" }}>
+                  <MdTheaters className="text-lg" style={{ color: "white" }} />
                 </div>
                 <div>
-                  <div className="text-lg font-black text-foreground tracking-tight dark:text-white">Add New Theater</div>
-                  <div className="text-xs text-foreground/40 font-medium dark:text-black">Step {step} of 3 — {STEPS[step - 1].label}</div>
+                  <div className="text-lg font-black tracking-tight" style={{ color: "var(--foreground)" }}>Add New Theater</div>
+                  <div className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.4 }}>Step {step} of 3 — {STEPS[step - 1].label}</div>
                 </div>
               </div>
             </div>
@@ -439,7 +451,7 @@ export default function AddTheaterPage() {
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-extrabold text-sm shadow-lg shadow-green-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {mutation.isPending ? 
-                <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Creating…</> : 
+                <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.4)", borderTopColor: "white" }} /> Creating…</> : 
                 <><FaCheckCircle className="text-xs" /> Create Theater</>
               }
             </button>
@@ -453,11 +465,11 @@ export default function AddTheaterPage() {
 
         {/* Step 1: Basic Info */}
         {step === 1 && (
-          <div className="bg-card border border-border rounded-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="px-7 py-6 border-b border-border bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+          <div className="bg-card border rounded-2xl overflow-hidden animate-in zoom-in duration-300" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+            <div className="px-7 py-6 border-b" style={{ background: "linear-gradient(to right, rgba(59,130,246,0.05), rgba(168,85,247,0.05))", borderColor: "var(--card-border)" }}>
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-                  <FaBuilding className="text-blue-500 text-lg" />
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(59,130,246,0.2)", border: "1px solid rgba(59,130,246,0.3)" }}>
+                  <FaBuilding className="text-lg" style={{ color: "#3b82f6" }} />
                 </div>
                 <div>
                   <div className="text-lg font-extrabold text-foreground">Theater Information</div>
@@ -476,7 +488,8 @@ export default function AddTheaterPage() {
                     name="ownerId" 
                     value={basicInfo.ownerId} 
                     onChange={handleBasicChange} 
-                    className="w-full pl-10 pr-10 py-3 bg-background border border-border rounded-xl text-sm font-semibold appearance-none cursor-pointer focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full pl-10 pr-10 py-3 bg-background border rounded-xl text-sm font-semibold appearance-none cursor-pointer focus:outline-none focus:border-[#3b82f6] transition-colors"
+                    style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
                   >
                     <option value="">— Select Theater Owner —</option>
                     {isLoadingUsers ? 
@@ -509,7 +522,8 @@ export default function AddTheaterPage() {
                         onChange={handleBasicChange} 
                         placeholder={f.placeholder} 
                         maxLength={f.maxLength}
-                        className={`w-full ${f.icon ? 'pl-10' : 'px-4'} py-3 bg-background border border-border rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-500 transition-colors`} 
+                        className={`w-full ${f.icon ? 'pl-10' : 'px-4'} py-3 bg-background border rounded-xl text-sm font-semibold focus:outline-none focus:border-[#3b82f6] transition-colors`} 
+                        style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
                       />
                     </div>
                     {f.name === "contactNumber" && (
@@ -529,7 +543,8 @@ export default function AddTheaterPage() {
                   {AMENITIES.map(a => (
                     <label 
                       key={a.key} 
-                      className={`relative flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${basicInfo[a.key] ? 'border-blue-500 bg-blue-500/10 shadow-sm shadow-blue-500/20' : 'border-border bg-background hover:border-blue-500/50'}`}
+                      className="relative flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all"
+                      style={basicInfo[a.key] ? { borderColor: "#3b82f6", background: "rgba(59,130,246,0.1)", boxShadow: "0 1px 3px rgba(59,130,246,0.2)" } : { borderColor: "var(--card-border)", background: "var(--card)" }}
                     >
                       <input 
                         type="checkbox" 
@@ -538,16 +553,17 @@ export default function AddTheaterPage() {
                         onChange={handleBasicChange} 
                         className="absolute opacity-0 pointer-events-none" 
                       />
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${basicInfo[a.key] ? 'bg-blue-500/20 border-2 border-blue-500/50' : 'bg-border border-2 border-transparent'}`}>
-                        <a.icon className={`text-sm ${basicInfo[a.key] ? 'text-blue-500' : 'text-foreground/35'}`} />
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-all"
+                        style={basicInfo[a.key] ? { background: "rgba(59,130,246,0.2)", border: "2px solid rgba(59,130,246,0.5)" } : { background: "var(--card-border)", border: "2px solid transparent" }}>
+                        <a.icon className="text-sm" style={{ color: basicInfo[a.key] ? "#3b82f6" : "var(--foreground)", opacity: basicInfo[a.key] ? 1 : 0.35 }} />
                       </div>
                       <div className="flex-1">
-                        <div className={`text-sm font-bold ${basicInfo[a.key] ? 'text-blue-500' : 'text-foreground/70'}`}>{a.name}</div>
+                        <div className="text-sm font-bold" style={{ color: basicInfo[a.key] ? "#3b82f6" : "var(--foreground)", opacity: basicInfo[a.key] ? 1 : 0.7 }}>{a.name}</div>
                         <div className="text-[11px] text-foreground/35 mt-0.5">{a.desc}</div>
                       </div>
                       {basicInfo[a.key] && (
-                        <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                          <FaCheckCircle className="text-white text-[10px]" />
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#3b82f6" }}>
+                          <FaCheckCircle className="text-[10px]" style={{ color: "white" }} />
                         </div>
                       )}
                     </label>
@@ -555,7 +571,7 @@ export default function AddTheaterPage() {
                 </div>
               </div>
             </div>
-            <div className="px-7 py-5 border-t border-border flex justify-end">
+            <div className="px-7 py-5 border-t flex justify-end" style={{ borderColor: "var(--card-border)" }}>
               <button 
                 onClick={() => { if (validateStep1()) setStep(2); }} 
                 className="flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-extrabold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all"
@@ -568,12 +584,12 @@ export default function AddTheaterPage() {
 
         {/* Step 2: Screens */}
         {step === 2 && (
-          <div className="bg-card border border-border rounded-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="px-7 py-6 border-b border-border bg-gradient-to-r from-purple-500/5 to-blue-500/5">
+          <div className="bg-card border rounded-2xl overflow-hidden animate-in zoom-in duration-300" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+            <div className="px-7 py-6 border-b" style={{ background: "linear-gradient(to right, rgba(168,85,247,0.05), rgba(59,130,246,0.05))", borderColor: "var(--card-border)" }}>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-                    <MdScreenShare className="text-purple-500 text-xl" />
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(168,85,247,0.2)", border: "1px solid rgba(168,85,247,0.3)" }}>
+                    <MdScreenShare className="text-xl" style={{ color: "#a855f7" }} />
                   </div>
                   <div>
                     <div className="text-lg font-extrabold text-foreground">Screens & Seat Layout</div>
@@ -601,13 +617,15 @@ export default function AddTheaterPage() {
                   onAddRow={addRowToScreen} 
                   onRemoveRow={removeRowFromScreen} 
                   onUpdateRow={updateSeatRow}
+                  style={{ background: "var(--card)" }}
                 />
               ))}
             </div>
-            <div className="px-7 py-5 border-t border-border flex justify-between">
+            <div className="px-7 py-5 border-t flex justify-between" style={{ borderColor: "var(--card-border)" }}>
               <button 
                 onClick={() => setStep(1)} 
-                className="px-6 py-2.5 rounded-xl border-2 border-border bg-transparent text-foreground font-bold text-sm hover:bg-border/30 transition-colors"
+                className="px-6 py-2.5 rounded-xl border-2 bg-transparent text-foreground font-bold text-sm hover:bg-border/30 transition-colors"
+                style={{ borderColor: "var(--card-border)" }}
               >
                 ← Back
               </button>
@@ -623,11 +641,11 @@ export default function AddTheaterPage() {
 
         {/* Step 3: Review */}
         {step === 3 && (
-          <div className="bg-card border border-border rounded-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="px-7 py-6 border-b border-border bg-gradient-to-r from-green-500/5 to-blue-500/5">
+          <div className="bg-card border rounded-2xl overflow-hidden animate-in zoom-in duration-300" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+            <div className="px-7 py-6 border-b" style={{ background: "linear-gradient(to right, rgba(34,197,94,0.05), rgba(59,130,246,0.05))", borderColor: "var(--card-border)" }}>
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-                  <FaCheckCircle className="text-green-500 text-xl" />
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(34,197,94,0.2)", border: "1px solid rgba(34,197,94,0.3)" }}>
+                  <FaCheckCircle className="text-xl" style={{ color: "#22c55e" }} />
                 </div>
                 <div>
                   <div className="text-lg font-extrabold text-foreground">Review & Submit</div>
@@ -639,33 +657,33 @@ export default function AddTheaterPage() {
               {/* Theater Details Summary */}
               <div className="mb-5">
                 <div className="text-[10px] font-bold text-foreground/35 uppercase tracking-wider mb-3">Theater Details</div>
-                <div className="bg-background border border-border rounded-xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-blue-500/5 to-purple-500/5 flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
-                      <FaBuilding className="text-white text-lg" />
+                <div className="bg-background border rounded-xl overflow-hidden" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+                  <div className="px-5 py-4 border-b flex items-center gap-3.5" style={{ background: "linear-gradient(to right, rgba(59,130,246,0.05), rgba(168,85,247,0.05))", borderColor: "var(--card-border)" }}>
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--gradient-primary)", boxShadow: "0 10px 15px -3px rgba(99,102,241,0.2)" }}>
+                      <FaBuilding className="text-lg" style={{ color: "white" }} />
                     </div>
                     <div>
                       <div className="text-lg font-black text-foreground">{basicInfo.name || "—"}</div>
                       <div className="text-xs text-foreground/45 mt-0.5">{basicInfo.location}{basicInfo.city ? `, ${basicInfo.city}` : ""}</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 divide-x divide-border">
+                  <div className="grid grid-cols-2 divide-x" style={{ borderColor: "var(--card-border)" }}>
                     {[
                       { label: "Owner", value: owners.find(o => o._id === basicInfo.ownerId)?.name || "—" },
                       { label: "Contact", value: basicInfo.contactNumber || "—" },
                       { label: "State", value: basicInfo.state || "—" },
                       { label: "Pincode", value: basicInfo.pincode || "—" },
                     ].map((item, i) => (
-                      <div key={i} className={`px-5 py-3 ${i < 2 ? 'border-b border-border' : ''}`}>
+                      <div key={i} className={`px-5 py-3 ${i < 2 ? 'border-b' : ''}`} style={{ borderColor: "var(--card-border)" }}>
                         <div className="text-[10px] font-bold text-foreground/30 uppercase tracking-wider mb-1">{item.label}</div>
                         <div className="text-sm font-bold text-foreground">{item.value}</div>
                       </div>
                     ))}
                   </div>
                   {AMENITIES.some(a => basicInfo[a.key]) && (
-                    <div className="px-5 py-3 border-t border-border flex flex-wrap gap-2">
+                    <div className="px-5 py-3 border-t flex flex-wrap gap-2" style={{ borderColor: "var(--card-border)" }}>
                       {AMENITIES.filter(a => basicInfo[a.key]).map(a => (
-                        <div key={a.key} className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-500 text-[11px] font-extrabold flex items-center gap-1.5">
+                        <div key={a.key} className="px-3 py-1 rounded-full text-[11px] font-extrabold flex items-center gap-1.5" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6" }}>
                           <a.icon className="text-[9px]" /> {a.name}
                         </div>
                       ))}
@@ -685,9 +703,9 @@ export default function AddTheaterPage() {
                       return a; 
                     }, {});
                     return (
-                      <div key={i} className="bg-background border border-border rounded-xl p-4 flex items-center gap-4 flex-wrap">
-                        <div className="w-9 h-9 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-                          <MdScreenShare className="text-blue-500 text-base" />
+                      <div key={i} className="bg-background border rounded-xl p-4 flex items-center gap-4 flex-wrap" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(59,130,246,0.2)", border: "1px solid rgba(59,130,246,0.3)" }}>
+                          <MdScreenShare className="text-base" style={{ color: "#3b82f6" }} />
                         </div>
                         <div className="flex-1">
                           <div className="font-bold text-foreground">{s.name}</div>
@@ -695,11 +713,13 @@ export default function AddTheaterPage() {
                             {s.seatRows.length} rows · {s.totalColumns} cols/row · <strong className="text-foreground/70">{seats} total seats</strong>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1.5">  
                           {Object.entries(catCounts).map(([cat, n]) => {
                             const cfg = SEAT_TYPES[cat] || SEAT_TYPES.NORMAL;
+                            const colorMap = { blue: "#3b82f6", emerald: "#10b981", amber: "#f59e0b", rose: "#f43f5e" };
+                            const c = colorMap[cfg.color] || "#6b7280";
                             return (
-                              <div key={cat} className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-${cfg.color}-500/10 border border-${cfg.color}-500/30 text-${cfg.color}-400`}>
+                              <div key={cat} className="px-2.5 py-1 rounded-full text-[10px] font-extrabold" style={{ background: `${c}1a`, border: `1px solid ${c}4d`, color: c }}>
                                 {cfg.label} ×{n}
                               </div>
                             );
@@ -711,10 +731,11 @@ export default function AddTheaterPage() {
                 </div>
               </div>
             </div>
-            <div className="px-7 py-5 border-t border-border flex justify-between items-center">
+            <div className="px-7 py-5 border-t flex justify-between items-center" style={{ borderColor: "var(--card-border)" }}>
               <button 
                 onClick={() => setStep(2)} 
-                className="px-6 py-2.5 rounded-xl border-2 border-border bg-transparent text-foreground font-bold text-sm hover:bg-border/30 transition-colors"
+                className="px-6 py-2.5 rounded-xl border-2 bg-transparent text-foreground font-bold text-sm hover:bg-border/30 transition-colors"
+                style={{ borderColor: "var(--card-border)" }}
               >
                 ← Back
               </button>
@@ -724,7 +745,7 @@ export default function AddTheaterPage() {
                 className="flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-extrabold text-sm shadow-lg shadow-green-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {mutation.isPending ? 
-                  <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Creating…</> : 
+                  <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.4)", borderTopColor: "white" }} /> Creating…</> : 
                   <><FaCheckCircle className="text-xs" /> Create Theater</>
                 }
               </button>

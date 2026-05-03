@@ -6,7 +6,6 @@ import { getAllTheatersAdmin } from "@/app/services/adminCommunication";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from 'next/navigation';
 import { toast, Toaster } from 'react-hot-toast';
-import useTheme from "@/app/hooks/useTheme";
 import { 
   FaFilm, FaCalendar, FaClock, FaTicketAlt, 
   FaStar, FaChair, FaSave, FaTimes,
@@ -36,7 +35,7 @@ const DEFAULT_SEAT_CATEGORIES = [
 ];
 
 // Step Indicator Component
-const StepIndicator = ({ step, label, icon: Icon, isActive, isCompleted, onClick, isDark }) => (
+const StepIndicator = ({ step, label, icon: Icon, isActive, isCompleted, onClick }) => (
   <button
     type="button"
     onClick={onClick}
@@ -45,15 +44,14 @@ const StepIndicator = ({ step, label, icon: Icon, isActive, isCompleted, onClick
     <div className="flex flex-col items-center gap-2">
       <div className={`
         relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500
-        ${isActive 
-          ? 'bg-gradient-primary shadow-lg shadow-blue-500/25 scale-110' 
+        ${isActive
+          ? 'bg-gradient-primary shadow-lg shadow-blue-500/25 scale-110'
           : isCompleted
             ? 'bg-green-500/20 border border-green-500/50 text-green-400'
-            : isDark 
-              ? 'bg-card border border-gray-800 text-foreground/40' 
-              : 'bg-gray-100 border border-gray-200 text-gray-400'
+            : 'bg-card border text-foreground/40'
         }
-      `}>
+      `}
+        style={!isActive && !isCompleted ? { background: "var(--card)", borderColor: "var(--card-border)" } : {}}>
         {isCompleted ? (
           <FaCheckCircle className="text-green-400 text-xl animate-in zoom-in duration-300" />
         ) : (
@@ -62,103 +60,98 @@ const StepIndicator = ({ step, label, icon: Icon, isActive, isCompleted, onClick
         {isActive && <div className="absolute inset-0 rounded-2xl bg-gradient-primary animate-pulse opacity-50 -z-10" />}
       </div>
       <div className="text-center">
-        <div className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 ${
-          isActive ? 'text-blue-500' : isDark ? 'text-foreground/40' : 'text-gray-400'
-        }`}>
+        <div className="text-[10px] font-bold uppercase tracking-wider transition-colors duration-300"
+          style={{ color: isActive ? '#3b82f6' : "var(--foreground)", opacity: isActive ? 1 : 0.4 }}>
           Step {step}
         </div>
-        <div className={`text-xs font-semibold transition-colors duration-300 ${
-          isActive ? (isDark ? 'text-foreground' : 'text-gray-900') : (isDark ? 'text-foreground/40' : 'text-gray-400')
-        }`}>
+        <div className="text-xs font-semibold transition-colors duration-300"
+          style={{ color: isActive ? "var(--foreground)" : "var(--foreground)", opacity: isActive ? 1 : 0.4 }}>
           {label}
         </div>
       </div>
     </div>
     {step < 3 && (
-      <div className={`absolute right-0 top-5 w-full h-px transition-all duration-300 ${
-        isCompleted ? 'bg-gradient-primary' : isDark ? 'bg-gray-800' : 'bg-gray-200'
-      }`} style={{ right: '-50%', width: '100%' }} />
+      <div className="absolute right-0 top-5 w-full h-px transition-all duration-300"
+        style={{ right: '-50%', width: '100%', background: isCompleted ? 'var(--gradient-primary)' : "var(--card-border)" }} />
     )}
   </button>
 );
 
 // Stats Preview Card
-const StatsPreviewCard = ({ label, value, icon: Icon, color, isDark }) => (
-  <div className={`group rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105 ${
-    isDark ? 'bg-card border border-gray-800 hover:border-blue-500/50' : 'bg-white border border-gray-200 hover:border-blue-500/50'
-  }`}>
+const StatsPreviewCard = ({ label, value, icon: Icon, color }) => (
+  <div className="group rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105 bg-card border hover:border-blue-500/50"
+    style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
     <div className={`absolute inset-0 bg-gradient-to-r from-${color}-500/0 via-${color}-500/5 to-${color}-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000`} />
     <div>
-      <div className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>{label}</div>
-      <div className={`text-[28px] font-black tracking-tighter leading-none ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{value}</div>
+      <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.4 }}>{label}</div>
+      <div className="text-[28px] font-black tracking-tighter leading-none" style={{ color: "var(--foreground)" }}>{value}</div>
     </div>
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 ${
-      isDark ? `bg-${color}-500/10 border border-gray-800` : `bg-${color}-50 border border-${color}-200`
-    }`}>
-      <Icon className={`text-lg transition-transform group-hover:scale-110 ${isDark ? `text-${color}-400` : `text-${color}-600`}`} />
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 bg-${color}-500/10 border`}
+      style={{ borderColor: "var(--card-border)" }}>
+      <Icon className={`text-lg transition-transform group-hover:scale-110 text-${color}-400`} />
     </div>
   </div>
 );
 
 // Category Card Component
-const CategoryCard = ({ category, index, onUpdate, isDark }) => {
+const CategoryCard = ({ category, index, onUpdate }) => {
   const [isHovered, setIsHovered] = useState(false);
   const config = CATEGORY_CONFIG[category.category] || CATEGORY_CONFIG.NORMAL;
   const Icon = config.icon;
 
   return (
-    <div 
+    <div
       className={`group relative rounded-2xl p-5 transition-all duration-500 cursor-pointer overflow-hidden ${
         isHovered ? 'scale-105 shadow-2xl' : 'shadow-md'
-      } ${isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'}`}
+      } bg-card border`}
+      style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className={`absolute inset-0 bg-gradient-to-br from-${config.color}-500/0 via-${config.color}-500/5 to-${config.color}-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-      
+
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
-            isDark ? `bg-${config.color}-900/30 border border-gray-800` : `bg-${config.color}-50 border border-${config.color}-200`
-          }`}>
-            <Icon className={`text-xl transition-all ${isDark ? `text-${config.color}-400` : `text-${config.color}-600`}`} />
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 bg-${config.color}-900/30 border`}
+            style={{ borderColor: "var(--card-border)" }}>
+            <Icon className={`text-xl transition-all text-${config.color}-400`} />
           </div>
           <div>
-            <h3 className={`text-lg font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{category.category}</h3>
-            <p className={`text-[11px] font-medium ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+            <h3 className="text-lg font-extrabold" style={{ color: "var(--foreground)" }}>{category.category}</h3>
+            <p className="text-[11px] font-medium" style={{ color: "var(--foreground)", opacity: 0.4 }}>
               {config.desc} • {config.mult} price
             </p>
           </div>
         </div>
-        <div className={`px-2 py-1 rounded-lg text-[10px] font-black ${isDark ? 'bg-gray-800 text-foreground/60' : 'bg-gray-100 text-gray-500'}`}>
+        <div className="px-2 py-1 rounded-lg text-[10px] font-black bg-background text-foreground/60"
+          style={{ background: "var(--background)", color: "var(--foreground)", opacity: 0.6 }}>
           #{index + 1}
         </div>
       </div>
-      
+
       <div className="space-y-3">
         <div>
-          <label className={`text-[10px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+          <label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.4 }}>
             <FaDollarSign className="inline mr-1 text-green-500" /> Price per Seat
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-bold text-foreground/40">₹</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-bold" style={{ color: "var(--foreground)", opacity: 0.4 }}>₹</span>
             <input
               type="number"
               value={category.pricePerSeat}
               onChange={(e) => onUpdate(index, 'pricePerSeat', parseInt(e.target.value) || 0)}
-              className={`w-full pl-7 pr-4 py-3 rounded-xl text-lg font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-${config.color}-500 ${
-                isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-              }`}
+              className={`w-full pl-7 pr-4 py-3 rounded-xl text-lg font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-${config.color}-500 bg-background border`}
+              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
             />
           </div>
         </div>
-        
+
         <div className={`h-1 rounded-full overflow-hidden bg-gradient-to-r from-${config.color}-500/20 to-${config.color}-500/80 transition-all duration-300`}>
-          <div className={`h-full bg-gradient-to-r from-${config.color}-500 to-${config.color}-400 transition-all duration-500`} 
+          <div className={`h-full bg-gradient-to-r from-${config.color}-500 to-${config.color}-400 transition-all duration-500`}
                style={{ width: `${Math.min((category.pricePerSeat / 1000) * 100, 100)}%` }} />
         </div>
       </div>
-      
+
       {isHovered && <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-1 rounded-full bg-gradient-primary animate-pulse" />}
     </div>
   );
@@ -167,9 +160,7 @@ const CategoryCard = ({ category, index, onUpdate, isDark }) => {
 // Main Component
 export default function CreateShow() {
   const router = useRouter();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  
+
   const [activeTab, setActiveTab] = useState('basic');
   const [selectedTheater, setSelectedTheater] = useState(null);
   const [posterPreview, setPosterPreview] = useState('');
@@ -380,10 +371,9 @@ export default function CreateShow() {
 
   // Render Functions
   const renderTheaterSelection = () => (
-    <div className={`lg:col-span-2 rounded-xl p-6 transition-all duration-300 ${
-      isDark ? 'bg-background/50 border border-gray-800' : 'bg-gray-50/50 border border-gray-200'
-    }`}>
-      <label className={`text-[11px] font-bold uppercase tracking-wider mb-3 block flex items-center gap-2 ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+    <div className="lg:col-span-2 rounded-xl p-6 transition-all duration-300 bg-background/50 border"
+      style={{ background: "rgba(var(--background), 0.5)", borderColor: "var(--card-border)" }}>
+      <label className="text-[11px] font-bold uppercase tracking-wider mb-3 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
         <FaBuilding className="text-red-500" /> Select Theater
       </label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -399,22 +389,24 @@ export default function CreateShow() {
               className={`cursor-pointer rounded-xl p-4 transition-all duration-300 hover:scale-105 ${
                 formData.theaterId === theater._id
                   ? 'ring-2 ring-blue-500 bg-gradient-to-r from-blue-500/10 to-transparent'
-                  : isDark ? 'bg-card border border-gray-800 hover:border-blue-500/50' : 'bg-white border border-gray-200 hover:border-blue-500/50'
+                  : 'bg-card border hover:border-blue-500/50'
               }`}
+              style={formData.theaterId !== theater._id ? { background: "var(--card)", borderColor: "var(--card-border)" } : {}}
             >
               <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  formData.theaterId === theater._id ? 'bg-blue-500' : isDark ? 'bg-background border border-gray-800' : 'bg-gray-100'
-                }`}>
+                  formData.theaterId === theater._id ? 'bg-blue-500' : 'bg-background border'
+                }`}
+                  style={formData.theaterId !== theater._id ? { background: "var(--background)", borderColor: "var(--card-border)" } : {}}>
                   <MdTheaters className={`text-lg ${formData.theaterId === theater._id ? 'text-white' : 'text-blue-500'}`} />
                 </div>
                 <div className="flex-1">
-                  <h3 className={`font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>{theater.name}</h3>
-                  <p className={`text-xs flex items-center gap-1 mt-1 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+                  <h3 className="font-extrabold" style={{ color: "var(--foreground)" }}>{theater.name}</h3>
+                  <p className="text-xs flex items-center gap-1 mt-1" style={{ color: "var(--foreground)", opacity: 0.4 }}>
                     <MdLocationOn className="text-[10px]" />
                     {theater.location}, {theater.city}
                   </p>
-                  <p className={`text-[10px] mt-2 font-semibold ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                  <p className="text-[10px] mt-2 font-semibold" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                     📺 {theater.screens?.length || 0} Screens
                   </p>
                 </div>
@@ -431,7 +423,7 @@ export default function CreateShow() {
 
   const renderScreenSelection = () => selectedTheater && (
     <div className="lg:col-span-2">
-      <label className={`text-[11px] font-bold uppercase tracking-wider mb-3 block flex items-center gap-2 ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+      <label className="text-[11px] font-bold uppercase tracking-wider mb-3 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
         <MdScreenShare className="text-purple-500" /> Select Screen
       </label>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -442,18 +434,20 @@ export default function CreateShow() {
             className={`cursor-pointer rounded-xl p-4 text-center transition-all duration-300 hover:scale-105 ${
               formData.screenId === screen._id
                 ? 'ring-2 ring-purple-500 bg-gradient-to-br from-purple-500/10 to-transparent'
-                : isDark ? 'bg-card border border-gray-800 hover:border-purple-500/50' : 'bg-white border border-gray-200 hover:border-purple-500/50'
+                : 'bg-card border hover:border-purple-500/50'
             }`}
+            style={formData.screenId !== screen._id ? { background: "var(--card)", borderColor: "var(--card-border)" } : {}}
           >
             <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-2 ${
-              formData.screenId === screen._id ? 'bg-purple-500' : isDark ? 'bg-background border border-gray-800' : 'bg-gray-100'
-            }`}>
+              formData.screenId === screen._id ? 'bg-purple-500' : 'bg-background border'
+            }`}
+              style={formData.screenId !== screen._id ? { background: "var(--background)", borderColor: "var(--card-border)" } : {}}>
               <MdScreenShare className={`text-xl ${formData.screenId === screen._id ? 'text-white' : 'text-purple-500'}`} />
             </div>
-            <div className={`font-extrabold text-lg ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+            <div className="font-extrabold text-lg" style={{ color: "var(--foreground)" }}>
               Screen {screen.screenNumber}
             </div>
-            <div className={`text-[10px] mt-1 ${isDark ? 'text-foreground/40' : 'text-gray-400'}`}>
+            <div className="text-[10px] mt-1" style={{ color: "var(--foreground)", opacity: 0.4 }}>
               {screen.name || 'Standard Screen'}
             </div>
             {formData.screenId === screen._id && (
@@ -466,18 +460,16 @@ export default function CreateShow() {
   );
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-background' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
-      <Toaster position="top-right" toastOptions={{ 
-        className: `!rounded-xl !text-sm !font-semibold !shadow-xl ${
-          isDark ? '!bg-card !text-foreground !border-gray-800' : '!bg-white !text-gray-900 !border-gray-200'
-        }`, 
-        duration: 3000 
+    <div className="min-h-screen transition-colors duration-300 bg-background" style={{ background: "var(--background)" }}>
+      <Toaster position="top-right" toastOptions={{
+        className: "!rounded-xl !text-sm !font-semibold !shadow-xl !bg-card !text-foreground !border",
+        style: { borderColor: "var(--card-border)" },
+        duration: 3000
       }} />
 
       {/* Header */}
-      <div className={`sticky top-0 z-[100] shadow-lg transition-all duration-300 ${
-        isDark ? 'bg-card/90 backdrop-blur-md border-b border-gray-800' : 'bg-white/90 backdrop-blur-md border-b border-gray-200'
-      }`}>
+      <div className="sticky top-0 z-[100] shadow-lg transition-all duration-300 bg-card/90 backdrop-blur-md border-b"
+        style={{ background: "rgba(var(--card), 0.9)", borderColor: "var(--card-border)" }}>
         <div className="max-w-7xl mx-auto px-8">
           <div className="flex items-center justify-between py-4 flex-wrap gap-3">
             <div className="flex items-center gap-4">
@@ -488,19 +480,18 @@ export default function CreateShow() {
                 </div>
               </div>
               <div>
-                <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
                   Create New Show
                 </h1>
-                <p className={`text-xs font-medium ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+                <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                   Add a new movie screening to the system
                 </p>
               </div>
             </div>
             <button
               onClick={() => router.back()}
-              className={`group flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 hover:scale-105 ${
-                isDark ? 'bg-card border border-gray-800 text-foreground/60 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400' : 'bg-gray-100 border border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
-              }`}
+              className="group flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 hover:scale-105 bg-card border hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400"
+              style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}
             >
               <FaTimes className="text-sm group-hover:rotate-90 transition-transform duration-300" />
               Cancel
@@ -522,17 +513,15 @@ export default function CreateShow() {
                 isActive={activeTab === step.id}
                 isCompleted={steps.findIndex(s => s.id === activeTab) > idx}
                 onClick={() => steps.findIndex(s => s.id === activeTab) > idx && setActiveTab(step.id)}
-                isDark={isDark}
               />
             ))}
           </div>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className={`rounded-2xl shadow-xl transition-all duration-300 overflow-hidden ${
-            isDark ? 'bg-card border border-gray-800' : 'bg-white border border-gray-200'
-          }`}>
-            
+          <div className="rounded-2xl shadow-xl transition-all duration-300 overflow-hidden bg-card border"
+            style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+
             {/* Basic Info Tab */}
             {activeTab === 'basic' && (
               <div className="p-8">
@@ -541,10 +530,10 @@ export default function CreateShow() {
                     <div className="w-10 h-1 rounded-full bg-gradient-primary" />
                     <div className="w-6 h-1 rounded-full bg-gradient-primary" />
                   </div>
-                  <h2 className={`text-2xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                  <h2 className="text-2xl font-extrabold" style={{ color: "var(--foreground)" }}>
                     Theater & Screen Selection
                   </h2>
-                  <p className={`text-sm mt-1 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+                  <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                     Choose the venue and schedule for your show
                   </p>
                 </div>
@@ -555,7 +544,7 @@ export default function CreateShow() {
 
                   {/* Show Date */}
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2 ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       <FaCalendar className="text-blue-500" /> Show Date
                     </label>
                     <input
@@ -564,16 +553,14 @@ export default function CreateShow() {
                       value={formData.showDate}
                       onChange={handleInputChange}
                       min={new Date().toISOString().split('T')[0]}
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border border-gray-800 text-foreground"
                       required
                     />
                   </div>
 
                   {/* Start Time */}
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2 ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       <FaClock className="text-green-500" /> Start Time
                     </label>
                     <input
@@ -581,16 +568,14 @@ export default function CreateShow() {
                       name="startTime"
                       value={formData.startTime}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border border-gray-800 text-foreground"
                       required
                     />
                   </div>
 
                   {/* End Time */}
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2 ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       <FaClock className="text-red-500" /> End Time
                     </label>
                     <input
@@ -598,18 +583,14 @@ export default function CreateShow() {
                       name="endTime"
                       value={formData.endTime}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border border-gray-800 text-foreground"
                       required
                     />
                   </div>
 
                   {/* Paid/Free Show Toggle */}
                   <div className="lg:col-span-2">
-                    <div className={`rounded-xl p-5 transition-all duration-300 ${
-                      isDark ? 'bg-background/30 border border-gray-800' : 'bg-gray-50/50 border border-gray-200'
-                    }`}>
+                    <div className="rounded-xl p-5 transition-all duration-300 bg-background/30 border border-gray-800">
                       <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-4">
                           <label className="flex items-center gap-3 cursor-pointer group">
@@ -620,14 +601,16 @@ export default function CreateShow() {
                               onChange={handleInputChange}
                               className="w-5 h-5 rounded-lg border-2 border-gray-300 checked:bg-green-500 checked:border-green-500 focus:ring-green-500 transition-all"
                             />
-                            <span className={`font-bold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
-                              💰 Paid Show
+                            <span className="font-bold" style={{ color: "var(--foreground)" }}>
+                              Paid Show
                             </span>
                           </label>
-                          
+
                           {formData.isPaid && (
                             <div className="flex items-center gap-2">
-                              <span className={`text-sm font-semibold ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>Base Price:</span>
+                              <span className="text-sm font-semibold" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                                Base Price:
+                              </span>
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500 font-bold">₹</span>
                                 <input
@@ -635,19 +618,17 @@ export default function CreateShow() {
                                   name="basePrice"
                                   value={formData.basePrice}
                                   onChange={handleInputChange}
-                                  className={`w-32 pl-7 pr-3 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                                    isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-white border border-gray-200 text-gray-900'
-                                  }`}
+                                  className="w-32 pl-7 pr-3 py-2 rounded-lg text-sm font-bold transition-all focus:outline-none focus:ring-2 focus:ring-green-500 bg-background border border-gray-800 text-foreground"
                                 />
                               </div>
                             </div>
                           )}
                         </div>
-                        
+
                         {!formData.isPaid && (
                           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/30">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-xs font-bold text-green-500">🎉 Free Show - No payment required</span>
+                            <span className="text-xs font-bold text-green-500">Free Show - No payment required</span>
                           </div>
                         )}
                       </div>
@@ -665,17 +646,17 @@ export default function CreateShow() {
                     <div className="w-10 h-1 rounded-full bg-gradient-primary" />
                     <div className="w-6 h-1 rounded-full bg-gradient-primary" />
                   </div>
-                  <h2 className={`text-2xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                  <h2 className="text-2xl font-extrabold" style={{ color: "var(--foreground)" }}>
                     Movie Information
                   </h2>
-                  <p className={`text-sm mt-1 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+                  <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                     Enter all details about the film
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="lg:col-span-2">
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Movie Name
                     </label>
                     <input
@@ -684,47 +665,41 @@ export default function CreateShow() {
                       value={formData.movie.name}
                       onChange={handleInputChange}
                       placeholder="e.g., Jawan, Pathaan, Animal"
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground placeholder:text-foreground/30' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border border-gray-800 text-foreground placeholder:text-foreground/30"
                       required
                     />
                   </div>
-                  
+
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Genre
                     </label>
                     <select
                       name="movie.genre"
                       value={formData.movie.genre}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer bg-background border border-gray-800 text-foreground"
                     >
                       {GENRES.map(genre => <option key={genre} value={genre}>{genre}</option>)}
                     </select>
                   </div>
-                  
+
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Language
                     </label>
                     <select
                       name="movie.language"
                       value={formData.movie.language}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer bg-background border border-gray-800 text-foreground"
                     >
                       {LANGUAGES.map(lang => <option key={lang} value={lang}>{lang}</option>)}
                     </select>
                   </div>
-                  
+
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Duration (minutes)
                     </label>
                     <input
@@ -733,15 +708,13 @@ export default function CreateShow() {
                       value={formData.movie.duration}
                       onChange={handleInputChange}
                       placeholder="e.g., 170"
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground placeholder:text-foreground/30' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border border-gray-800 text-foreground placeholder:text-foreground/30"
                       required
                     />
                   </div>
-                  
+
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Rating (0-10)
                     </label>
                     <input
@@ -753,15 +726,13 @@ export default function CreateShow() {
                       value={formData.movie.rating}
                       onChange={handleInputChange}
                       placeholder="e.g., 8.5"
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground placeholder:text-foreground/30' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border border-gray-800 text-foreground placeholder:text-foreground/30"
                       required
                     />
                   </div>
-                  
+
                   <div>
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Release Date
                     </label>
                     <input
@@ -769,14 +740,12 @@ export default function CreateShow() {
                       name="movie.releaseDate"
                       value={formData.movie.releaseDate}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border border-gray-800 text-foreground"
                     />
                   </div>
-                  
+
                   <div className="lg:col-span-2">
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Description
                     </label>
                     <textarea
@@ -785,14 +754,12 @@ export default function CreateShow() {
                       onChange={handleInputChange}
                       rows="4"
                       placeholder="Brief description about the movie..."
-                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none ${
-                        isDark ? 'bg-background border border-gray-800 text-foreground placeholder:text-foreground/30' : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400'
-                      }`}
+                      className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none bg-background border border-gray-800 text-foreground placeholder:text-foreground/30"
                     />
                   </div>
-                  
+
                   <div className="lg:col-span-2">
-                    <label className={`text-[11px] font-bold uppercase tracking-wider mb-2 block ${isDark ? 'text-foreground/60' : 'text-gray-500'}`}>
+                    <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       Movie Poster
                     </label>
                     <div className="flex flex-col md:flex-row gap-4">
@@ -801,9 +768,7 @@ export default function CreateShow() {
                           type="file"
                           accept="image/*"
                           onChange={handlePosterChange}
-                          className={`w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600 ${
-                            isDark ? 'bg-background border border-gray-800 text-foreground' : 'bg-gray-50 border border-gray-200 text-gray-900'
-                          }`}
+                          className="w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600 bg-background border border-gray-800 text-foreground"
                         />
                       </div>
                       <label className="flex items-center gap-3 cursor-pointer group">
@@ -814,8 +779,8 @@ export default function CreateShow() {
                           onChange={handleInputChange}
                           className="w-5 h-5 rounded-lg border-2 border-gray-300 checked:bg-red-500 checked:border-red-500 focus:ring-red-500 transition-all"
                         />
-                        <span className={`text-sm font-semibold group-hover:text-red-500 transition-colors ${isDark ? 'text-foreground' : 'text-gray-700'}`}>
-                          🔥 Mark as Trending
+                        <span className="text-sm font-semibold group-hover:text-red-500 transition-colors" style={{ color: "var(--foreground)" }}>
+                          Mark as Trending
                         </span>
                       </label>
                     </div>
@@ -842,20 +807,20 @@ export default function CreateShow() {
                     <div className="w-10 h-1 rounded-full bg-gradient-primary" />
                     <div className="w-6 h-1 rounded-full bg-gradient-primary" />
                   </div>
-                  <h2 className={`text-2xl font-extrabold ${isDark ? 'text-foreground' : 'text-gray-900'}`}>
+                  <h2 className="text-2xl font-extrabold" style={{ color: "var(--foreground)" }}>
                     Seat Categories & Pricing
                   </h2>
-                  <p className={`text-sm mt-1 ${isDark ? 'text-foreground/60' : 'text-gray-600'}`}>
+                  <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                     Configure pricing for different seat types
                   </p>
                 </div>
 
                 {/* Stats Preview */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  <StatsPreviewCard label="Categories" value={previewStats.totalCategories} icon={FaChair} color="blue" isDark={isDark} />
-                  <StatsPreviewCard label="Avg Price" value={`₹${previewStats.avgPrice}`} icon={FaDollarSign} color="green" isDark={isDark} />
-                  <StatsPreviewCard label="Highest" value={`₹${previewStats.highestPrice}`} icon={FaCrown} color="yellow" isDark={isDark} />
-                  <StatsPreviewCard label="Lowest" value={`₹${previewStats.lowestPrice}`} icon={FaTicketAlt} color="purple" isDark={isDark} />
+                  <StatsPreviewCard label="Categories" value={previewStats.totalCategories} icon={FaChair} color="blue" />
+                  <StatsPreviewCard label="Avg Price" value={`₹${previewStats.avgPrice}`} icon={FaDollarSign} color="green" />
+                  <StatsPreviewCard label="Highest" value={`₹${previewStats.highestPrice}`} icon={FaCrown} color="yellow" />
+                  <StatsPreviewCard label="Lowest" value={`₹${previewStats.lowestPrice}`} icon={FaTicketAlt} color="purple" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -865,21 +830,19 @@ export default function CreateShow() {
                       category={category}
                       index={index}
                       onUpdate={handleCategoryChange}
-                      isDark={isDark}
                     />
                   ))}
                 </div>
-                
-                <div className={`mt-8 p-5 rounded-xl transition-all duration-300 ${
-                  isDark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
-                }`}>
+
+                <div className="mt-8 p-5 rounded-xl transition-all duration-300 bg-blue-500/10 border"
+                  style={{ background: "rgba(59, 130, 246, 0.1)", borderColor: "rgba(59, 130, 246, 0.2)" }}>
                   <div className="flex items-start gap-3">
-                    <FaInfoCircle className={`text-lg mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                    <FaInfoCircle className="text-lg mt-0.5 text-blue-400" />
                     <div className="flex-1">
-                      <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
+                      <p className="text-sm font-semibold mb-1 text-blue-400">
                         Seat Layout Information
                       </p>
-                      <p className={`text-xs ${isDark ? 'text-blue-300/70' : 'text-blue-600'}`}>
+                      <p className="text-xs text-blue-300/70">
                         Seat layout will be automatically generated based on the theater screen configuration.
                         Each category's row allocation is pre-defined from the screen setup.
                       </p>
@@ -890,16 +853,13 @@ export default function CreateShow() {
             )}
 
             {/* Navigation Buttons */}
-            <div className={`border-t p-6 flex justify-between transition-all duration-300 ${
-              isDark ? 'border-gray-800' : 'border-gray-200'
-            }`}>
+            <div className="border-t p-6 flex justify-between transition-all duration-300" style={{ borderColor: "var(--card-border)" }}>
               {!isFirstStep ? (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className={`group flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105 ${
-                    isDark ? 'border border-gray-800 text-foreground/60 hover:bg-card/50' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}
+                  className="group flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105 border hover:bg-card/50"
+                  style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}
                 >
                   <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" />
                   Back
@@ -907,7 +867,7 @@ export default function CreateShow() {
               ) : (
                 <div />
               )}
-              
+
               {!isLastStep ? (
                 <button
                   type="button"

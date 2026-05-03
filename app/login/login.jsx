@@ -56,7 +56,7 @@ export default function Login() {
         } else if (role === "THEATER_OWNER") {
           router.push("/theater-owner/dashboard");
         } else if (role === "BUYER") {
-          router.push("/buyer/dashboard");
+          router.push("/");
         } else {
           router.push("/dashboard");
         }
