@@ -33,7 +33,7 @@ const OwnerDashboard = () => {
 
   // ✅ extract actual data
   const getStats = data?.data || {};
-  console.log("API test",getStats);
+  // console.log("API test",getStats);
 
 
   const quickActions = [
