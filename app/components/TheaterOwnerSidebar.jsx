@@ -41,7 +41,7 @@ export default function TheaterOwnerSidebar() {
       { name: "My Theater", path: "/theater-owner/theater", icon: FaBuilding },
       { name: "Shows", path: "/theater-owner/shows", icon: FaFilm },
       { name: "Bookings", path: "/theater-owner/bookings", icon: FaCalendarAlt },
-      { name: "Analytics", path: "/theater-owner/analytics", icon: FaChartLine },
+      // { name: "Analytics", path: "/theater-owner/analytics", icon: FaChartLine },
     ],
     []
   );
