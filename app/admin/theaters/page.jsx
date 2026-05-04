@@ -902,7 +902,7 @@ export default function TheatersPage() {
       <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl"
         style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
       >
-        <div className="max-w-7xl mx-auto px-8">
+        <div className=" mx-auto px-8">
           <div className="flex items-center justify-between py-4 flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -943,7 +943,7 @@ export default function TheatersPage() {
         </div>
       </div>
       
-      <div className="max-w-7xl mx-auto p-8">
+      <div className=" mx-auto pt-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           <StatsCard label="Total Theaters" value={stats.total} icon={FaBuilding} color="blue" />

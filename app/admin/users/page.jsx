@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,6 +37,39 @@ import {
   updateUserStatus,
 } from "@/app/services/adminCommunication";
 import useAuth from "@/app/hooks/useAuth";
+import useTheme from "@/app/hooks/useTheme";
+
+// Animated Counter Component
+const AnimatedCounter = ({ value }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value) || 0;
+    if (start === end) return;
+    
+    const duration = 1000;
+    const increment = end / (duration / 16);
+    
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+    
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return (
+    <div className="text-[34px] font-black tracking-tighter leading-none transition-all duration-300" style={{ color: "var(--foreground)" }}>
+      {count}
+    </div>
+  );
+};
 
 const roles = ["SUPER_ADMIN", "THEATER_OWNER", "VENDOR", "BUYER"];
 const statuses = ["ACTIVE", "INACTIVE", "BLOCKED"];
@@ -161,27 +194,30 @@ function IconButton({ title, onClick, children, tone = "slate" }) {
       type="button"
       title={title}
       onClick={onClick}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border transition hover:opacity-80"
-      style={{ borderColor: t.border, color: t.color, opacity: tone === "slate" ? 0.6 : 1 }}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition`}
+      style={{ 
+        borderColor: "var(--card-border)", 
+        color: "var(--foreground)",
+        opacity: 0.6
+      }}
     >
       {children}
     </button>
   );
 }
 
-function StatCard({ label, value, icon: Icon, tone, helper }) {
+function StatCard({ label, value, icon: Icon }) {
   return (
-    <div className="rounded-lg border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-      style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>{label}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>{value}</p>
-          {helper ? <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{helper}</p> : null}
-        </div>
-        <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${tone}`}>
-          <Icon className="text-lg" />
-        </div>
+    <div className="group rounded-xl p-4 flex flex-col justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105" 
+      style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 transition-colors" style={{ color: "var(--foreground)", opacity: 0.4 }}>{label}</div>
+        <AnimatedCounter value={value} />
+      </div>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6`}
+        style={{ background: "var(--background)", opacity: 0.8 }}>
+        <Icon className="text-lg" style={{ color: "var(--foreground)" }} />
       </div>
     </div>
   );
@@ -228,7 +264,11 @@ function SelectField({ value, onChange, children, label }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full appearance-none rounded-lg border px-3 pr-9 text-sm font-medium outline-none transition focus:ring-4"
-        style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.8 }}
+        style={{ 
+          background: "var(--card)",
+          borderColor: "var(--card-border)",
+          color: "var(--foreground)"
+        }}
       >
         {children}
       </select>
@@ -272,6 +312,7 @@ function MotionStyles() {
 
 export default function Users() {
   useAuth();
+  useTheme();
 
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -449,10 +490,10 @@ export default function Users() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center">
+      <div className="flex min-h-[70vh] items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="text-center">
           <div className="mx-auto h-11 w-11 animate-spin rounded-full border-4" style={{ borderColor: "var(--card-border)", borderTopColor: "var(--foreground)" }} />
-          <p className="mt-4 text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.5 }}>Loading users...</p>
+          <p className="mt-4 text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading users...</p>
         </div>
       </div>
     );
@@ -460,11 +501,10 @@ export default function Users() {
 
   if (error) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-lg border p-6 text-center shadow-sm"
-          style={{ background: "var(--card)", borderColor: "rgba(239,68,68,0.3)" }}>
+      <div className="flex min-h-[70vh] items-center justify-center px-4" style={{ background: "var(--background)" }}>
+        <div className="w-full max-w-md rounded-lg border p-6 text-center shadow-sm" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <h2 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>Users could not be loaded</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+          <p className="mt-2 text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
             {error.response?.data?.message || error.message || "Please check the API and try again."}
           </p>
           <button
@@ -480,231 +520,267 @@ export default function Users() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8"
-      style={{ background: "var(--background)", color: "var(--foreground)" }}>
-      <Toaster position="top-right" />
+    <div className="min-h-screen transition-colors duration-300" style={{ background: "var(--background)" }}>
+      <Toaster position="top-right" toastOptions={{
+        className: "!rounded-xl !text-sm !font-semibold !shadow-xl !bg-card !text-foreground !border",
+        style: { borderColor: "var(--card-border)" },
+        duration: 3000
+      }} />
       <MotionStyles />
 
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col gap-4 rounded-xl border p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div>
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.5 }}>Admin Console</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>People & access</h1>
-            <p className="mt-1 max-w-2xl text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-              Manage user accounts, roles, assignments, and account status from one operational view.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsAddOpen(true)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
-            style={{ background: "var(--gradient-primary)" }}
-          >
-            <FaPlus className="text-xs" />
-            Add User
-          </button>
-        </div>
-
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          <StatCard label="Total" value={stats.total} icon={FaUsers} tone="bg-slate-100 text-slate-700" helper="All accounts" />
-          <StatCard label="Active" value={stats.active} icon={FaUserShield} tone="bg-green-50 text-green-700" helper="Can sign in" />
-          <StatCard label="Admins" value={stats.admins} icon={FaUserShield} tone="bg-indigo-50 text-indigo-700" helper="Full access" />
-          <StatCard label="Owners" value={stats.owners} icon={FaTheaterMasks} tone="bg-sky-50 text-sky-700" helper="Theaters" />
-          <StatCard label="Vendors" value={stats.vendors} icon={FaStore} tone="bg-amber-50 text-amber-700" helper="Stores" />
-          <StatCard label="Buyers" value={stats.buyers} icon={FaUsers} tone="bg-emerald-50 text-emerald-700" helper="Customers" />
-        </div>
-
-        <div className="mb-5 rounded-xl border p-4 shadow-sm"
-          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="relative flex-1">
-              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--foreground)", opacity: 0.4 }} />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search name, email, phone, city, store, or theater"
-                className="h-11 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition focus:ring-4"
-                style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
-              />
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <SelectField label="Role" value={roleFilter} onChange={setRoleFilter}>
-                <option value="ALL">All Roles</option>
-                {roles.map((role) => (
-                  <option key={role} value={role}>{formatRole(role)}</option>
-                ))}
-              </SelectField>
-
-              <SelectField label="Status" value={statusFilter} onChange={setStatusFilter}>
-                <option value="ALL">All Status</option>
-                {statuses.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </SelectField>
-
-              {hasFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="h-11 rounded-lg border px-4 text-sm font-semibold transition"
-                  style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.7 }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-3 text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-            Showing <span className="font-semibold" style={{ color: "var(--foreground)" }}>{filteredUsers.length}</span> of{" "}
-            <span className="font-semibold" style={{ color: "var(--foreground)" }}>{users.length}</span> users
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border shadow-sm"
-          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="min-w-full divide-y" style={{ borderColor: "var(--card-border)" }}>
-              <thead style={{ background: "var(--background)" }}>
-                <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>User</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>Role</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>Contact</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>Assignment</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>Status</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                {filteredUsers.map((user) => (
-                  <tr key={user._id} className="transition" style={{ borderColor: "var(--card-border)" }}>
-                    <td className="px-5 py-4">
-                      <button type="button" onClick={() => setSelectedUser(user)} className="flex items-center gap-3 text-left">
-                        <UserAvatar user={user} />
-                        <div>
-                          <p className="font-semibold" style={{ color: "var(--foreground)" }}>{user.name || "Unnamed User"}</p>
-                          <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Joined {formatDate(user.createdAt)}</p>
-                        </div>
-                      </button>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Badge className={roleStyles[user.role] || "bg-slate-100 text-slate-700 ring-slate-200"}>
-                        {formatRole(user.role)}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-4">
-                      <p className="flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        <FaEnvelope className="text-xs" style={{ color: "var(--foreground)", opacity: 0.4 }} />
-                        {user.email || "No email"}
-                      </p>
-                      <p className="flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        <FaPhoneAlt className="text-xs" style={{ color: "var(--foreground)", opacity: 0.4 }} />
-                        {user.phone || "No phone"}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Assignment user={user} />
-                    </td>
-                    <td className="px-5 py-4">
-                      <select
-                        value={user.status || "ACTIVE"}
-                        onChange={(event) => statusMutation.mutate({ id: user._id, status: event.target.value })}
-                        disabled={statusMutation.isPending}
-                        className={`rounded-full border-0 px-3 py-1.5 text-xs font-semibold ring-1 outline-none ${statusStyles[user.status] || statusStyles.INACTIVE}`}
-                      >
-                        {statuses.map((status) => (
-                          <option key={status} value={status}>{status}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex justify-end gap-2">
-                        <IconButton title="View details" tone="blue" onClick={() => setSelectedUser(user)}>
-                          <FaEye className="text-sm" />
-                        </IconButton>
-                        <IconButton title="Edit user" onClick={() => setEditingUser(user)}>
-                          <FaEdit className="text-sm" />
-                        </IconButton>
-                        <IconButton title="Delete user" tone="red" onClick={() => setDeleteTarget(user)}>
-                          <FaTrash className="text-sm" />
-                        </IconButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="divide-y lg:hidden" style={{ borderColor: "var(--card-border)" }}>
-            {filteredUsers.map((user) => (
-              <div key={user._id} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <button type="button" onClick={() => setSelectedUser(user)} className="flex min-w-0 items-center gap-3 text-left">
-                    <UserAvatar user={user} />
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold" style={{ color: "var(--foreground)" }}>{user.name || "Unnamed User"}</p>
-                      <p className="truncate text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>{user.email || "No email"}</p>
-                    </div>
-                  </button>
-                  <Badge className={statusStyles[user.status] || statusStyles.INACTIVE}>{user.status || "INACTIVE"}</Badge>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge className={roleStyles[user.role] || "bg-slate-100 text-slate-700 ring-slate-200"}>
-                    {formatRole(user.role)}
-                  </Badge>
-                  <span className="text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>{user.phone || "No phone"}</span>
-                </div>
-
-                <div className="mt-3">
-                  <Assignment user={user} />
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUser(user)}
-                    className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
-                    style={{ borderColor: "rgba(59,130,246,0.3)", color: "#3b82f6" }}
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingUser(user)}
-                    className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
-                    style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.8 }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(user)}
-                    className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
-                    style={{ borderColor: "rgba(239,68,68,0.3)", color: "#ef4444" }}
-                  >
-                    Delete
-                  </button>
+      {/* Header */}
+      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl"
+        style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+        <div className=" mx-auto px-8">
+          <div className="flex items-center justify-between py-4 flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-primary animate-pulse blur-lg opacity-50" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-xl">
+                  <FaUsers className="text-white text-xl animate-pulse" />
                 </div>
               </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
+                  People & Access
+                </h1>
+                <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  Manage user accounts, roles & access levels
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsAddOpen(true)}
+              className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border"
+              style={{ borderColor: "var(--card-border)" }}
+            >
+              <FaPlus className="text-[11px]" /> Add User
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div className=" mx-auto pt-8">
+
+        {/* Stats Cards with Animated Counter */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+          <StatCard label="Total Users" value={stats.total} icon={FaUsers} />
+          <StatCard label="Active" value={stats.active} icon={FaUserShield} />
+          <StatCard label="Admins" value={stats.admins} icon={FaUserShield} />
+          <StatCard label="Owners" value={stats.owners} icon={FaTheaterMasks} />
+          <StatCard label="Vendors" value={stats.vendors} icon={FaStore} />
+          <StatCard label="Buyers" value={stats.buyers} icon={FaUsers} />
+        </div>
+        
+        {/* Search and Filter */}
+        <div className="rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300" 
+          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="flex-1 min-w-[220px] relative">
+            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: "var(--foreground)", opacity: 0.4 }} />
+            <input 
+              type="text" 
+              placeholder="Search by name, email, phone..." 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all border"
+              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} 
+            />
+          </div>
+          <select 
+            value={roleFilter} 
+            onChange={e => setRoleFilter(e.target.value)} 
+            className="appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 border"
+            style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+            <option value="ALL">All Roles</option>
+            {roles.map((role) => (
+              <option key={role} value={role}>{formatRole(role)}</option>
             ))}
-          </div>
-
-          {filteredUsers.length === 0 && (
-            <div className="px-6 py-16 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "var(--card-border)" }}>
-                <FaUsers className="text-xl" style={{ color: "var(--foreground)", opacity: 0.4 }} />
-              </div>
-              <h3 className="mt-4 text-base font-semibold" style={{ color: "var(--foreground)" }}>No users found</h3>
-              <p className="mt-1 text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-                {hasFilters ? "Try changing the search or filters." : "Add your first user to get started."}
-              </p>
-            </div>
+          </select>
+          <select 
+            value={statusFilter} 
+            onChange={e => setStatusFilter(e.target.value)} 
+            className="appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 border"
+            style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+            <option value="ALL">All Status</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+          {hasFilters && (
+            <button 
+              onClick={clearFilters} 
+              className="px-3.5 py-2.5 rounded-xl border transition-all hover:scale-105"
+              style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+              <FaTimes className="text-[10px]" /> Clear
+            </button>
           )}
+          <div className="ml-auto text-xs font-semibold" style={{ color: "var(--foreground)", opacity: 0.4 }}>
+            {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
+          </div>
         </div>
+
+        {/* Users Table */}
+        {filteredUsers.length === 0 ? (
+          <div className="rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300"
+            style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+              style={{ background: "rgba(var(--background), 0.5)" }}>
+              <FaUsers className="text-3xl" style={{ color: "var(--foreground)", opacity: 0.2 }} />
+            </div>
+            <h3 className="text-lg font-extrabold mb-2" style={{ color: "var(--foreground)" }}>No users found</h3>
+            <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              {hasFilters ? "Try adjusting your filters" : "Create your first user to get started"}
+            </p>
+            {!hasFilters && (
+              <button 
+                onClick={() => setIsAddOpen(true)} 
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all hover:-translate-y-0.5 border"
+                style={{ borderColor: "var(--card-border)" }}>
+                <FaPlus className="text-[11px]" /> Add User
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl shadow-xl transition-all duration-300 border"
+            style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full divide-y" style={{ divideColor: "var(--card-border)" }}>
+                <thead style={{ background: "var(--card)" }}>
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>User</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>Contact</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>Assignment</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody style={{ divideColor: "var(--card-border)" }}>
+                  {filteredUsers.map((user, idx) => (
+                    <tr 
+                      key={user._id} 
+                      className="transition hover:bg-blue-500/5 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                      style={{ borderColor: "var(--card-border)", animationDelay: `${idx * 50}ms` }}>
+                      <td className="px-6 py-4">
+                        <button type="button" onClick={() => setSelectedUser(user)} className="flex items-center gap-3 text-left">
+                          <UserAvatar user={user} />
+                          <div>
+                            <p className="font-semibold" style={{ color: "var(--foreground)" }}>{user.name || "Unnamed User"}</p>
+                            <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Joined {formatDate(user.createdAt)}</p>
+                          </div>
+                        </button>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge className={roleStyles[user.role] || "bg-slate-100 text-slate-700 ring-slate-200"}>
+                          {formatRole(user.role)}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-1 text-sm">
+                          <p className="flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                            <FaEnvelope className="text-xs" style={{ opacity: 0.6 }} />
+                            {user.email || "No email"}
+                          </p>
+                          <p className="flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                            <FaPhoneAlt className="text-xs" />
+                            {user.phone || "No phone"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Assignment user={user} />
+                      </td>
+                      <td className="px-6 py-4">
+                        <select
+                          value={user.status || "ACTIVE"}
+                          onChange={(event) => statusMutation.mutate({ id: user._id, status: event.target.value })}
+                          disabled={statusMutation.isPending}
+                          className="rounded-full border-0 px-3 py-1.5 text-xs font-semibold ring-1 outline-none"
+                          style={{ background: "var(--card)", color: "var(--foreground)", borderColor: "var(--card-border)" }}
+                        >
+                          {statuses.map((status) => (
+                            <option key={status} value={status}>{status}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2">
+                          <IconButton title="View details" onClick={() => setSelectedUser(user)}>
+                            <FaEye className="text-sm" />
+                          </IconButton>
+                          <IconButton title="Edit user" onClick={() => setEditingUser(user)}>
+                            <FaEdit className="text-sm" />
+                          </IconButton>
+                          <IconButton title="Delete user" onClick={() => setDeleteTarget(user)}>
+                            <FaTrash className="text-sm" />
+                          </IconButton>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="divide-y lg:hidden" style={{ divideColor: "var(--card-border)" }}>
+              {filteredUsers.map((user) => (
+                <div key={user._id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => setSelectedUser(user)} className="flex min-w-0 items-center gap-3 text-left">
+                      <UserAvatar user={user} />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold" style={{ color: "var(--foreground)" }}>{user.name || "Unnamed User"}</p>
+                        <p className="truncate text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>{user.email || "No email"}</p>
+                      </div>
+                    </button>
+                    <Badge className={statusStyles[user.status] || statusStyles.INACTIVE}>{user.status || "INACTIVE"}</Badge>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge className={roleStyles[user.role] || "bg-slate-100 text-slate-700 ring-slate-200"}>
+                      {formatRole(user.role)}
+                    </Badge>
+                    <span className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>{user.phone || "No phone"}</span>
+                  </div>
+
+                  <div className="mt-3">
+                    <Assignment user={user} />
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUser(user)}
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                      style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingUser(user)}
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                      style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(user)}
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                      style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
 
       <UserDetailsDrawer
@@ -733,12 +809,34 @@ export default function Users() {
       )}
 
       {deleteTarget && (
-        <DeleteModal
-          deleteTarget={deleteTarget}
-          isPending={deleteMutation.isPending}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={() => deleteMutation.mutate(deleteTarget._id)}
-        />
+        <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.5)" }}>
+          <div className="user-modal-in w-full max-w-md rounded-2xl p-8 shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)", opacity: 1, transform: "scale(1)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-red-500 mb-4" style={{ background: "var(--background)" }}>
+              <FaTrash className="text-xl" />
+            </div>
+            <h2 className="text-xl font-extrabold mb-2" style={{ color: "var(--foreground)" }}>Delete user</h2>
+            <p className="text-sm leading-6 mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              Delete <span className="font-semibold" style={{ color: "var(--foreground)" }}>{deleteTarget.name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => deleteMutation.mutate(deleteTarget._id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition"
+                style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -749,11 +847,11 @@ function Assignment({ user }) {
     const theater = user.theaters?.[0];
     return (
       <div className="text-sm">
-        <p className="flex items-center gap-2 font-medium" style={{ color: "var(--foreground)", opacity: 0.9 }}>
-          <FaBuilding className="text-xs" style={{ color: "var(--foreground)", opacity: 0.4 }} />
+        <p className="flex items-center gap-2 font-medium" style={{ color: "var(--foreground)" }}>
+          <FaBuilding className="text-xs" style={{ opacity: 0.6 }} />
           {theater?.theaterName || "No theater assigned"}
         </p>
-        <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+        <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>
           {[theater?.city, theater?.state].filter(Boolean).join(", ") || user.address || "Location unavailable"}
         </p>
       </div>
@@ -763,11 +861,11 @@ function Assignment({ user }) {
   if (user.role === "VENDOR") {
     return (
       <div className="text-sm">
-        <p className="flex items-center gap-2 font-medium" style={{ color: "var(--foreground)", opacity: 0.9 }}>
-          <FaStore className="text-xs" style={{ color: "var(--foreground)", opacity: 0.4 }} />
+        <p className="flex items-center gap-2 font-medium" style={{ color: "var(--foreground)" }}>
+          <FaStore className="text-xs" style={{ opacity: 0.6 }} />
           {user.storeName || "Vendor store"}
         </p>
-        <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+        <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>
           {[user.vendorType, user.storeLocation].filter(Boolean).join(" - ") || "Store details unavailable"}
         </p>
       </div>
@@ -776,65 +874,8 @@ function Assignment({ user }) {
 
   return (
     <div className="text-sm">
-      <p className="font-medium" style={{ color: "var(--foreground)", opacity: 0.9 }}>{user.address || "No address"}</p>
-      <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>User ID: {user.id || user._id}</p>
-    </div>
-  );
-}
-
-function DeleteModal({ deleteTarget, isPending, onClose, onConfirm }) {
-  const [isClosing, setIsClosing] = useState(false);
-  const [showModal, setShowModal] = useState(true);
-
-  useEffect(() => {
-    setShowModal(true);
-    const timer = setTimeout(() => setIsClosing(false), 10);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => onClose(), 200);
-  };
-
-  const handleConfirm = () => {
-    onConfirm();
-  };
-
-  if (!showModal) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)", opacity: isClosing ? 0 : 1, transition: "opacity 200ms ease-out" }}
-      onClick={handleClose}>
-      <div className="w-full max-w-md rounded-xl p-6 shadow-2xl"
-        style={{ background: "var(--card)", border: "1px solid var(--card-border)", opacity: isClosing ? 0 : 1, transform: isClosing ? "scale(0.95)" : "scale(1)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg" style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
-          <FaTrash />
-        </div>
-        <h2 className="mt-4 text-lg font-bold" style={{ color: "var(--foreground)" }}>Delete user</h2>
-        <p className="mt-2 text-sm leading-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-          Delete <span className="font-semibold" style={{ color: "var(--foreground)" }}>{deleteTarget.name}</span>? This action cannot be undone.
-        </p>
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={handleConfirm}
-            disabled={isPending}
-            className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-            style={{ background: "#ef4444" }}
-          >
-            {isPending ? "Deleting..." : "Delete"}
-          </button>
-          <button
-            onClick={handleClose}
-            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition"
-            style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.8 }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+      <p className="font-medium" style={{ color: "var(--foreground)" }}>{user.address || "No address"}</p>
+      <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>User ID: {user.id || user._id}</p>
     </div>
   );
 }
@@ -843,35 +884,34 @@ function UserDetailsDrawer({ user, isLoading, onClose, onEdit }) {
   if (!user) return null;
 
   return (
-    <div className="user-fade-in fixed inset-0 z-40 backdrop-blur-sm" onClick={onClose}
-      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
+    <div className="user-fade-in fixed inset-0 z-40 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.4)" }} onClick={onClose}>
       <aside
         className="user-drawer-in ml-auto flex h-full w-full max-w-xl flex-col shadow-2xl"
+        style={{ background: "var(--card)" }}
         onClick={(event) => event.stopPropagation()}
         style={{ background: "var(--card)" }}
       >
         <div className="flex items-center justify-between border-b p-5" style={{ borderColor: "var(--card-border)" }}>
           <div>
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.5 }}>User Details</p>
+            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>User Details</p>
             <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Account profile</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 transition hover:opacity-70"
-            style={{ color: "var(--foreground)", opacity: 0.6 }}>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 transition" style={{ color: "var(--foreground)", opacity: 0.6 }}>
             <FaTimes />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
           {isLoading ? (
-            <div className="py-10 text-center text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>Loading profile...</div>
+            <div className="py-10 text-center text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading profile...</div>
           ) : (
             <>
-              <div className="rounded-xl border p-4" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+              <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
                 <div className="flex items-center gap-4">
                   <UserAvatar user={user} size="lg" />
                   <div className="min-w-0">
                     <h3 className="truncate text-xl font-bold" style={{ color: "var(--foreground)" }}>{user.name || "Unnamed User"}</h3>
-                    <p className="truncate text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>{user.email || "No email"}</p>
+                    <p className="truncate text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>{user.email || "No email"}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Badge className={roleStyles[user.role] || "bg-slate-100 text-slate-700 ring-slate-200"}>
                         {formatRole(user.role)}
@@ -910,7 +950,7 @@ function UserDetailsDrawer({ user, isLoading, onClose, onEdit }) {
                       <div key={theater._id || theater.id} className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--card-border)" }}>
                         <p className="font-semibold" style={{ color: "var(--foreground)" }}>{theater.theaterName}</p>
                         <p className="mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>{theater.theaterLocation}</p>
-                        <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+                        <p className="mt-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                           {[theater.city, theater.state, theater.pincode].filter(Boolean).join(", ")}
                         </p>
                       </div>
@@ -934,8 +974,8 @@ function UserDetailsDrawer({ user, isLoading, onClose, onEdit }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:opacity-70"
-            style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.8 }}
+            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
           >
             Close
           </button>
@@ -948,8 +988,8 @@ function UserDetailsDrawer({ user, isLoading, onClose, onEdit }) {
 function DetailItem({ icon: Icon, label, value }) {
   return (
     <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-        <Icon style={{ color: "var(--foreground)", opacity: 0.4 }} />
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+        <Icon />
         {label}
       </div>
       <p className="mt-2 break-words text-sm font-medium" style={{ color: "var(--foreground)" }}>{value}</p>
@@ -961,7 +1001,7 @@ function FieldLine({ label, value }) {
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.4 }}>{label}</p>
-      <p className="mt-1" style={{ color: "var(--foreground)", opacity: 0.9 }}>{value || "Not added"}</p>
+      <p className="mt-1" style={{ color: "var(--foreground)" }}>{value || "Not added"}</p>
     </div>
   );
 }
@@ -1095,17 +1135,14 @@ function AddUserModal({ isSaving, onClose, onSave }) {
   if (!showModal) return null;
 
   return (
-    <div onClick={handleBackdropClick} className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)", opacity: isClosing ? 0 : 1, transition: "opacity 200ms ease-out" }}>
-      <form onSubmit={handleSubmit(submitForm)} className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-xl shadow-2xl"
-        style={{ background: "var(--card)", opacity: isClosing ? 0 : 1, transform: isClosing ? "translateY(16px) scale(0.98)" : "translateY(0) scale(1)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
+    <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <form onSubmit={handleSubmit(submitForm)} className="user-modal-in max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-xl shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
         <div className="flex items-center justify-between border-b p-5" style={{ borderColor: "var(--card-border)" }}>
           <div>
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.5 }}>Create account</p>
+            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Create account</p>
             <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Add user</h2>
           </div>
-          <button type="button" onClick={handleClose} className="rounded-lg p-2 transition hover:opacity-70"
-            style={{ color: "var(--foreground)", opacity: 0.6 }}>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 transition" style={{ color: "var(--foreground)", opacity: 0.6 }}>
             <FaTimes />
           </button>
         </div>
@@ -1119,16 +1156,16 @@ function AddUserModal({ isSaving, onClose, onSave }) {
                   type="button"
                   key={createRole}
                   onClick={() => setValue("role", createRole, { shouldDirty: true, shouldValidate: true })}
-                  className="rounded-xl border p-3 text-left transition"
+                  className={`rounded-xl border p-3 text-left transition`}
                   style={{
-                    borderColor: role === createRole ? "var(--foreground)" : "var(--card-border)",
+                    borderColor: role === createRole ? "var(--gradient-primary)" : "var(--card-border)",
                     background: role === createRole ? "var(--gradient-primary)" : "var(--card)",
                     color: role === createRole ? "white" : "var(--foreground)",
-                    opacity: role === createRole ? 1 : 0.8
+                    boxShadow: role === createRole ? "var(--card-shadow)" : "none"
                   }}
                 >
                   <p className="text-sm font-bold">{formatRole(createRole)}</p>
-                  <p className="mt-1 text-xs" style={{ opacity: role === createRole ? 0.8 : 0.5 }}>
+                  <p className={`mt-1 text-xs`} style={{ opacity: role === createRole ? 0.8 : 0.6 }}>
                     {createRole === "BUYER" ? "Ticket customer" : createRole === "VENDOR" ? "Store account" : createRole === "THEATER_OWNER" ? "Theater access" : "Admin access"}
                   </p>
                 </button>
@@ -1195,7 +1232,7 @@ function AddUserModal({ isSaving, onClose, onSave }) {
           </div>
 
           {role === "THEATER_OWNER" && (
-            <div className="mt-5 rounded-xl border p-4" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+            <div className="mt-5 rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
               <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Theater details</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <TextInput label="Theater name" registration={register("theaterName")} error={errors.theaterName?.message} required />
@@ -1210,7 +1247,7 @@ function AddUserModal({ isSaving, onClose, onSave }) {
           )}
 
           {role === "VENDOR" && (
-            <div className="mt-5 rounded-xl border p-4" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+            <div className="mt-5 rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
               <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Vendor details</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <FormSelect label="Vendor type" registration={register("vendorType")} error={errors.vendorType?.message}>
@@ -1220,13 +1257,13 @@ function AddUserModal({ isSaving, onClose, onSave }) {
                   <option value="OTHER">Other</option>
                 </FormSelect>
                 <TextInput label="Assigned theater ID" registration={register("assignedTheater")} error={errors.assignedTheater?.message} />
-                <TextInput label="Store name" registration={register("storeName")} error={errors.storeName?.message} required />
-                <TextInput label="Store location" registration={register("storeLocation")} error={errors.storeLocation?.message} required />
+                <TextInput label="Store name" registration={register("storeName")} error={errors.storeName?.message} />
+                <TextInput label="Store location" registration={register("storeLocation")} error={errors.storeLocation?.message} />
                 <TextInput label="GST number" registration={register("gstNumber")} error={errors.gstNumber?.message} />
                 <TextInput label="Food license" registration={register("foodLicenseNumber")} error={errors.foodLicenseNumber?.message} />
                 <TextInput label="Delivery time" type="number" registration={register("deliveryTime")} error={errors.deliveryTime?.message} />
               </div>
-              <label className="mt-4 flex items-center gap-2 text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.8 }}>
+              <label className="mt-4 flex items-center gap-2 text-sm font-medium" style={{ color: "var(--foreground)" }}>
                 <input
                   type="checkbox"
                   checked={isOpen}
@@ -1251,9 +1288,9 @@ function AddUserModal({ isSaving, onClose, onSave }) {
           </button>
           <button
             type="button"
-            onClick={handleClose}
-            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:opacity-70"
-            style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.8 }}
+            onClick={onClose}
+            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
           >
             Cancel
           </button>
@@ -1378,17 +1415,14 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
   if (!showModal) return null;
 
   return (
-    <div onClick={handleBackdropClick} className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)", opacity: isClosing ? 0 : 1, transition: "opacity 200ms ease-out" }}>
-      <form onSubmit={handleSubmit(submitForm)} className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-xl shadow-2xl"
-        style={{ background: "var(--card)", opacity: isClosing ? 0 : 1, transform: isClosing ? "translateY(16px) scale(0.98)" : "translateY(0) scale(1)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
+    <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <form onSubmit={handleSubmit(submitForm)} className="user-modal-in max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-xl shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
         <div className="flex items-center justify-between border-b p-5" style={{ borderColor: "var(--card-border)" }}>
           <div>
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.5 }}>Edit account</p>
+            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Edit account</p>
             <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>{user.name || "User"}</h2>
           </div>
-          <button type="button" onClick={handleClose} className="rounded-lg p-2 transition hover:opacity-70"
-            style={{ color: "var(--foreground)", opacity: 0.6 }}>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 transition" style={{ color: "var(--foreground)", opacity: 0.6 }}>
             <FaTimes />
           </button>
         </div>
@@ -1533,9 +1567,9 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
           </button>
           <button
             type="button"
-            onClick={handleClose}
-            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:opacity-70"
-            style={{ borderColor: "var(--card-border)", color: "var(--foreground)", opacity: 0.8 }}
+            onClick={onClose}
+            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
           >
             Cancel
           </button>
@@ -1553,19 +1587,20 @@ function TextInput({ label, value, onChange, registration, error, type = "text",
 
   return (
     <label className="block">
-      <span className="text-sm font-semibold" style={{ color: "var(--foreground)", opacity: 0.8 }}>{label}</span>
+      <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{label}</span>
       <input
         type={type}
         required={required}
         {...inputProps}
-        className="mt-1 h-11 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-4"
+        className={`mt-1 h-11 w-full rounded-lg border bg-white px-3 text-sm outline-none transition focus:ring-4`}
         style={{
+          borderColor: error ? "#fca5a5" : "var(--card-border)",
           background: "var(--card)",
-          borderColor: error ? "rgba(239,68,68,0.5)" : "var(--card-border)",
-          color: "var(--foreground)"
+          color: "var(--foreground)",
+          focusBorderColor: error ? "#ef4444" : "var(--card-border)"
         }}
       />
-      {error ? <p className="mt-1 text-xs font-medium" style={{ color: "#ef4444" }}>{error}</p> : null}
+      {error ? <p className="mt-1 text-xs font-medium" style={{ color: "#dc2626" }}>{error}</p> : null}
     </label>
   );
 }
@@ -1578,19 +1613,19 @@ function FormSelect({ label, value, onChange, registration, error, children }) {
 
   return (
     <label className="block">
-      <span className="text-sm font-semibold" style={{ color: "var(--foreground)", opacity: 0.8 }}>{label}</span>
+      <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{label}</span>
       <select
         {...selectProps}
-        className="mt-1 h-11 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-4"
+        className={`mt-1 h-11 w-full rounded-lg border bg-white px-3 text-sm outline-none transition focus:ring-4`}
         style={{
+          borderColor: error ? "#fca5a5" : "var(--card-border)",
           background: "var(--card)",
-          borderColor: error ? "rgba(239,68,68,0.5)" : "var(--card-border)",
           color: "var(--foreground)"
         }}
       >
         {children}
       </select>
-      {error ? <p className="mt-1 text-xs font-medium" style={{ color: "#ef4444" }}>{error}</p> : null}
+      {error ? <p className="mt-1 text-xs font-medium" style={{ color: "#dc2626" }}>{error}</p> : null}
     </label>
   );
 }

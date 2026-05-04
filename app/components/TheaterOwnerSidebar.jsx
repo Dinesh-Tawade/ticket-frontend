@@ -2,15 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  FaUser,
   FaBuilding,
   FaFilm,
-  FaSignOutAlt,
   FaBars,
   FaTimes,
   FaChevronRight,
   FaCalendarAlt,
-  FaTheaterMasks,
 } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
 import { GiTheaterCurtains } from "react-icons/gi";
@@ -51,12 +48,6 @@ export default function TheaterOwnerSidebar() {
   const handleNavigate = (path) => {
     router.push(path);
     if (isMobile) setIsMobileMenuOpen(false);
-  };
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
   };
 
   // ✅ Sidebar Item Component
@@ -122,9 +113,9 @@ export default function TheaterOwnerSidebar() {
 
   // ✅ Sidebar Content
   const SidebarContent = () => (
-    <div className="h-full flex flex-col justify-between p-4">
+    <div className="h-full flex flex-col p-4 overflow-y-auto">
       {/* Header */}
-      <div>
+      <div className="flex-shrink-0">
         <div className="mb-8 flex items-center justify-between">
           {(!isCollapsed || isMobile) ? (
             <div className="flex items-center gap-3">
@@ -151,7 +142,7 @@ export default function TheaterOwnerSidebar() {
 
           {isMobile && (
             <FaTimes
-              className="text-gray-400 cursor-pointer text-lg hover:text-white transition-colors"
+              className="text-gray-400 cursor-pointer text-lg hover:text-white transition-colors flex-shrink-0"
               onClick={() => setIsMobileMenuOpen(false)}
             />
           )}
@@ -163,29 +154,6 @@ export default function TheaterOwnerSidebar() {
             <SidebarItem key={item.name} item={item} />
           ))}
         </ul>
-      </div>
-
-      {/* Bottom Section */}
-      <div className="border-t border-gray-700 pt-4 space-y-2">
-        <div
-          onClick={() => handleNavigate("/theater-owner/profile")}
-          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-gray-300 hover:bg-blue-500/20 transition-all duration-300 group"
-        >
-          <FaUser className="text-lg transition-transform group-hover:scale-110" />
-          {(!isCollapsed || isMobile) && (
-            <span className="text-sm font-medium">Profile</span>
-          )}
-        </div>
-
-        <div
-          onClick={logout}
-          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-red-400 hover:bg-red-500/20 transition-all duration-300 group"
-        >
-          <FaSignOutAlt className="text-lg transition-transform group-hover:scale-110" />
-          {(!isCollapsed || isMobile) && (
-            <span className="text-sm font-medium">Logout</span>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -211,7 +179,7 @@ export default function TheaterOwnerSidebar() {
           {/* Collapse Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+            className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-30"
           >
             <FaChevronRight
               className={`text-white text-xs transition-transform duration-300 ${
