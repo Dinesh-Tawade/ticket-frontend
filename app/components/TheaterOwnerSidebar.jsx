@@ -10,9 +10,10 @@ import {
   FaTimes,
   FaChevronRight,
   FaCalendarAlt,
-  FaChartLine,
+  FaTheaterMasks,
 } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
+import { GiTheaterCurtains } from "react-icons/gi";
 import { useRouter, usePathname } from "next/navigation";
 
 export default function TheaterOwnerSidebar() {
@@ -23,6 +24,7 @@ export default function TheaterOwnerSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // ✅ Responsive
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -35,13 +37,13 @@ export default function TheaterOwnerSidebar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ Menu items
   const menuItems = useMemo(
     () => [
       { name: "Dashboard", path: "/theater-owner/dashboard", icon: MdDashboard },
       { name: "My Theater", path: "/theater-owner/theater", icon: FaBuilding },
       { name: "Shows", path: "/theater-owner/shows", icon: FaFilm },
       { name: "Bookings", path: "/theater-owner/bookings", icon: FaCalendarAlt },
-      // { name: "Analytics", path: "/theater-owner/analytics", icon: FaChartLine },
     ],
     []
   );
@@ -57,6 +59,7 @@ export default function TheaterOwnerSidebar() {
     router.push("/login");
   };
 
+  // ✅ Sidebar Item Component
   const SidebarItem = ({ item }) => {
     const Icon = item.icon;
     const isActive = pathname === item.path;
@@ -67,32 +70,36 @@ export default function TheaterOwnerSidebar() {
           className={`
             relative flex items-center gap-4 cursor-pointer rounded-lg px-4 py-3
             transition-all duration-300 overflow-hidden
+
             ${
               isActive
-                ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg"
+                ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg"
                 : "text-gray-300"
             }
           `}
         >
+          {/* Left Indicator */}
           <span
             className={`
-              absolute left-0 top-0 h-full w-1 bg-purple-500
+              absolute left-0 top-0 h-full w-1 bg-blue-500
               transition-all duration-300
               ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
             `}
           />
 
+          {/* Icon */}
           <Icon
             className={`
               text-lg transition-all duration-300
               ${
                 isActive
                   ? "text-white"
-                  : "text-gray-400 group-hover:text-purple-400 group-hover:translate-x-1"
+                  : "text-gray-400 group-hover:text-blue-400 group-hover:translate-x-1"
               }
             `}
           />
 
+          {/* Text */}
           {(!isCollapsed || isMobile) && (
             <span
               className={`
@@ -104,35 +111,53 @@ export default function TheaterOwnerSidebar() {
             </span>
           )}
 
+          {/* Hover Background */}
           {!isActive && (
-            <span className="absolute inset-0 bg-purple-500/10 opacity-0 group-hover:opacity-100 transition duration-300 rounded-lg"></span>
+            <span className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition duration-300 rounded-lg"></span>
           )}
         </div>
       </li>
     );
   };
 
+  // ✅ Sidebar Content
   const SidebarContent = () => (
     <div className="h-full flex flex-col justify-between p-4">
+      {/* Header */}
       <div>
         <div className="mb-8 flex items-center justify-between">
           {(!isCollapsed || isMobile) ? (
-            <div>
-              <h1 className="text-2xl font-bold text-white">Theater Owner</h1>
-              <p className="text-xs text-gray-400 mt-1">Manage your theater</p>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+                <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                  <GiTheaterCurtains className="text-white text-xl" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-xl font-black tracking-tight text-white">
+                  Theater Owner
+                </h1>
+                <p className="text-[10px] font-medium text-gray-400">
+                  Manage your theater
+                </p>
+              </div>
             </div>
           ) : (
-            <span className="text-xl mx-auto">🎭</span>
+            <div className="relative w-10 h-10 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+              <GiTheaterCurtains className="text-white text-xl" />
+            </div>
           )}
 
           {isMobile && (
             <FaTimes
-              className="text-gray-400 cursor-pointer"
+              className="text-gray-400 cursor-pointer text-lg hover:text-white transition-colors"
               onClick={() => setIsMobileMenuOpen(false)}
             />
           )}
         </div>
 
+        {/* Menu */}
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <SidebarItem key={item.name} item={item} />
@@ -140,21 +165,26 @@ export default function TheaterOwnerSidebar() {
         </ul>
       </div>
 
+      {/* Bottom Section */}
       <div className="border-t border-gray-700 pt-4 space-y-2">
         <div
           onClick={() => handleNavigate("/theater-owner/profile")}
-          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-gray-300 hover:bg-purple-500/20 transition"
+          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-gray-300 hover:bg-blue-500/20 transition-all duration-300 group"
         >
-          <FaUser />
-          {(!isCollapsed || isMobile) && <span>Profile</span>}
+          <FaUser className="text-lg transition-transform group-hover:scale-110" />
+          {(!isCollapsed || isMobile) && (
+            <span className="text-sm font-medium">Profile</span>
+          )}
         </div>
 
         <div
           onClick={logout}
-          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-red-400 hover:bg-red-500/20 transition"
+          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-red-400 hover:bg-red-500/20 transition-all duration-300 group"
         >
-          <FaSignOutAlt />
-          {(!isCollapsed || isMobile) && <span>Logout</span>}
+          <FaSignOutAlt className="text-lg transition-transform group-hover:scale-110" />
+          {(!isCollapsed || isMobile) && (
+            <span className="text-sm font-medium">Logout</span>
+          )}
         </div>
       </div>
     </div>
@@ -162,26 +192,29 @@ export default function TheaterOwnerSidebar() {
 
   return (
     <>
+      {/* Mobile Button */}
       {isMobile && (
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="fixed top-4 left-4 z-30 p-3 bg-[#0f172a] rounded-lg shadow"
+          className="fixed top-4 left-4 z-30 p-3 bg-[#0f172a] rounded-lg shadow-lg"
         >
-          <FaBars className="text-white" />
+          <FaBars className="text-white text-lg" />
         </button>
       )}
 
+      {/* Desktop Sidebar */}
       {!isMobile && (
         <aside
-          className="fixed left-0 top-0 h-screen bg-[#0f172a] transition-all duration-300 shadow-lg"
+          className="fixed left-0 top-0 h-screen bg-[#0f172a] transition-all duration-300 shadow-lg z-20"
           style={{ width: isCollapsed ? "80px" : "260px" }}
         >
+          {/* Collapse Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="absolute -right-3 top-20 bg-purple-600 p-1 rounded-full"
+            className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
           >
             <FaChevronRight
-              className={`text-white ${
+              className={`text-white text-xs transition-transform duration-300 ${
                 isCollapsed ? "rotate-180" : ""
               }`}
             />
@@ -191,18 +224,20 @@ export default function TheaterOwnerSidebar() {
         </aside>
       )}
 
+      {/* Mobile Drawer */}
       {isMobileMenuOpen && (
         <>
           <div
             className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50">
+          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50 shadow-2xl">
             <SidebarContent />
           </div>
         </>
       )}
 
+      {/* Content spacing for desktop */}
       {!isMobile && (
         <div
           style={{ marginLeft: isCollapsed ? "80px" : "260px" }}
