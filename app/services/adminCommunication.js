@@ -66,6 +66,13 @@ export const SuperAdminLogin = async (email, password) => {
   return res.data;
 };
 
+export const logout = async () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("adminData");
+  
+};
+
 // ==================== DASHBOARD STATS ====================
 export const getDashboardStats = async () => {
   const res = await axios.get(`${BE_URL}/admin/stats`, getAuthHeader());

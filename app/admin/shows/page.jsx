@@ -23,7 +23,7 @@ const SEAT_TYPES = {
 };
 
 // Animated Counter Component
-const AnimatedCounter = ({ value, isDark }) => {
+const AnimatedCounter = ({ value }) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -761,19 +761,6 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle }) => {
   );
 };
 
-// Loading Component
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background" style={{ background: "var(--background)" }}>
-    <div className="text-center">
-      <div className="relative w-16 h-16 mx-auto mb-4">
-        <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-purple-500 border-b-pink-500 border-l-indigo-500 animate-spin" />
-        <div className="absolute inset-2 rounded-full bg-gradient-primary animate-pulse" />
-      </div>
-      <p className="font-semibold text-sm animate-pulse" style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading shows...</p>
-    </div>
-  </div>
-);
-
 // Main Component
 export default function ShowsManagement() {
   const router = useRouter();
@@ -789,7 +776,7 @@ export default function ShowsManagement() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, error, refetch } = useQuery({
     queryKey: ['allShows'],
     queryFn: getAllShowsAdmin
   });
@@ -897,25 +884,7 @@ export default function ShowsManagement() {
     setStatusFilter("ALL"); 
   }, []);
 
-  if (isLoading) return <LoadingSpinner />;
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background" style={{ background: "var(--background)" }}>
-        <div className="rounded-2xl max-w-md w-full text-center p-8 shadow-xl bg-card border"
-          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-background/50"
-            style={{ background: "rgba(var(--background), 0.5)" }}>
-            <FaFilm className="text-3xl" style={{ color: "var(--foreground)", opacity: 0.2 }} />
-          </div>
-          <h3 className="text-lg font-extrabold mb-2" style={{ color: "var(--foreground)" }}>Failed to Load</h3>
-          <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>{error.message}</p>
-          <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all border"
-            style={{ borderColor: "var(--card-border)" }}>Retry</button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen transition-colors duration-300 bg-background" style={{ background: "var(--background)" }}>
@@ -928,7 +897,7 @@ export default function ShowsManagement() {
       {/* Header */}
       <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl"
         style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-        <div className="max-w-7xl mx-auto px-8">
+        <div className="mx-auto px-8">
           <div className="flex items-center justify-between py-4 flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -969,7 +938,7 @@ export default function ShowsManagement() {
         </div>
       </div>
       
-      <div className="max-w-7xl mx-auto p-8">
+      <div className=" mx-auto pt-8">
         {/* Stats Cards with Animated Counter */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <StatsCard label="Total Shows" value={stats.total} icon={FaFilm} color="purple" />

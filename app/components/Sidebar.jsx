@@ -42,11 +42,8 @@ export default function Sidebar() {
     () => [
       { name: "Dashboard", path: "/admin/dashboard", icon: MdDashboard },
       { name: "Theaters", path: "/admin/theaters", icon: FaFilm },
-      // { name: "Admins", path: "/admin/admins", icon: RiAdminLine },
       { name: "Shows", path: "/admin/shows", icon: SiMyshows },
-      // { name: "Theater Rows", path: "/admin/theater-rows", icon: FaArrowsAlt },
       { name: "Users", path: "/admin/users", icon: FaUser },
-      // { name: "Vendors", path: "/admin/vendors", icon: FaBuilding },
     ],
     []
   );
@@ -56,12 +53,7 @@ export default function Sidebar() {
     if (isMobile) setIsMobileMenuOpen(false);
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    router.push("/admin/login");
-  };
-
-  // ✅ Sidebar Item (🔥 PREMIUM HOVER)
+  // ✅ Sidebar Item
   const SidebarItem = ({ item }) => {
     const Icon = item.icon;
     const isActive = pathname === item.path;
@@ -129,7 +121,7 @@ export default function Sidebar() {
       <div>
         <div className="mb-8 flex items-center justify-between">
           {(!isCollapsed || isMobile) ? (
-            <h1 className="text-3xl  font-bold text-white">
+            <h1 className="text-3xl font-bold text-white">
               Super Admin
             </h1>
           ) : (
@@ -151,25 +143,6 @@ export default function Sidebar() {
           ))}
         </ul>
       </div>
-
-      {/* Bottom */}
-      <div className="border-t border-gray-700 pt-4 space-y-2">
-        <div
-          onClick={() => handleNavigate("/admin/profile")}
-          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-gray-300 hover:bg-blue-500/20 transition"
-        >
-          <FaUser />
-          {(!isCollapsed || isMobile) && <span>Profile</span>}
-        </div>
-
-        <div
-          onClick={logout}
-          className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer text-red-400 hover:bg-red-500/20 transition"
-        >
-          <FaSignOutAlt />
-          {(!isCollapsed || isMobile) && <span>Logout</span>}
-        </div>
-      </div>
     </div>
   );
 
@@ -188,13 +161,17 @@ export default function Sidebar() {
       {/* Desktop Sidebar */}
       {!isMobile && (
         <aside
-          className="fixed left-0 top-0 h-screen bg-[#0f172a] transition-all duration-300 shadow-lg"
-          style={{ width: isCollapsed ? "80px" : "260px" }}
+          className="fixed left-0 top-0 h-screen overflow-y-auto bg-[#0f172a] transition-all duration-300 shadow-lg z-40"
+          style={{
+            width: isCollapsed ? "80px" : "260px",
+            minWidth: isCollapsed ? "80px" : "260px",   // ✅ FIX
+            maxWidth: isCollapsed ? "80px" : "260px",   // ✅ FIX
+          }}
         >
           {/* Collapse Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full"
+            className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full z-50"
           >
             <FaChevronRight
               className={`text-white ${
@@ -214,7 +191,7 @@ export default function Sidebar() {
             className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50">
+          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50 overflow-y-auto">
             <SidebarContent />
           </div>
         </>
@@ -223,7 +200,10 @@ export default function Sidebar() {
       {/* Content spacing */}
       {!isMobile && (
         <div
-          style={{ marginLeft: isCollapsed ? "80px" : "260px" }}
+          style={{
+            marginLeft: isCollapsed ? "80px" : "260px",
+            minWidth: "0", 
+          }}
           className="transition-all duration-300"
         />
       )}

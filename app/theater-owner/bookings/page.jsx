@@ -1,21 +1,101 @@
-// components/TheaterBookingsManagement.jsx
-'use client';
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getMyBookings } from '../../services/adminCommunication';
+"use client";
+
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getMyBookings } from "../../services/adminCommunication";
+import {
+  FaFilm,
+  FaCalendarAlt,
+  FaTicketAlt,
+  FaRupeeSign,
+  FaClock,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaSpinner,
+  FaSearch,
+  FaTimes,
+  FaUser,
+  FaCreditCard,
+  FaIdCard,
+  FaBuilding,
+} from "react-icons/fa";
+import { MdEventSeat, MdMovie, MdLocationOn, MdTheaters } from "react-icons/md";
+import { GiTheaterCurtains } from "react-icons/gi";
+import useTheme from "@/app/hooks/useTheme";
+
+// Animated Counter Component
+const AnimatedCounter = ({ value }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value) || 0;
+    if (start === end) return;
+
+    const duration = 1000;
+    const increment = end / (duration / 16);
+
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return (
+    <div className="text-[34px] font-black tracking-tighter leading-none transition-all duration-300" style={{ color: "var(--foreground)" }}>
+      {count}
+    </div>
+  );
+};
+
+// Stats Card Component
+const StatsCard = ({ label, value, icon: Icon, color }) => {
+  const colorMap = {
+    blue: "#3b82f6",
+    green: "#22c55e",
+    purple: "#a855f7",
+    yellow: "#eab308",
+    red: "#ef4444",
+    indigo: "#6366f1"
+  };
+  const themeColor = colorMap[color] || colorMap.blue;
+
+  return (
+    <div className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
+      style={{ background: "var(--card)", border: "1px solid var(--card-border)", boxShadow: "var(--card-shadow)" }}>
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 transition-colors" style={{ color: "var(--foreground)", opacity: 0.5 }}>{label}</div>
+        <AnimatedCounter value={value} />
+      </div>
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+        style={{ background: `${themeColor}15`, border: `1px solid ${themeColor}30` }}>
+        <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor }} />
+      </div>
+    </div>
+  );
+};
 
 const TheaterBookingsManagement = () => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const { 
-    data: bookingsData, 
-    isLoading, 
-    error, 
-    refetch 
+  const {
+    data: bookingsData,
+   
+    refetch,
   } = useQuery({
-    queryKey: ['my-bookings'],
+    queryKey: ["my-bookings"],
     queryFn: getMyBookings,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -23,240 +103,355 @@ const TheaterBookingsManagement = () => {
   });
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatDateTime = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  const getStatusBadgeColor = (status) => {
-    const colorMap = {
-      'CONFIRMED': 'bg-green-100 text-green-800',
-      'PENDING': 'bg-yellow-100 text-yellow-800',
-      'CANCELLED': 'bg-red-100 text-red-800'
-    };
-    return colorMap[status] || 'bg-gray-100 text-gray-800';
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case "CONFIRMED":
+        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-700";
+      case "PENDING":
+        return "bg-yellow-700 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-700";
+      case "CANCELLED":
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      default:
+        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+    }
   };
 
-  const getPaymentStatusBadgeColor = (status) => {
-    const colorMap = {
-      'PAID': 'bg-green-100 text-green-800',
-      'PENDING': 'bg-yellow-100 text-yellow-800',
-      'FAILED': 'bg-red-100 text-red-800'
-    };
-    return colorMap[status] || 'bg-gray-100 text-gray-800';
+  const getPaymentStatusStyle = (status) => {
+    switch (status) {
+      case "PAID":
+        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "FAILED":
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      default:
+        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+    }
   };
 
   const getFilteredBookings = () => {
     if (!bookingsData?.data) return [];
-    
+
     let filtered = [...bookingsData.data];
-    
-    if (filterStatus !== 'ALL') {
-      filtered = filtered.filter(booking => booking.bookingStatus === filterStatus);
+
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter((booking) => booking.bookingStatus === filterStatus);
     }
-    
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(booking => 
-        booking.movieName?.toLowerCase().includes(term) ||
-        booking.bookingId?.toLowerCase().includes(term) ||
-        booking.userId?.name?.toLowerCase().includes(term) ||
-        booking.userId?.email?.toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (booking) =>
+          booking.movieName?.toLowerCase().includes(term) ||
+          booking.bookingId?.toLowerCase().includes(term) ||
+          booking.userId?.name?.toLowerCase().includes(term) ||
+          booking.userId?.email?.toLowerCase().includes(term)
       );
     }
-    
+
     return filtered;
   };
 
   const filteredBookings = getFilteredBookings();
   const summary = bookingsData?.summary;
+  const hasFilters = searchTerm || filterStatus !== "ALL";
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        <div className="mt-4 text-lg text-gray-600">Loading bookings...</div>
-      </div>
-    );
-  }
+  const clearFilters = useCallback(() => {
+    setSearchTerm("");
+    setFilterStatus("ALL");
+  }, []);
 
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          <strong className="font-bold">Error! </strong>
-          <span>{error.response?.data?.message || error.message || 'Failed to load bookings'}</span>
-          <button onClick={() => refetch()} className="mt-3 bg-red-600 text-white px-4 py-2 rounded">Retry</button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Theater Bookings</h1>
-        <button onClick={() => refetch()} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-          Refresh
-        </button>
-      </div>
+    <div className="min-h-screen transition-colors duration-300" style={{ background: "var(--background)" }}>
+      {/* Header */}
+      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+        <div className="pl-5 pr-5">
+          <div className="flex items-center justify-between py-4 flex-wrap gap-3">
+            <div className="flex items-center gap-8">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                  <GiTheaterCurtains className="text-white text-xl animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
+                  Theater Bookings
+                </h1>
+                <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  Manage and track all your theater bookings
+                </p>
+              </div>
+            </div>
 
-      {/* Summary Cards */}
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
-            <div className="text-sm text-gray-500">Total Bookings</div>
-            <div className="text-2xl font-bold">{summary.totalBookings}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
-            <div className="text-sm text-gray-500">Total Revenue</div>
-            <div className="text-2xl font-bold text-green-600">₹{summary.totalRevenue?.toLocaleString()}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
-            <div className="text-sm text-gray-500">Confirmed</div>
-            <div className="text-2xl font-bold text-green-600">{summary.confirmedBookings}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-red-500">
-            <div className="text-sm text-gray-500">Cancelled</div>
-            <div className="text-2xl font-bold text-red-600">{summary.cancelledBookings}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
-            <div className="text-sm text-gray-500">Total Seats</div>
-            <div className="text-2xl font-bold text-purple-600">{summary.totalSeatsBooked}</div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => refetch()}
+                className="p-2 rounded-xl transition-all duration-300 hover:scale-105 border"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              >
+                <FaSpinner className="text-sm" />
+              </button>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <input
-            type="text"
-            placeholder="Search by movie, booking ID, or user..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="flex gap-2">
-            {['ALL', 'CONFIRMED', 'PENDING', 'CANCELLED'].map(status => (
+      <div className="pt-5 mx-auto">
+        {/* Stats Cards */}
+        {summary && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <StatsCard label="Total Bookings" value={summary.totalBookings} icon={FaTicketAlt} color="blue" />
+            <StatsCard label="Total Revenue" value={`₹${summary.totalRevenue?.toLocaleString() || 0}`} icon={FaRupeeSign} color="green" />
+            <StatsCard label="Confirmed" value={summary.confirmedBookings} icon={FaCheckCircle} color="green" />
+            <StatsCard label="Cancelled" value={summary.cancelledBookings} icon={FaTimesCircle} color="red" />
+            <StatsCard label="Total Seats" value={summary.totalSeatsBooked} icon={MdEventSeat} color="purple" />
+          </div>
+        )}
+
+        {/* Search and Filters */}
+        <div className="rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+          <div className="flex-1 min-w-[220px] relative">
+            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: "var(--foreground)", opacity: 0.4 }} />
+            <input
+              type="text"
+              placeholder="Search by movie, booking ID, or user..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+              style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {["ALL", "CONFIRMED", "PENDING", "CANCELLED"].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={`px-4 py-2 rounded-lg ${
-                  filterStatus === status ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                className={`px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${
+                  filterStatus === status
+                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md"
+                    : "bg-transparent border border-card-border hover:bg-white/5"
                 }`}
               >
                 {status}
               </button>
             ))}
           </div>
+
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="px-3.5 py-2.5 rounded-xl border border-red-500/30 bg-transparent text-red-500 font-bold text-xs flex items-center gap-1.5 hover:bg-red-500/10 transition-all duration-300 hover:scale-105"
+            >
+              <FaTimes className="text-[10px]" /> Clear
+            </button>
+          )}
+
+          <div className="ml-auto text-xs font-semibold" style={{ color: "var(--foreground)", opacity: 0.4 }}>
+            {filteredBookings.length} booking{filteredBookings.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+
+        {/* Bookings Grid */}
+        {filteredBookings.length === 0 ? (
+          <div className="rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: "var(--background)" }}>
+              <FaTicketAlt className="text-3xl" style={{ color: "var(--foreground)", opacity: 0.2 }} />
+            </div>
+            <h3 className="text-lg font-extrabold mb-2" style={{ color: "var(--foreground)" }}>No bookings found</h3>
+            <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              {hasFilters ? "Try adjusting your filters" : "Bookings will appear here"}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {filteredBookings.map((booking, idx) => (
+              <div
+                key={booking._id}
+                className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                style={{ animationDelay: `${idx * 50}ms` }}
+              >
+                <BookingCard
+                  booking={booking}
+                  isExpanded={selectedBooking === booking._id}
+                  onToggle={() => setSelectedBooking(selectedBooking === booking._id ? null : booking._id)}
+                  formatDate={formatDate}
+                  formatDateTime={formatDateTime}
+                  getStatusBadgeStyle={getStatusBadgeStyle}
+                  getPaymentStatusStyle={getPaymentStatusStyle}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Booking Card Component
+const BookingCard = ({
+  booking,
+  isExpanded,
+  onToggle,
+  formatDate,
+  formatDateTime,
+  getStatusBadgeStyle,
+  getPaymentStatusStyle,
+}) => {
+  return (
+    <div
+      className="group rounded-2xl overflow-hidden flex flex-col shadow-md transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
+      style={{ background: "var(--card)", border: "1px solid var(--card-border)", boxShadow: "var(--card-shadow)" }}
+      onClick={onToggle}
+    >
+      <div className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          {/* Left Section */}
+          <div className="flex-1 min-w-[200px]">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(59,130,246,0.1)" }}>
+                <MdMovie className="text-blue-500 text-lg" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
+                  {booking.movieName}
+                </h3>
+                <div className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  <FaIdCard className="text-xs" />
+                  <span>{booking.bookingId}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Center Section */}
+          <div className="flex flex-wrap gap-6">
+            <div>
+              <div className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>User</div>
+              <div className="flex items-center gap-1 mt-1">
+                <FaUser className="text-blue-500 text-xs" />
+                <span className="font-medium" style={{ color: "var(--foreground)" }}>{booking.userId?.name}</span>
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>{booking.userId?.email}</div>
+            </div>
+            <div>
+              <div className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Show Date & Time</div>
+              <div className="flex items-center gap-1 mt-1">
+                <FaCalendarAlt className="text-blue-500 text-xs" />
+                <span style={{ color: "var(--foreground)" }}>{formatDate(booking.showDate)}</span>
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <FaClock className="text-blue-500 text-xs" />
+                <span style={{ color: "var(--foreground)" }}>{booking.showTime}</span>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Seats & Amount</div>
+              <div className="flex items-center gap-1 mt-1">
+                <MdEventSeat className="text-blue-500 text-xs" />
+                <span style={{ color: "var(--foreground)" }}>{booking.totalSeats} seats</span>
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <FaRupeeSign className="text-green-500 text-xs" />
+                <span className="font-semibold text-green-600 dark:text-green-400">₹{booking.totalAmount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Section - Status Badges */}
+          <div className="flex flex-col items-end gap-2">
+            <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeStyle(booking.bookingStatus)}`}>
+              {booking.bookingStatus}
+            </span>
+  
+          </div>
         </div>
       </div>
 
-      <div className="mb-4 text-gray-600">Showing {filteredBookings.length} of {bookingsData?.count || 0} bookings</div>
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="border-t p-5 transition-all duration-300" style={{ borderColor: "var(--card-border)", background: "rgba(0,0,0,0.02)" }}>
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+              <FaTicketAlt className="text-blue-500 text-sm" />
+              Booking Details
+            </h4>
 
-      {/* Bookings Table */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Booking ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Movie</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Seats</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredBookings.map((booking) => (
-                <React.Fragment key={booking._id}>
-                  <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedBooking(selectedBooking === booking._id ? null : booking._id)}>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium">{booking.bookingId}</div>
-                      <div className="text-xs text-gray-500">{formatDateTime(booking.bookedAt)}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium">{booking.movieName}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">{booking.userId?.name}</div>
-                      <div className="text-xs text-gray-500">{booking.userId?.email}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">{formatDate(booking.showDate)}</div>
-                      <div className="text-xs text-gray-500">{booking.showTime}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">{booking.totalSeats} seats</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium">₹{booking.totalAmount}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusBadgeColor(booking.paymentStatus)}`}>
-                        {booking.paymentStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(booking.bookingStatus)}`}>
-                        {booking.bookingStatus}
-                      </span>
-                    </td>
-                  </tr>
-                  {selectedBooking === booking._id && (
-                    <tr className="bg-gray-50">
-                      <td colSpan="8" className="px-4 py-4">
-                        <div className="space-y-3">
-                          <h4 className="font-semibold">Booking Details</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div><span className="text-gray-500">Booked At:</span> <span className="ml-2">{formatDateTime(booking.bookedAt)}</span></div>
-                            <div><span className="text-gray-500">Expires At:</span> <span className="ml-2">{formatDateTime(booking.expiresAt)}</span></div>
-                            {booking.cancelledAt && <div><span className="text-gray-500">Cancelled At:</span> <span className="ml-2">{formatDateTime(booking.cancelledAt)}</span></div>}
-                            {booking.cancelledBy && <div><span className="text-gray-500">Cancelled By:</span> <span className="ml-2">{booking.cancelledBy}</span></div>}
-                          </div>
-                          <div>
-                            <h5 className="font-medium mb-2">Seat Details:</h5>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                              {booking.seats?.map((seat, idx) => (
-                                <div key={idx} className="bg-white p-2 rounded border">
-                                  <div className="text-sm font-medium">Row {seat.rowName}, Seat {seat.seatNumber}</div>
-                                  <div className="text-xs text-gray-500">{seat.category} - ₹{seat.price}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-muted">Booked At:</span>
+                <span className="ml-2" style={{ color: "var(--foreground)" }}>{formatDateTime(booking.bookedAt)}</span>
+              </div>
+              <div>
+                <span className="text-muted">Expires At:</span>
+                <span className="ml-2" style={{ color: "var(--foreground)" }}>{formatDateTime(booking.expiresAt)}</span>
+              </div>
+              {booking.cancelledAt && (
+                <div>
+                  <span className="text-muted">Cancelled At:</span>
+                  <span className="ml-2" style={{ color: "var(--foreground)" }}>{formatDateTime(booking.cancelledAt)}</span>
+                </div>
+              )}
+              {booking.cancelledBy && (
+                <div>
+                  <span className="text-muted">Cancelled By:</span>
+                  <span className="ml-2" style={{ color: "var(--foreground)" }}>{booking.cancelledBy}</span>
+                </div>
+              )}
+            </div>
 
-      {filteredBookings.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 text-lg">No bookings found</p>
+            <div>
+              <h5 className="font-medium mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                <MdEventSeat className="text-blue-500" />
+                Seat Details:
+              </h5>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {booking.seats?.map((seat, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-lg transition-all duration-300 hover:scale-105"
+                    style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
+                  >
+                    <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                      Row {seat.rowName}, Seat {seat.seatNumber}
+                    </div>
+                    <div className="text-xs mt-1" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+                      {seat.category} - ₹{seat.price}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <div className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+                <FaCreditCard className="text-blue-500" />
+                <span>Payment ID: {booking.bookingId}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
