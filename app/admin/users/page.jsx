@@ -183,10 +183,11 @@ function Badge({ children, className = "" }) {
 
 function IconButton({ title, onClick, children, tone = "slate" }) {
   const tones = {
-    slate: "border-slate-200 text-slate-600 hover:bg-slate-100",
-    red: "border-red-100 text-red-600 hover:bg-red-50",
-    blue: "border-sky-100 text-sky-700 hover:bg-sky-50",
+    slate: { border: "var(--card-border)", color: "var(--foreground)", opacity: 0.6, hoverBg: "var(--card-border)" },
+    red: { border: "rgba(239,68,68,0.3)", color: "#ef4444", hoverBg: "rgba(239,68,68,0.1)" },
+    blue: { border: "rgba(59,130,246,0.3)", color: "#3b82f6", hoverBg: "rgba(59,130,246,0.1)" },
   };
+  const t = tones[tone];
 
   return (
     <button
@@ -247,8 +248,8 @@ function UserAvatar({ user, size = "md" }) {
 
   return (
     <div
-      className={`flex items-center justify-center rounded-full bg-slate-200 text-slate-600 ${classes}`}
-      style={{ width: dimension, height: dimension }}
+      className={`flex items-center justify-center rounded-full ${classes}`}
+      style={{ width: dimension, height: dimension, background: "var(--card-border)", color: "var(--foreground)", opacity: 0.6 }}
     >
       {initials}
     </div>
@@ -888,6 +889,7 @@ function UserDetailsDrawer({ user, isLoading, onClose, onEdit }) {
         className="user-drawer-in ml-auto flex h-full w-full max-w-xl flex-col shadow-2xl"
         style={{ background: "var(--card)" }}
         onClick={(event) => event.stopPropagation()}
+        style={{ background: "var(--card)" }}
       >
         <div className="flex items-center justify-between border-b p-5" style={{ borderColor: "var(--card-border)" }}>
           <div>
@@ -1112,6 +1114,26 @@ function AddUserModal({ isSaving, onClose, onSave }) {
     onSave(values.role, buildPayload(values), profileImage);
   };
 
+  const [isClosing, setIsClosing] = useState(false);
+  const [showModal, setShowModal] = useState(true);
+
+  useEffect(() => {
+    setShowModal(true);
+    const timer = setTimeout(() => setIsClosing(false), 10);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) handleClose();
+  };
+
+  if (!showModal) return null;
+
   return (
     <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.5)" }}>
       <form onSubmit={handleSubmit(submitForm)} className="user-modal-in max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-xl shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
@@ -1152,7 +1174,7 @@ function AddUserModal({ isSaving, onClose, onSave }) {
           </div>
 
           <div className="mt-5">
-            <h3 className="text-sm font-bold text-slate-950">Profile Image</h3>
+            <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Profile Image</h3>
             <div className="mt-3 flex items-center gap-4">
               <div className="shrink-0">
                 {imagePreview ? (
@@ -1160,27 +1182,31 @@ function AddUserModal({ isSaving, onClose, onSave }) {
                     <img
                       src={imagePreview}
                       alt="Profile preview"
-                      className="h-16 w-16 rounded-full object-cover ring-2 ring-slate-200"
+                      className="h-16 w-16 rounded-full object-cover"
+                      style={{ ring: "2px", ringColor: "var(--card-border)" }}
                     />
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-white transition hover:opacity-90"
+                      style={{ background: "#ef4444" }}
                       title="Remove image"
                     >
                       <FaTimes className="text-xs" />
                     </button>
                   </div>
                 ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 ring-2 ring-slate-200">
-                    <FaUsers className="text-xl text-slate-400" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full"
+                    style={{ background: "var(--card-border)", ring: "2px", ringColor: "var(--card-border)" }}>
+                    <FaUsers className="text-xl" style={{ color: "var(--foreground)", opacity: 0.4 }} />
                   </div>
                 )}
               </div>
               <label className="flex-1 cursor-pointer">
-                <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-center transition hover:border-slate-400 hover:bg-slate-100">
-                  <span className="text-sm font-medium text-slate-600">Click to upload profile image</span>
-                  <span className="mt-1 block text-xs text-slate-400">PNG, JPG, GIF up to 5MB</span>
+                <div className="rounded-lg border-2 border-dashed px-4 py-3 text-center transition"
+                  style={{ borderColor: "var(--card-border)", background: "var(--background)" }}>
+                  <span className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.7 }}>Click to upload profile image</span>
+                  <span className="mt-1 block text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>PNG, JPG, GIF up to 5MB</span>
                 </div>
                 <input
                   type="file"
@@ -1242,7 +1268,8 @@ function AddUserModal({ isSaving, onClose, onSave }) {
                   type="checkbox"
                   checked={isOpen}
                   onChange={(event) => setValue("isOpen", event.target.checked, { shouldDirty: true })}
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="h-4 w-4 rounded"
+                  style={{ borderColor: "var(--card-border)" }}
                 />
                 Store is open
               </label>
@@ -1367,6 +1394,26 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
     );
   };
 
+  const [isClosing, setIsClosing] = useState(false);
+  const [showModal, setShowModal] = useState(true);
+
+  useEffect(() => {
+    setShowModal(true);
+    const timer = setTimeout(() => setIsClosing(false), 10);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) handleClose();
+  };
+
+  if (!showModal) return null;
+
   return (
     <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.5)" }}>
       <form onSubmit={handleSubmit(submitForm)} className="user-modal-in max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-xl shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
@@ -1382,7 +1429,7 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
 
         <div className="max-h-[65vh] overflow-y-auto p-5">
           <div className="mb-5">
-            <h3 className="text-sm font-bold text-slate-950">Profile Image</h3>
+            <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Profile Image</h3>
             <div className="mt-3 flex items-center gap-4">
               <div className="shrink-0">
                 {imagePreview ? (
@@ -1390,12 +1437,14 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
                     <img
                       src={imagePreview}
                       alt="Profile preview"
-                      className="h-16 w-16 rounded-full object-cover ring-2 ring-slate-200"
+                      className="h-16 w-16 rounded-full object-cover"
+                      style={{ boxShadow: "0 0 0 2px var(--card-border)" }}
                     />
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-white transition hover:opacity-90"
+                      style={{ background: "#ef4444" }}
                       title="Remove image"
                     >
                       <FaTimes className="text-xs" />
@@ -1406,27 +1455,31 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
                     <img
                       src={currentImageUrl}
                       alt="Current profile"
-                      className="h-16 w-16 rounded-full object-cover ring-2 ring-slate-200"
+                      className="h-16 w-16 rounded-full object-cover"
+                      style={{ boxShadow: "0 0 0 2px var(--card-border)" }}
                     />
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-white transition hover:opacity-90"
+                      style={{ background: "#ef4444" }}
                       title="Remove image"
                     >
                       <FaTimes className="text-xs" />
                     </button>
                   </div>
                 ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 ring-2 ring-slate-200">
-                    <FaUsers className="text-xl text-slate-400" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full"
+                    style={{ background: "var(--card-border)", boxShadow: "0 0 0 2px var(--card-border)" }}>
+                    <FaUsers className="text-xl" style={{ color: "var(--foreground)", opacity: 0.4 }} />
                   </div>
                 )}
               </div>
               <label className="flex-1 cursor-pointer">
-                <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-center transition hover:border-slate-400 hover:bg-slate-100">
-                  <span className="text-sm font-medium text-slate-600">Click to upload new profile image</span>
-                  <span className="mt-1 block text-xs text-slate-400">PNG, JPG, GIF up to 5MB</span>
+                <div className="rounded-lg border-2 border-dashed px-4 py-3 text-center transition"
+                  style={{ borderColor: "var(--card-border)", background: "var(--background)" }}>
+                  <span className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.7 }}>Click to upload new profile image</span>
+                  <span className="mt-1 block text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>PNG, JPG, GIF up to 5MB</span>
                 </div>
                 <input
                   type="file"
@@ -1458,8 +1511,8 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
           </div>
 
           {role === "THEATER_OWNER" && (
-            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="text-sm font-bold text-slate-950">Theater details</h3>
+            <div className="mt-5 rounded-xl border p-4" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+              <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Theater details</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <TextInput label="Theater name" registration={register("theaterName")} error={errors.theaterName?.message} required />
                 <TextInput label="Theater location" registration={register("theaterLocation")} error={errors.theaterLocation?.message} />
@@ -1473,8 +1526,8 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
           )}
 
           {role === "VENDOR" && (
-            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="text-sm font-bold text-slate-950">Vendor details</h3>
+            <div className="mt-5 rounded-xl border p-4" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+              <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Vendor details</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <FormSelect label="Vendor type" registration={register("vendorType")} error={errors.vendorType?.message}>
                   <option value="">Select type</option>
@@ -1489,12 +1542,13 @@ function EditUserModal({ user, isSaving, onClose, onSave }) {
                 <TextInput label="Food license" registration={register("foodLicenseNumber")} error={errors.foodLicenseNumber?.message} />
                 <TextInput label="Delivery time" type="number" registration={register("deliveryTime")} error={errors.deliveryTime?.message} />
               </div>
-              <label className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-700">
+              <label className="mt-4 flex items-center gap-2 text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.8 }}>
                 <input
                   type="checkbox"
                   checked={isOpen}
                   onChange={(event) => setValue("isOpen", event.target.checked, { shouldDirty: true })}
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="h-4 w-4 rounded"
+                  style={{ borderColor: "var(--card-border)" }}
                 />
                 Store is open
               </label>
