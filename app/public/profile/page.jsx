@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
 import {
   FaUser,
   FaEnvelope,
@@ -15,7 +14,6 @@ import {
   FaTimes,
   FaCheckCircle,
 } from "react-icons/fa";
-import { getCurrentUser } from "@/app/store/slices/authSlice";
 import axios from "axios";
 import useTheme from "@/app/hooks/useTheme";
 import Header from "@/app/components/public/Header";
@@ -24,9 +22,7 @@ import Footer from "@/app/components/public/Footer";
 const BE_URL = process.env.NEXT_PUBLIC_BE_URL;
 
 function ProfilePage() {
-  const dispatch = useDispatch();
   const { theme } = useTheme();
-  const { user, isAuthenticated, isLoading: authLoading } = useSelector((state) => state.auth);
   const isDark = theme === "dark";
   
   const [isEditing, setIsEditing] = useState(false);
@@ -34,6 +30,7 @@ function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [userData, setUserData] = useState(null);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -48,32 +45,29 @@ function ProfilePage() {
   // Check auth and load user data
   useEffect(() => {
     const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
     
-    // If we have a token but no user, fetch the user
-    if (token && !user && !isAuthenticated) {
-      dispatch(getCurrentUser(true));
+    if (token && storedUser) {
+      try {
+        const userDataParsed = JSON.parse(storedUser);
+        setUserData(userDataParsed);
+        // Assuming userData has the user object
+        setFormData({
+          name: userDataParsed.name || "",
+          email: userDataParsed.email || "",
+          phone: userDataParsed.phone || "",
+          address: userDataParsed.address || "",
+        });
+        setPreviewImage(userDataParsed.profileImage || null);
+      } catch (error) {
+        console.error("Error parsing stored user:", error);
+      }
     }
     
-    // Give auth a moment to initialize
-    const timer = setTimeout(() => {
-      setIsCheckingAuth(false);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [dispatch, user, isAuthenticated]);
+    setIsCheckingAuth(false);
+  }, []);
 
-  // Load user data into form
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        address: user.address || "",
-      });
-      setPreviewImage(user.profileImage || null);
-    }
-  }, [user]);
+  // Load user data into form - now handled in the auth check useEffect
 
   // Clear messages after 3 seconds
   useEffect(() => {
@@ -132,19 +126,19 @@ function ProfilePage() {
   const handleCancel = () => {
     setIsEditing(false);
     setProfileImage(null);
-    if (user) {
+    if (userData) {
       setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        address: user.address || "",
+        name: userData.name || "",
+        email: userData.email || "",
+        phone: userData.phone || "",
+        address: userData.address || "",
       });
-      setPreviewImage(user.profileImage || null);
+      setPreviewImage(userData.profileImage || null);
     }
   };
 
   // Show loading while checking auth
-  if (isCheckingAuth || authLoading) {
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="flex flex-col items-center gap-4">
@@ -155,24 +149,33 @@ function ProfilePage() {
     );
   }
 
-  // Check both Redux state AND localStorage token
+  // Check for authentication
   const hasToken = typeof window !== "undefined" && localStorage.getItem("token");
+  const storedUser = typeof window !== "undefined" && localStorage.getItem("user");
   
-  if (!isAuthenticated || !user) {
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--background)" }}>
         <div className="text-center max-w-md">
           <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: "rgba(212,175,55,0.1)" }}>
             <FaUser className="text-[#d4af37]" size={24} />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">
-            {hasToken ? "Loading Profile..." : "Please Sign In"}
-          </h2>
-          <p className="text-white/50 text-sm mb-6">
-            {hasToken 
-              ? "Please wait while we load your profile." 
-              : "You need to be logged in to view your profile."}
-          </p>
+          <h2 className="text-xl font-bold text-white mb-2">Loading Profile...</h2>
+          <p className="text-white/50 text-sm mb-6">Please wait while we load your profile.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasToken || !storedUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--background)" }}>
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: "rgba(212,175,55,0.1)" }}>
+            <FaUser className="text-[#d4af37]" size={24} />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Please Sign In</h2>
+          <p className="text-white/50 text-sm mb-6">You need to be logged in to view your profile.</p>
           <a
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm"
@@ -403,7 +406,7 @@ function ProfilePage() {
                       color: "var(--foreground)",
                     }}
                   >
-                    <span className="capitalize">{user.role?.toLowerCase() || "User"}</span>
+                    <span className="capitalize">{userData?.role?.toLowerCase() || "User"}</span>
                     <span
                       className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider"
                       style={{
@@ -481,10 +484,10 @@ function ProfilePage() {
         </div>
 
         {/* Stats Section */}
-        <div className="grid grid-cols-3 gap-4 mt-6">
+        {/* <div className="grid grid-cols-3 gap-4 mt-6">
           {[
-            { label: "Bookings", value: user.bookingsCount || "0", icon: FaTicketAlt },
-            { label: "Member Since", value: user.createdAt ? new Date(user.createdAt).getFullYear() : "2024", icon: FaStar },
+            { label: "Bookings", value: userData?.bookingsCount || "0", icon: FaTicketAlt },
+            { label: "Member Since", value: userData?.createdAt ? new Date(userData.createdAt).getFullYear() : "2024", icon: FaStar },
             { label: "Status", value: "Active", icon: FaCheckCircle },
           ].map((stat, index) => (
             <div
@@ -505,7 +508,7 @@ function ProfilePage() {
               <div className="text-xs opacity-40 mt-1 uppercase tracking-wide" style={{ color: "var(--foreground)" }}>{stat.label}</div>
             </div>
           ))}
-        </div>
+        </div> */}
       </div>
       </div>
       <Footer />

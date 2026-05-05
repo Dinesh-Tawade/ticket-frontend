@@ -6,7 +6,6 @@ import {
   FaTwitter,
   FaInstagram,
   FaYoutube,
-  FaTicketAlt,
   FaMapMarkerAlt,
   FaPhone,
   FaEnvelope,
@@ -18,8 +17,8 @@ function Footer() {
 
   const footerLinks = {
     movies: [
-      { label: "Now Showing", href: "/public/shows" },
-      { label: "Coming Soon", href: "#" },
+      { label: "Now Showing", href: "/public/shows?filter=NOW_SHOWING" },
+      { label: "Coming Soon", href: "/public/shows?filter=COMING_SOON" },
       { label: "Cinemas", href: "#" },
       { label: "Offers", href: "#" },
     ],
@@ -57,12 +56,12 @@ function Footer() {
           {/* Brand Column */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-6">
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+              <img
+                src="/logo.png"
+                alt="Anant Vijay Auditorium Logo"
+                className="w-11 h-11 rounded-xl object-cover shrink-0"
                 style={{ background: "linear-gradient(135deg, #d4af37, #b8860b)" }}
-              >
-                <FaTicketAlt className="text-black text-lg" />
-              </div>
+              />
               <div>
                 <span 
                   className="text-xl font-bold block"
@@ -250,29 +249,23 @@ function Footer() {
             ))}
           </div>
 
-          {/* Payment Methods */}
-          <div className="flex items-center gap-3">
+          {/* Design & Develop Credit */}
+          <div className="flex items-center gap-2">
             <span 
               className="text-xs tracking-wide"
               style={{ color: "var(--foreground)", opacity: 0.4 }}
             >
-              Payment
+              Design & Develop by
             </span>
-            <div className="flex gap-2">
-              {["VISA", "MC", "UPI"].map((pm) => (
-                <div
-                  key={pm}
-                  className="px-2 py-1 rounded text-[10px] font-bold tracking-wider"
-                  style={{ 
-                    background: "rgba(212,175,55,0.08)", 
-                    border: "1px solid rgba(212,175,55,0.15)", 
-                    color: "#d4af37"
-                  }}
-                >
-                  {pm}
-                </div>
-              ))}
-            </div>
+            <a
+              href="https://www.globalinfotechindia.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold hover:text-[#d4af37] transition-colors duration-200"
+              style={{ color: "#d4af37" }}
+            >
+              Global Info Tech India
+            </a>
           </div>
         </div>
       </div>

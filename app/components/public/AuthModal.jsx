@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FaTimes,
@@ -18,8 +19,9 @@ import {
 import { loginUser, registerUser, clearAuth } from "@/app/store/slices/authSlice";
 
 function AuthModal({ isOpen, onClose, initialMode = "login" }) {
+  const router = useRouter();
   const dispatch = useDispatch();
-  const { isLoading, error, isAuthenticated } = useSelector((state) => state.auth);
+  const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
   
   const [mode, setMode] = useState(initialMode); // "login" or "register"
   const [showPassword, setShowPassword] = useState(false);
@@ -61,13 +63,29 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
 
   // Handle successful auth
   useEffect(() => {
-    if (isAuthenticated && isOpen) {
+    if (isAuthenticated && isOpen && user) {
       setSuccessMessage(mode === "login" ? "Welcome back!" : "Account created successfully!");
+      
+      // Redirect based on role
+      const role = user?.role?.trim().toUpperCase();
+      console.log("User role:", role);
+      
       setTimeout(() => {
+        if (role === "SUPER_ADMIN") {
+          router.push("/admin/dashboard");
+        } else if (role === "SELLER") {
+          router.push("/seller/dashboard");
+        } else if (role === "THEATER_OWNER") {
+          router.push("/theater-owner/dashboard");
+        } else if (role === "BUYER") {
+          router.push("/");
+        } else {
+          router.push("/dashboard");
+        }
         onClose();
       }, 1500);
     }
-  }, [isAuthenticated, isOpen, mode, onClose]);
+  }, [isAuthenticated, isOpen, mode, user, router, onClose]);
 
   // Handle successful registration - switch to login
   const [registerSuccess, setRegisterSuccess] = useState(false);
