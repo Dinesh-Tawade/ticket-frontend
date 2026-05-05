@@ -12,6 +12,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   FaArrowLeft, FaCreditCard, FaTicketAlt, FaTimes, FaCheck,
 } from "react-icons/fa";
+import AuthModal from "@/app/components/public/AuthModal";
 
 /* ─── Category accent colours (cycles if more than 4) ─── */
 const CATEGORY_COLORS = ["#d4af37", "#a855f7", "#3b82f6", "#22c55e"];
@@ -21,6 +22,7 @@ function SeatSelection({ showId, showDetails, onBack }) {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [bookingData, setBookingData] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   /* ── Seat data ── */
   const { data: seatData, isLoading, error } = useQuery({
@@ -85,6 +87,13 @@ function SeatSelection({ showId, showDetails, onBack }) {
 
   const handleProceed = () => {
     if (selectedSeats.length === 0) { alert("Please select at least one seat"); return; }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+
     createBookingMutation.mutate(selectedSeats.map(s => ({ rowName: s.rowName, seatNumber: s.seatNumber })));
   };
 
@@ -355,6 +364,24 @@ function SeatSelection({ showId, showDetails, onBack }) {
           </div>
         </div>
       </div>
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          initialMode="login"
+        />
+      )}
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          initialMode="login"
+        />
+      )}
     </>
   );
 }

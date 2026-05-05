@@ -3,15 +3,18 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
+import { useSelector } from "react-redux";
 import { getMyBookings, cancelBooking } from "@/app/services/publicCommunication";
 import {
   FaTicketAlt, FaCalendarAlt, FaClock, FaChair,
   FaMapMarkerAlt, FaTimes, FaCheckCircle, FaHourglassHalf,
-  FaBan, FaDownload, FaFilm, FaQrcode, FaChevronLeft, FaChevronRight,
+  FaBan, FaDownload, FaFilm, FaChevronLeft, FaChevronRight,
 } from "react-icons/fa";
 import Header from "@/app/components/public/Header";
 import Footer from "@/app/components/public/Footer";
+import AuthModal from "@/app/components/public/AuthModal";
 
 /* ────────────────────────────────────────────────────────────────
    SINGLE TICKET STUB (one per seat)
@@ -112,7 +115,7 @@ const TicketModal = ({ booking, onClose }) => {
     weekday: "short", day: "numeric", month: "short", year: "numeric",
   });
 
-  const capture = async (i) => {
+  const capture = async () => {
     const html2canvas = (await import("html2canvas")).default;
     return html2canvas(ticketRef.current, {
       scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false,
@@ -209,20 +212,36 @@ const TicketModal = ({ booking, onClose }) => {
    MAIN PAGE
 ──────────────────────────────────────────────────────────────── */
 const MyBookingsPage = () => {
+  const { isAuthenticated, token } = useSelector((state) => state.auth);
   const [bookings, setBookings] = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading]   = useState(false);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter]     = useState("ALL");
+  const [showAuthModal, setShowAuthModal] = useState(true);
+  const storedToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const hasBookingAccess = Boolean(isAuthenticated || token || storedToken);
 
-  useEffect(() => { fetchBookings(); }, []);
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await getMyBookings();
       if (res.success) setBookings(res.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!hasBookingAccess) return;
+
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) fetchBookings();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchBookings, hasBookingAccess]);
 
   const handleCancel = async (bookingId) => {
     if (!confirm("Cancel this booking?")) return;
@@ -280,7 +299,20 @@ const MyBookingsPage = () => {
 
         {/* Content */}
         <main className="pg-main">
-          {filtered.length === 0 ? (
+          {!hasBookingAccess ? (
+            <div className="pg-empty">
+              <div className="pg-empty-icon">
+                <FaTicketAlt />
+              </div>
+              <h3 className="pg-empty-h">Login to view your bookings</h3>
+              <p className="pg-empty-p">
+                Sign in to see your tickets, download passes, or manage bookings.
+              </p>
+              <button className="pg-btn-primary-link" onClick={() => setShowAuthModal(true)}>
+                <FaTicketAlt size={13} /> Login
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="pg-empty">
               <div className="pg-empty-icon">🎬</div>
               <h3 className="pg-empty-h">No bookings found</h3>
@@ -288,9 +320,9 @@ const MyBookingsPage = () => {
                 {filter !== "ALL" ? `No ${filter.toLowerCase()} bookings.` : "You haven't booked any tickets yet."}
               </p>
               {filter === "ALL" && (
-                <a href="/public/shows" className="pg-btn-primary-link">
+                <Link href="/public/shows" className="pg-btn-primary-link">
                   <FaTicketAlt size={13} /> Browse Shows
-                </a>
+                </Link>
               )}
             </div>
           ) : (
@@ -398,6 +430,11 @@ const MyBookingsPage = () => {
       <Footer />
 
       {selected && <TicketModal booking={selected} onClose={() => setSelected(null)} />}
+      <AuthModal
+        isOpen={showAuthModal && !hasBookingAccess}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="login"
+      />
     </>
   );
 };

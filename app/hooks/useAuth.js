@@ -13,7 +13,14 @@ export default function useAuth(redirectTo = null) {
   const { user, isAuthenticated, isLoading } = useSelector((state) => state.auth);
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/register", "/"];
+  const isPublicRoute = (path) => {
+    if (["/login", "/register", "/", "/public/shows", "/public/my-bookings"].includes(path)) {
+      return true;
+    }
+
+    // Show detail pages are public, but booking remains protected.
+    return /^\/public\/shows\/[^/]+$/.test(path || "");
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -25,10 +32,10 @@ export default function useAuth(redirectTo = null) {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const isPublicRoute = publicRoutes.includes(pathname);
+    const publicRoute = isPublicRoute(pathname);
     
     // Redirect to login if not authenticated and trying to access protected route
-    if (!token && !isPublicRoute && pathname !== "/admin/login") {
+    if (!token && !publicRoute && pathname !== "/admin/login") {
       router.push(redirectTo || "/login");
     }
     

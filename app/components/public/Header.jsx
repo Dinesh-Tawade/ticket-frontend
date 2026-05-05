@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
-  FaMoon, FaSun, FaUserCircle, FaSignOutAlt,
+  FaMoon, FaSun, FaSignOutAlt,
   FaBars, FaTimes, FaTicketAlt, FaChevronDown,
   FaSearchPlus, FaSearchMinus,
 } from "react-icons/fa";
@@ -31,13 +31,29 @@ function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState("login");
+  const [localUserData, setLocalUserData] = useState(null);
+  const [mounted, setMounted] = useState(false);
+  const isLoggedIn = isAuthenticated || !!localUserData;
   const langRef = useRef(null);
   const userRef = useRef(null);
 
   useEffect(() => {
+    setMounted(true);
     const onScroll = () => setScrolled(window.scrollY > 24);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+      if (token && storedUser) {
+        setLocalUserData(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error("Error reading stored user data:", error);
+    }
   }, []);
 
   // Close dropdowns on outside click
@@ -58,6 +74,7 @@ function Header() {
 
   const handleLogout = () => {
     logout();
+    setLocalUserData(null);
     setShowUserDropdown(false);
     window.location.href = "/";
   };
@@ -241,12 +258,11 @@ function Header() {
               className="flex items-center gap-3 group flex-shrink-0"
               aria-label="Go to homepage"
             >
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-black flex-shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-3"
-                style={{ background: "linear-gradient(135deg, #d4af37, #b8860b)" }}
-              >
-                AVA
-              </div>
+              <img
+                src="/logo.png"
+                alt="Anant Vijay Auditorium"
+                className="w-10 h-10 object-contain flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+              />
               <div className="hidden sm:block leading-tight">
                 <div className="logo-wordmark text-[17px] font-bold leading-tight">
                   Anant Vijay
@@ -262,16 +278,28 @@ function Header() {
 
             {/* ── Desktop Nav ── */}
             <nav className="hidden md:flex items-center gap-1 flex-1 justify-center" aria-label="Main navigation">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className={`nav-link px-4 py-2 text-sm font-medium rounded-lg ${isActive(link.href) ? "active" : ""}`}
-                  style={{ color: isActive(link.href) ? "#d4af37" : scrolled_text }}
-                >
-                  {link.label}
-                </a>
-              ))}
+              {navLinks.map((link) => {
+                const isMyBookings = link.label === "My Bookings";
+                return isMyBookings ? (
+                  <button
+                    key={link.label}
+                    onClick={() => router.push(link.href)}
+                    className={`nav-link px-4 py-2 text-sm font-medium rounded-lg ${isActive(link.href) ? "active" : ""}`}
+                    style={{ color: isActive(link.href) ? "#d4af37" : scrolled_text }}
+                  >
+                    {link.label}
+                  </button>
+                ) : (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    className={`nav-link px-4 py-2 text-sm font-medium rounded-lg ${isActive(link.href) ? "active" : ""}`}
+                    style={{ color: isActive(link.href) ? "#d4af37" : scrolled_text }}
+                  >
+                    {link.label}
+                  </a>
+                );
+              })}
             </nav>
 
             {/* ── Right Controls ── */}
@@ -351,7 +379,7 @@ function Header() {
               </div>
 
               {/* Auth buttons (desktop) */}
-              {!isAuthenticated && (
+              {mounted && !isLoggedIn && (
                 <div className="hidden md:flex items-center gap-2 pl-2 ml-1 border-l"
                   style={{ borderColor: showTransparent ? "rgba(255,255,255,0.15)" : "var(--card-border, #e5e7eb)" }}
                 >
@@ -382,30 +410,34 @@ function Header() {
               )}
 
               {/* User Menu */}
-              {isAuthenticated && user && (
+              {mounted && isLoggedIn && (user || localUserData) && (
                 <div className="relative ml-1" ref={userRef}>
                   <button
                     onClick={() => setShowUserDropdown(!showUserDropdown)}
-                    className="flex items-center gap-2 pl-2 pr-1 py-1.5 rounded-xl transition-all hover:bg-white/10 dark:hover:bg-white/5"
+                    className={`flex items-center gap-2 pl-2 pr-1 py-1.5 rounded-xl transition-all ${
+                      showTransparent 
+                        ? "hover:bg-white/10 dark:hover:bg-white/5" 
+                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    }`}
                     aria-expanded={showUserDropdown}
                   >
-                    {user.profileImage ? (
+                    {(user || localUserData)?.profileImage ? (
                       <img
-                        src={user.profileImage}
-                        alt={user.name}
+                        src={(user || localUserData)?.profileImage}
+                        alt={(user || localUserData)?.name}
                         className="w-8 h-8 rounded-full object-cover avatar-ring"
                       />
                     ) : (
                       <div className="w-8 h-8 rounded-full avatar-ring flex items-center justify-center text-xs font-bold text-black"
                         style={{ background: "linear-gradient(135deg, #d4af37, #b8860b)" }}
                       >
-                        {user.name?.charAt(0)?.toUpperCase() || "U"}
+                        {(user || localUserData)?.name?.charAt(0)?.toUpperCase() || "U"}
                       </div>
                     )}
                     <FaChevronDown
                       size={9}
                       className={`transition-transform duration-200 ${showUserDropdown ? "rotate-180" : ""}`}
-                      style={{ color: scrolled ? scrolled_muted : "rgba(255,255,255,0.5)" }}
+                      style={{ color: showTransparent ? "rgba(255,255,255,0.5)" : scrolled_muted }}
                     />
                   </button>
 
@@ -417,15 +449,15 @@ function Header() {
                       <div className="px-4 py-4 border-b"
                         style={{ borderColor: "var(--card-border, #e5e7eb)", background: "var(--background, #fafafa)" }}
                       >
-                        <p className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{user.name}</p>
-                        <p className="text-xs mt-0.5 truncate" style={{ color: scrolled_muted }}>{user.email}</p>
+                        <p className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{(user || localUserData)?.name}</p>
+                        <p className="text-xs mt-0.5 truncate" style={{ color: scrolled_muted }}>{(user || localUserData)?.email}</p>
                       </div>
 
                       <div className="py-1.5">
                         {[
                           { href: "/public/profile", label: "My Profile", icon: "👤" },
                           { href: "/public/my-bookings", label: "My Bookings", icon: "🎟" },
-                          ...(user.role === "SUPER_ADMIN"
+                          ...((user || localUserData)?.role === "SUPER_ADMIN"
                             ? [{ href: "/admin/dashboard", label: "Admin Dashboard", icon: "⚙️" }]
                             : []),
                         ].map(({ href, label, icon }) => (
@@ -522,22 +554,39 @@ function Header() {
                 </div>
 
                 {/* Nav links */}
-                {navLinks.map((link) => (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    className={`mobile-nav-link flex items-center px-4 py-3 text-sm font-medium transition-all ${
-                      isActive(link.href) ? "active" : ""
-                    }`}
-                    style={{ color: isActive(link.href) ? "#d4af37" : "var(--foreground)" }}
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {navLinks.map((link) => {
+                  const isMyBookings = link.label === "My Bookings";
+                  return isMyBookings ? (
+                    <button
+                      key={link.label}
+                      onClick={() => {
+                        router.push(link.href);
+                        setShowMobileMenu(false);
+                      }}
+                      className={`mobile-nav-link flex items-center w-full px-4 py-3 text-sm font-medium transition-all text-left ${
+                        isActive(link.href) ? "active" : ""
+                      }`}
+                      style={{ color: isActive(link.href) ? "#d4af37" : "var(--foreground)" }}
+                    >
+                      {link.label}
+                    </button>
+                  ) : (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      className={`mobile-nav-link flex items-center px-4 py-3 text-sm font-medium transition-all ${
+                        isActive(link.href) ? "active" : ""
+                      }`}
+                      style={{ color: isActive(link.href) ? "#d4af37" : "var(--foreground)" }}
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      {link.label}
+                    </a>
+                  );
+                })}
 
                 {/* Auth (mobile) */}
-                {!isAuthenticated && (
+                {mounted && !isLoggedIn && (
                   <div className="flex gap-2 pt-4 pb-2">
                     <button
                       onClick={() => {
@@ -564,27 +613,27 @@ function Header() {
                 )}
 
                 {/* User info (mobile) */}
-                {isAuthenticated && user && (
+                {mounted && (isAuthenticated || localUserData) && (user || localUserData) && (
                   <div className="pt-3 mt-3 border-t space-y-1" style={{ borderColor: "var(--card-border, #e5e7eb)" }}>
                     <div className="flex items-center gap-3 px-4 py-2.5 mb-2">
-                      {user.profileImage ? (
-                        <img src={user.profileImage} alt={user.name} className="w-9 h-9 rounded-full object-cover avatar-ring" />
+                      {(user || localUserData)?.profileImage ? (
+                        <img src={(user || localUserData)?.profileImage} alt={(user || localUserData)?.name} className="w-9 h-9 rounded-full object-cover avatar-ring" />
                       ) : (
                         <div className="w-9 h-9 rounded-full avatar-ring flex items-center justify-center text-sm font-bold text-black"
                           style={{ background: "linear-gradient(135deg, #d4af37, #b8860b)" }}
                         >
-                          {user.name?.charAt(0)?.toUpperCase() || "U"}
+                          {(user || localUserData)?.name?.charAt(0)?.toUpperCase() || "U"}
                         </div>
                       )}
                       <div>
-                        <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{user.name}</p>
-                        <p className="text-xs opacity-50" style={{ color: "var(--foreground)" }}>{user.email}</p>
+                        <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{(user || localUserData)?.name}</p>
+                        <p className="text-xs opacity-50" style={{ color: "var(--foreground)" }}>{(user || localUserData)?.email}</p>
                       </div>
                     </div>
                     {[
                       { href: "/public/profile", label: "My Profile" },
                       { href: "/public/my-bookings", label: "My Bookings" },
-                      ...(user.role === "SUPER_ADMIN" ? [{ href: "/admin/dashboard", label: "Admin Dashboard" }] : []),
+                      ...((user || localUserData)?.role === "SUPER_ADMIN" ? [{ href: "/admin/dashboard", label: "Admin Dashboard" }] : []),
                     ].map(({ href, label }) => (
                       <a key={href} href={href}
                         className="mobile-nav-link flex items-center px-4 py-3 text-sm"
