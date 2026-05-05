@@ -24,6 +24,7 @@ const getAuthHeaderForFormData = () => {
       return {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
       };
     }
@@ -31,7 +32,32 @@ const getAuthHeaderForFormData = () => {
   return {};
 };
 
-export const adminLogout = () => {
+// ==================== AUTH ====================
+export const adminLogin = async (email, password) => {
+  const res = await axios.post(`${BE_URL}/auth/login`, { email, password });
+  if (res.data.token) {
+    localStorage.setItem("token", res.data.token);
+    if (res.data) {
+      localStorage.setItem("user", JSON.stringify(res.data));
+      localStorage.setItem("adminData", JSON.stringify(res.data));
+    }
+  }
+  return res.data;
+};
+
+export const SuperAdminLogin = async (email, password) => {
+  const res = await axios.post(`${BE_URL}/auth/login`, { email, password });
+  if (res.data.token) {
+    localStorage.setItem("token", res.data.token);
+    if (res.data) {
+      localStorage.setItem("user", JSON.stringify(res.data));
+      localStorage.setItem("adminData", JSON.stringify(res.data));
+    }
+  }
+  return res.data;
+};
+
+export const logout = async () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   localStorage.removeItem("adminData");
@@ -44,6 +70,21 @@ export const isAuthenticated = () => {
     if (token && user) {
       try {
         const userData = JSON.parse(user);
+        return userData.role === "SUPER_ADMIN" || userData.role === "THEATER_OWNER" || userData.role === "VENDOR";
+      } catch {
+        return false;
+      }
+    }
+  }
+  return false;
+};
+
+export const isSuperAdmin = () => {
+  if (typeof window !== "undefined") {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
         return userData.role === "SUPER_ADMIN";
       } catch {
         return false;
@@ -53,24 +94,48 @@ export const isAuthenticated = () => {
   return false;
 };
 
-// ==================== AUTH ====================
-export const SuperAdminLogin = async (email, password) => {
-  const res = await axios.post(`${BE_URL}/auth/login`, { email, password });
-  if (res.data.token) {
-    localStorage.setItem("token", res.data.token);
-    if (res.data.user) {
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      localStorage.setItem("adminData", JSON.stringify(res.data.user));
+export const isTheaterOwner = () => {
+  if (typeof window !== "undefined") {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        return userData.role === "THEATER_OWNER";
+      } catch {
+        return false;
+      }
     }
   }
-  return res.data;
+  return false;
 };
 
-export const logout = async () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  localStorage.removeItem("adminData");
-  
+export const isVendor = () => {
+  if (typeof window !== "undefined") {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        return userData.role === "VENDOR";
+      } catch {
+        return false;
+      }
+    }
+  }
+  return false;
+};
+
+export const getCurrentUser = () => {
+  if (typeof window !== "undefined") {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        return JSON.parse(user);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
 };
 
 // ==================== DASHBOARD STATS ====================
@@ -119,11 +184,6 @@ export const getUserById = async (id) => {
   return res.data;
 };
 
-export const getUserStats = async () => {
-  const res = await axios.get(`${BE_URL}/admin/stats`, getAuthHeader());
-  return res.data;
-};
-
 // Update Users
 export const updateUser = async (id, userData) => {
   const isFormData = userData instanceof FormData;
@@ -148,6 +208,7 @@ export const deleteUser = async (id) => {
   return res.data;
 };
 
+// ==================== THEATER MANAGEMENT (Admin) ====================
 
 export const createTheater = async (theaterData) => {
   const res = await axios.post(`${BE_URL}/admin/theater/create`, theaterData, getAuthHeader());
@@ -166,24 +227,29 @@ export const getTheaterByIdAdmin = async (id) => {
   return res.data;
 };
 
-export const updateTheater = async (id, theaterData) => {
+export const updateTheaterAdmin = async (id, theaterData) => {
   const res = await axios.put(`${BE_URL}/admin/theater/update/${id}`, theaterData, getAuthHeader());
   return res.data;
 };
 
-export const addScreenToTheater = async (id, screenData) => {
+export const addScreenToTheaterAdmin = async (id, screenData) => {
   const res = await axios.post(`${BE_URL}/admin/theater/add-screen/${id}`, screenData, getAuthHeader());
   return res.data;
 };
 
-export const deleteTheater = async (id) => {
+export const deleteTheaterAdmin = async (id) => {
   const res = await axios.delete(`${BE_URL}/admin/theater/delete/${id}`, getAuthHeader());
   return res.data;
 };
 
-// ==================== SHOW MANAGEMENT ====================
+export const deleteScreenFromTheaterAdmin = async (theaterId, screenId) => {
+  const res = await axios.delete(`${BE_URL}/admin/theater/delete-screen/${theaterId}/${screenId}`, getAuthHeader());
+  return res.data;
+};
 
-export const createShow = async (showData) => {
+// ==================== SHOW MANAGEMENT (Admin) ====================
+
+export const createShowAdmin = async (showData) => {
   const res = await axios.post(`${BE_URL}/admin/show/create`, showData, getAuthHeader());
   return res.data;
 };
@@ -195,188 +261,358 @@ export const getAllShowsAdmin = async (filters = {}) => {
   return res.data;
 };
 
-export const updateShowStatus = async (id, statusData) => {
+export const getShowByIdAdmin = async (id) => {
+  const res = await axios.get(`${BE_URL}/admin/show/${id}`, getAuthHeader());
+  return res.data;
+};
+
+export const updateShowStatusAdmin = async (id, statusData) => {
   const res = await axios.put(`${BE_URL}/admin/show/update-status/${id}`, statusData, getAuthHeader());
   return res.data;
 };
 
-export const deleteShow = async (id) => {
+export const deleteShowAdmin = async (id) => {
   const res = await axios.delete(`${BE_URL}/admin/show/delete/${id}`, getAuthHeader());
   return res.data;
 };
 
 // ==================== BOOKING MANAGEMENT (Admin) ====================
 
-  export const getAllBookingsAdmin = async (filters = {}) => {
-    const params = new URLSearchParams(filters).toString();
-    const url = params ? `${BE_URL}/admin/booking/all?${params}` : `${BE_URL}/admin/booking/all`;
-    const res = await axios.get(url, getAuthHeader());
-    return res.data;
-  };
-
-// ==================== PUBLIC COMMUNICATIONS (Keep if needed) ====================
-export const getAdminCommunications = async () => {
-  try {
-    const res = await axios.get(`${BE_URL}/public-communications`);
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching public communications:", error);
-    throw error;
-  }
+export const getAllBookingsAdmin = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/admin/booking/all?${params}` : `${BE_URL}/admin/booking/all`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
 };
 
-// ==================== DASHBOARD STATS for theater dashboard ====================
+// ==================== THEATER OWNER API's ====================
+
+// Dashboard
 export const getDashboardStatsOwner = async () => {
   const res = await axios.get(`${BE_URL}/theater-owner/dashboard-stats`, getAuthHeader());
   return res.data;
 };
 
-
-// ==================== THEATER OWNER API's ====================
-
-
-// Theater management
-
-// export const theaterDetails = async (id) => {
-//   const req = await axios.get(`${BE_URL}/theater-owner/theater/69e9ecdcd1e8f499177852f8`, getAuthHeader());
-//   return req.data; // Fixed: changed 'res' to 'req'
-// }
-
-// export const theaterUpdate = async (id, data) => {
-//   const req = await axios.put(`${BE_URL}/theater-owner/theater/update/${id}`, data, getAuthHeader());
-//   return req.data;
-// }
-
-// export const theaterAllScreens = async (id) => { // Added id parameter
-//   const req = await axios.get(`${BE_URL}/theater-owner/theater/${id}/screens`, getAuthHeader());
-//   return req.data; // Fixed: changed 'res' to 'req'
-// }
-
-// export const newScreens = async (id, data) => {
-//   const req = await axios.post(`${BE_URL}/theater-owner/theater/${id}/add-screen`, data, getAuthHeader()); // Added missing 'data' parameter
-//   return req.data;
-// }
-
-// export const screenUpdate = async (theaterId, screenId, data) => { // Fixed parameter names
-//   const req = await axios.put(`${BE_URL}/theater-owner/theater/${theaterId}/screen/${screenId}`, data, getAuthHeader());
-//   return req.data;
-// }
-
-// export const theaterBookings = async () => { // Fixed function name (was duplicate)
-//   const req = await axios.get(`${BE_URL}/theater-owner/my-bookings`, getAuthHeader());
-//   return req.data;
-// }
-
-// export const deleteTheaters = async (id) => { // Fixed function name and added proper deletion
-//   const req = await axios.delete(`${BE_URL}/theater-owner/theater/delete/${id}`, getAuthHeader());
-//   return req.data;
-// }
-
-
-export const theaterDetails = async (id) => {
-  const req = await axios.get(`${BE_URL}/theater-owner/theater/${id}`, getAuthHeader());
-  return req.data;
+// Theater Management (Theater Owner)
+export const getMyTheaters = async () => {
+  const res = await axios.get(`${BE_URL}/theater-owner/my-theaters`, getAuthHeader());
+  return res.data;
 };
 
-export const theaterUpdate = async ({ id, data }) => {
-  const req = await axios.put(`${BE_URL}/theater-owner/theater/update/${id}`, data, getAuthHeader());
-  return req.data;
+export const getTheaterDetails = async (id) => {
+  const res = await axios.get(`${BE_URL}/theater-owner/theater/${id}`, getAuthHeader());
+  return res.data;
 };
 
-export const theaterAllScreens = async (id) => {
-  const req = await axios.get(`${BE_URL}/theater-owner/theater/${id}/screens`, getAuthHeader());
-  return req.data;
+export const updateTheaterOwner = async (id, data) => {
+  const res = await axios.put(`${BE_URL}/theater-owner/theater/update/${id}`, data, getAuthHeader());
+  return res.data;
 };
 
-export const newScreens = async ({ id, data }) => {
-  const req = await axios.post(`${BE_URL}/theater-owner/theater/${id}/add-screen`, data, getAuthHeader());
-  return req.data;
+export const deleteTheaterOwner = async (id) => {
+  const res = await axios.delete(`${BE_URL}/theater-owner/theater/delete/${id}`, getAuthHeader());
+  return res.data;
 };
 
-export const screenUpdate = async ({ theaterId, screenId, data }) => {
-  const req = await axios.put(`${BE_URL}/theater-owner/theater/${theaterId}/screen/${screenId}`, data, getAuthHeader());
-  return req.data;
+// Screen Management (Theater Owner)
+export const getTheaterScreens = async (theaterId) => {
+  const res = await axios.get(`${BE_URL}/theater-owner/theater/${theaterId}/screens`, getAuthHeader());
+  return res.data;
 };
 
-export const deleteTheaters = async (id) => {
-  const req = await axios.delete(`${BE_URL}/theater-owner/theater/delete/${id}`, getAuthHeader());
-  return req.data;
+export const getScreenDetails = async (theaterId, screenId) => {
+  const res = await axios.get(`${BE_URL}/theater-owner/theater/${theaterId}/screen/${screenId}`, getAuthHeader());
+  return res.data;
 };
 
-// Show APIs
-export const myShows = async () => {
-  const req = await axios.get(`${BE_URL}/theater-owner/my-shows`, getAuthHeader());
-  return req.data;
+export const addScreenToTheaterOwner = async (theaterId, screenData) => {
+  const res = await axios.post(`${BE_URL}/theater-owner/theater/${theaterId}/add-screen`, screenData, getAuthHeader());
+  return res.data;
 };
 
-export const showUpdateStatus = async (id, data) => {
-  const req = await axios.put(`${BE_URL}/theater-owner/show/update-status/${id}`, data, getAuthHeader());
-  return req.data;
+export const updateScreenOwner = async (theaterId, screenId, screenData) => {
+  const res = await axios.put(`${BE_URL}/theater-owner/theater/${theaterId}/screen/${screenId}`, screenData, getAuthHeader());
+  return res.data;
 };
 
-// Booking APIs
-export const theaterBookings = async () => {
-  const req = await axios.get(`${BE_URL}/theater-owner/my-bookings`, getAuthHeader());
-  return req.data;
+export const deleteScreenOwner = async (theaterId, screenId) => {
+  const res = await axios.delete(`${BE_URL}/theater-owner/theater/${theaterId}/screen/${screenId}`, getAuthHeader());
+  return res.data;
 };
 
-
-
-
-// show management
-
-export const showService = {
-  // Get all shows for theater owner
-  getMyShows: async () => {
-    try {
-      console.log('Fetching my shows...');
-      const response = await axios.get(`${BE_URL}/theater-owner/my-shows`, getAuthHeader());
-      console.log('Fetched shows response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching shows:', error.response?.data || error.message);
-      throw error;
-    }
-  },
-
-  // Update show status - Only allow COMING_SOON, BOOKING_OPEN, CANCELLED
-  updateShowStatus: async ({ id, data }) => {
-    try {
-      // Validate status is allowed
-      const allowedStatuses = ['COMING_SOON', 'BOOKING_OPEN', 'CANCELLED'];
-      
-      if (!allowedStatuses.includes(data.status)) {
-        throw new Error(`Invalid status. Must be one of: ${allowedStatuses.join(', ')}`);
-      }
-      
-      console.log(`Updating show ${id} to status:`, data.status);
-      const response = await axios.put(
-        `${BE_URL}/theater-owner/show/update-status/${id}`, 
-        data, 
-        getAuthHeader()
-      );
-      console.log('Update response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error updating status:', error.response?.data || error.message);
-      throw error;
-    }
-  }
+// Show Management (Theater Owner)
+export const getMyShowsOwner = async () => {
+  const res = await axios.get(`${BE_URL}/theater-owner/my-shows`, getAuthHeader());
+  return res.data;
 };
 
-// Booking
-// export const theaterbooking = async () => {
-//   const req = await axios.get(`${BE_URL}/theater-owner/my-bookings`, getAuthHeader());
-//   return req.data;
-// };
+export const getTheaterShows = async (theaterId) => {
+  const res = await axios.get(`${BE_URL}/theater-owner/theater/${theaterId}/shows`, getAuthHeader());
+  return res.data;
+};
 
+export const getShowByIdOwner = async (id) => {
+  const res = await axios.get(`${BE_URL}/theater-owner/show/${id}`, getAuthHeader());
+  return res.data;
+};
 
-export const getMyBookings = async () => {
+export const updateShowStatusOwner = async (id, statusData) => {
+  const res = await axios.put(`${BE_URL}/theater-owner/show/update-status/${id}`, statusData, getAuthHeader());
+  return res.data;
+};
+
+// Booking Reports (Theater Owner)
+export const getMyTheaterBookings = async () => {
+  const res = await axios.get(`${BE_URL}/theater-owner/my-bookings`, getAuthHeader());
+  return res.data;
+};
+
+export const getTheaterBookings = async (theaterId) => {
+  const res = await axios.get(`${BE_URL}/theater-owner/theater/${theaterId}/bookings`, getAuthHeader());
+  return res.data;
+};
+
+// ==================== VENDOR API's ====================
+
+// Dashboard
+export const getVendorDashboardStats = async () => {
+  const res = await axios.get(`${BE_URL}/vendor/dashboard-stats`, getAuthHeader());
+  return res.data;
+};
+
+// Store Management
+export const createOrUpdateStore = async (storeData) => {
+  const isFormData = storeData instanceof FormData;
+  const res = await axios.post(`${BE_URL}/vendor/store/create`, storeData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
+  return res.data;
+};
+
+export const getMyStore = async () => {
+  const res = await axios.get(`${BE_URL}/vendor/store`, getAuthHeader());
+  return res.data;
+};
+
+export const toggleStoreStatus = async () => {
+  const res = await axios.put(`${BE_URL}/vendor/store/toggle-status`, {}, getAuthHeader());
+  return res.data;
+};
+
+// Product Management
+export const addProduct = async (productData) => {
+  const isFormData = productData instanceof FormData;
+  const res = await axios.post(`${BE_URL}/vendor/product/add`, productData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
+  return res.data;
+};
+
+export const getMyProducts = async () => {
+  const res = await axios.get(`${BE_URL}/vendor/products`, getAuthHeader());
+  return res.data;
+};
+
+export const getProductById = async (id) => {
+  const res = await axios.get(`${BE_URL}/vendor/product/${id}`, getAuthHeader());
+  return res.data;
+};
+
+export const updateProduct = async (id, productData) => {
+  const isFormData = productData instanceof FormData;
+  const res = await axios.put(`${BE_URL}/vendor/product/update/${id}`, productData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
+  return res.data;
+};
+
+export const updateProductStock = async (id, stockData) => {
+  const res = await axios.put(`${BE_URL}/vendor/product/update-stock/${id}`, stockData, getAuthHeader());
+  return res.data;
+};
+
+export const deleteProduct = async (id) => {
+  const res = await axios.delete(`${BE_URL}/vendor/product/delete/${id}`, getAuthHeader());
+  return res.data;
+};
+
+// Order Management (Vendor)
+export const getVendorOrders = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/vendor/orders?${params}` : `${BE_URL}/vendor/orders`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
+};
+
+export const getVendorOrderDetails = async (orderId) => {
+  const res = await axios.get(`${BE_URL}/vendor/order/${orderId}`, getAuthHeader());
+  return res.data;
+};
+
+export const updateVendorOrderStatus = async (orderId, statusData) => {
+  const res = await axios.put(`${BE_URL}/vendor/order/update-status/${orderId}`, statusData, getAuthHeader());
+  return res.data;
+};
+
+// Sales & Reports (Vendor)
+export const getVendorSalesReport = async (params = {}) => {
+  const queryParams = new URLSearchParams(params).toString();
+  const url = queryParams ? `${BE_URL}/vendor/sales-report?${queryParams}` : `${BE_URL}/vendor/sales-report`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
+};
+
+// Payments (Vendor)
+export const getVendorPayments = async () => {
+  const res = await axios.get(`${BE_URL}/vendor/payments`, getAuthHeader());
+  return res.data;
+};
+
+// ==================== PUBLIC APIs ====================
+
+export const getPublicShows = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/public/shows?${params}` : `${BE_URL}/public/shows`;
+  const res = await axios.get(url);
+  return res.data;
+};
+
+export const getTrendingShows = async () => {
+  const res = await axios.get(`${BE_URL}/public/shows/trending`);
+  return res.data;
+};
+
+export const getPublicShowById = async (id) => {
+  const res = await axios.get(`${BE_URL}/public/shows/${id}`);
+  return res.data;
+};
+
+export const getPublicTheaters = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/public/theaters?${params}` : `${BE_URL}/public/theaters`;
+  const res = await axios.get(url);
+  return res.data;
+};
+
+export const getAvailableSeats = async (showId) => {
+  const res = await axios.get(`${BE_URL}/public/shows/${showId}/seats`);
+  return res.data;
+};
+
+// ==================== BUYER APIs ====================
+
+// Cart
+export const addToCart = async (cartData) => {
+  const res = await axios.post(`${BE_URL}/buyer/cart/add`, cartData, getAuthHeader());
+  return res.data;
+};
+
+export const getCart = async () => {
+  const res = await axios.get(`${BE_URL}/buyer/cart`, getAuthHeader());
+  return res.data;
+};
+
+export const updateCartItem = async (productId, quantityData) => {
+  const res = await axios.put(`${BE_URL}/buyer/cart/update/${productId}`, quantityData, getAuthHeader());
+  return res.data;
+};
+
+export const removeFromCart = async (productId) => {
+  const res = await axios.delete(`${BE_URL}/buyer/cart/remove/${productId}`, getAuthHeader());
+  return res.data;
+};
+
+export const clearCart = async () => {
+  const res = await axios.delete(`${BE_URL}/buyer/cart/clear`, getAuthHeader());
+  return res.data;
+};
+
+// Order (Buyer)
+export const placeOrder = async (orderData) => {
+  const res = await axios.post(`${BE_URL}/buyer/order/place`, orderData, getAuthHeader());
+  return res.data;
+};
+
+export const getBuyerOrders = async (filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/buyer/orders?${params}` : `${BE_URL}/buyer/orders`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
+};
+
+export const getBuyerOrderDetails = async (orderId) => {
+  const res = await axios.get(`${BE_URL}/buyer/order/${orderId}`, getAuthHeader());
+  return res.data;
+};
+
+export const trackOrder = async (orderId) => {
+  const res = await axios.get(`${BE_URL}/buyer/order/track/${orderId}`, getAuthHeader());
+  return res.data;
+};
+
+export const cancelBuyerOrder = async (orderId) => {
+  const res = await axios.put(`${BE_URL}/buyer/order/cancel/${orderId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+export const processPayment = async (orderId, paymentData) => {
+  const res = await axios.post(`${BE_URL}/buyer/order/pay/${orderId}`, paymentData, getAuthHeader());
+  return res.data;
+};
+
+// Buyer Products
+export const getTheaterProducts = async (theaterId, filters = {}) => {
+  const params = new URLSearchParams(filters).toString();
+  const url = params ? `${BE_URL}/buyer/theater/${theaterId}/products?${params}` : `${BE_URL}/buyer/theater/${theaterId}/products`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
+};
+
+export const getProductCategories = async () => {
+  const res = await axios.get(`${BE_URL}/buyer/categories`, getAuthHeader());
+  return res.data;
+};
+
+// ==================== TICKET BOOKING (Buyer) ====================
+
+export const createBooking = async (bookingData) => {
+  const res = await axios.post(`${BE_URL}/public/booking/create`, bookingData, getAuthHeader());
+  return res.data;
+};
+
+export const confirmPayment = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/public/booking/confirm-payment/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+export const getMyTicketBookings = async () => {
+  const res = await axios.get(`${BE_URL}/public/booking/my-bookings`, getAuthHeader());
+  return res.data;
+};
+
+export const cancelTicketBooking = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+// ==================== VERIFICATION APIs (Theater Owner/Super Admin) ====================
+
+export const verifyTicket = async (qrData) => {
   try {
-    const response = await axios.get(`${BE_URL}/theater-owner/my-bookings`, getAuthHeader());
-    return response.data;
+    const res = await axios.post(`${BE_URL}/verify/ticket`, { qrData });
+    return res.data;
   } catch (error) {
-    console.error('Error fetching bookings:', error.response?.data || error.message);
+    console.error('Verify ticket error:', error);
     throw error;
   }
+};
+
+// Protected - Auth needed
+export const markTicketAsUsed = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/verify/ticket/use/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+export const getTicketDetails = async (bookingId) => {
+  const res = await axios.get(`${BE_URL}/verify/ticket/${bookingId}`, getAuthHeader());
+  return res.data;
+};
+
+export const getShowTickets = async (showId) => {
+  const res = await axios.get(`${BE_URL}/verify/show/${showId}/tickets`, getAuthHeader());
+  return res.data;
 };
