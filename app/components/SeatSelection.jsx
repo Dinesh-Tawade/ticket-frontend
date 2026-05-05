@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { getAvailableSeats, createBooking, confirmPayment, getMyBookings } from "@/app/services/publicCommunication";
 import { generateTicketPDF, generateTicketHTML } from "@/app/services/ticketGenerator";
 import { loadRazorpay } from "@/app/utils/razorpay";
 
-const SeatSelection = ({ showId, showDetails, onBack }) => {
+const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
   const router = useRouter();
   const [seatMap, setSeatMap] = useState(null);
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -14,6 +15,12 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
   const [showDetailsData, setShowDetailsData] = useState(showDetails);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingData, setBookingData] = useState(null);
+
+  // Check if user is authenticated
+  const isAuthenticated = () => {
+    const token = localStorage.getItem("authToken");
+    return !!token;
+  };
 
   useEffect(() => {
     fetchSeats();
@@ -28,13 +35,13 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
       }
     } catch (error) {
       console.error("Error fetching seats:", error);
-      alert("Failed to fetch seats");
+      toast.error("Failed to fetch seats. Please try again.");
     }
   };
 
   const handleSeatSelect = (category, rowName, seat) => {
     if (seat.isBooked) {
-      alert("This seat is already booked!");
+      toast.error("This seat is already booked!");
       return;
     }
 
@@ -43,9 +50,10 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
 
     if (isSelected) {
       setSelectedSeats(selectedSeats.filter(s => `${s.rowName}${s.seatNumber}` !== seatKey));
+      toast.success("Seat deselected");
     } else {
       if (selectedSeats.length >= 40) {
-        alert("Maximum 40 seats per booking!");
+        toast.error("Maximum 40 seats per booking!");
         return;
       }
       setSelectedSeats([...selectedSeats, {
@@ -54,6 +62,7 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
         category,
         price: seat.price
       }]);
+      toast.success("Seat selected");
     }
   };
 
@@ -62,8 +71,17 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
   };
 
   const handleBooking = async () => {
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      toast.error("Please login to book tickets!");
+      if (onNeedLogin) {
+        onNeedLogin();
+      }
+      return;
+    }
+
     if (selectedSeats.length === 0) {
-      alert("Please select at least one seat");
+      toast.error("Please select at least one seat");
       return;
     }
 
@@ -99,7 +117,7 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
         
         if (paymentStatus === 'FREE') {
           // Free show - directly confirmed
-          alert("Booking confirmed for free show! 🎉");
+          toast.success("🎉 Booking confirmed for free show!");
           await generateAndShowTicket(bookingInfo);
           setBookingComplete(true);
           setBookingData(bookingInfo);
@@ -115,7 +133,8 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
       }
     } catch (error) {
       console.error("Booking error:", error);
-      alert(error.response?.data?.message || "Booking failed. Please try again.");
+      const errorMsg = error.response?.data?.message || "Booking failed. Please try again.";
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -138,15 +157,15 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
               // Confirm payment on backend
               const confirmRes = await confirmPayment(bookingId);
               if (confirmRes.success) {
-                alert("Payment successful! 🎉 Your tickets are confirmed.");
+                toast.success("🎉 Payment successful! Your tickets are confirmed.");
                 resolve(true);
               } else {
-                alert("Payment confirmed but booking verification failed. Please contact support.");
+                toast.error("Payment confirmed but booking verification failed. Please contact support.");
                 reject(false);
               }
             } catch (error) {
               console.error("Payment confirmation error:", error);
-              alert("Payment successful but confirmation failed. Please check My Bookings.");
+              toast.error("Payment successful but confirmation failed. Please check My Bookings.");
               reject(false);
             }
           },
@@ -168,7 +187,7 @@ const SeatSelection = ({ showId, showDetails, onBack }) => {
         razorpayInstance.open();
       } catch (error) {
         console.error("Razorpay initialization error:", error);
-        alert("Payment gateway error. Please try again.");
+        toast.error("Payment gateway error. Please try again.");
         reject(false);
       }
     });

@@ -1,15 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicShowById } from "@/app/services/publicCommunication";
 import SeatSelection from "../../components/SeatSelection";
+import AuthModal from "@/app/components/public/AuthModal";
 
 function BookingPage() {
   const router = useRouter();
   const params = useParams();
   const showId = params.id;
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const { data: showData, isLoading, error } = useQuery({
     queryKey: ["show", showId],
@@ -19,6 +21,10 @@ function BookingPage() {
 
   const handleBack = () => {
     router.push(`/public/shows/${showId}`);
+  };
+
+  const handleNeedLogin = () => {
+    setAuthModalOpen(true);
   };
 
   if (isLoading) {
@@ -50,11 +56,19 @@ function BookingPage() {
   }
 
   return (
-    <SeatSelection 
-      showId={showId} 
-      showDetails={showData.data} 
-      onBack={handleBack} 
-    />
+    <>
+      <SeatSelection 
+        showId={showId} 
+        showDetails={showData.data}
+        onBack={handleBack}
+        onNeedLogin={handleNeedLogin}
+      />
+      <AuthModal 
+        isOpen={authModalOpen} 
+        onClose={() => setAuthModalOpen(false)} 
+        initialMode="login" 
+      />
+    </>
   );
 }
 

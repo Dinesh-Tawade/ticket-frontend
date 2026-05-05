@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import Header from "@/app/components/public/Header";
 import Footer from "@/app/components/public/Footer";
+import Show from '@/app/public/shows/Show';
 
 function ShowDetails() {
   const router = useRouter();
@@ -367,6 +368,7 @@ function ShowDetails() {
 
           </div>
         </div>
+        <Show/>
         <Footer />
       </div>
     </>
