@@ -129,6 +129,7 @@ function ShowsPage() {
   }); 
 
   const allShows = showsData?.data || [];
+  
   const filtered = (filter === "ALL" || filter === "NOW_SHOWING")
     ? allShows
     : allShows.filter((s) => s.status === filter || s.movie?.status === filter);
