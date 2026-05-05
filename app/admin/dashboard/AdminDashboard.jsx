@@ -111,7 +111,7 @@ const AdminDashboard = () => {
                   {t("app.Dashboard")}
                 </h1>
                 <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                  Welcome to Admin Dashboard! Here's an overview of your platform.
+                  {t("app.Welcome to Admin Dashboard! Here's an overview of your platform.")}
                 </p>
               </div>
             </div>

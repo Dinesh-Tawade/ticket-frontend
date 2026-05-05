@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
+
 import { toast, Toaster } from "react-hot-toast";
 import { useSelector } from "react-redux";
 import {
@@ -21,6 +23,11 @@ import {
 import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat, MdMovie, MdLocalMovies } from "react-icons/md";
 import { GiTheaterCurtains } from "react-icons/gi";
 import useTheme from "@/app/hooks/useTheme";
+
+import "../../i18n";
+
+
+
 
 const AMENITIES = [
   { icon: FaCouch, name: "Recliner Seats", key: "hasRecliner", desc: "Premium recliner chairs", color: "blue" },
@@ -46,6 +53,7 @@ const SeatLegend = ({ type }) => {
     purple: "#a855f7",
     yellow: "#eab308",
   };
+  
 
   return (
     <div className="group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
@@ -114,6 +122,7 @@ const ScreenViewModal = ({ isOpen, onClose, theater, screens, selectedScreenInde
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) handleClose();
   };
+
 
   if (!showModal || !current) return null;
 
@@ -792,6 +801,8 @@ const TheaterCard = ({ theater, onView, onEdit, onDelete, onStatusToggle }) => {
 };
 
 export default function TheatersPage() {
+    const { t } = useTranslation();
+
   const router = useRouter();
   const queryClient = useQueryClient();
   const { theme } = useTheme();
@@ -913,10 +924,10 @@ export default function TheatersPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
-                  Theater Management
+                  {t("app.Theater Management")}
                 </h1>
                 <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                  Manage theaters, screens & seat layouts like a pro
+                  {t("app.Manage theaters and view seat layouts")}
                 </p>
               </div>
             </div>
@@ -936,7 +947,7 @@ export default function TheatersPage() {
                 className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border"
                 style={{ borderColor: "var(--card-border)" }}
               >
-                <FaPlus className="text-[11px]" /> Add Theater
+                <FaPlus className="text-[11px]" /> {t("app.Add Theater")}
               </button>
             </div>
           </div>
@@ -946,11 +957,11 @@ export default function TheatersPage() {
       <div className=" mx-auto pt-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <StatsCard label="Total Theaters" value={stats.total} icon={FaBuilding} color="blue" />
-          <StatsCard label="Active" value={stats.active} icon={FaCheckCircle} color="green" />
-          <StatsCard label="Inactive" value={stats.inactive} icon={FaTimesCircle} color="red" />
-          <StatsCard label="Total Screens" value={stats.screens} icon={MdTheaters} color="purple" />
-          <StatsCard label="Cities" value={stats.cities} icon={FaMapMarkerAlt} color="yellow" />
+          <StatsCard label={t("app.Total Theaters")} value={stats.total} icon={FaBuilding} color="blue" />
+          <StatsCard label={t("app.Active Theaters")} value={stats.active} icon={FaCheckCircle} color="green" />
+          <StatsCard label={t("app.Inactive Theaters")} value={stats.inactive} icon={FaTimesCircle} color="red" />
+          <StatsCard label={t("app.Total Screens")} value={stats.screens} icon={MdTheaters} color="purple" />
+          <StatsCard label={t("app.Cities")} value={stats.cities} icon={FaMapMarkerAlt} color="yellow" />
         </div>
         
         {/* Filters */}
@@ -960,7 +971,7 @@ export default function TheatersPage() {
             <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: "var(--foreground)", opacity: 0.4 }} />
             <input 
               type="text" 
-              placeholder="Search theaters, cities, locations…" 
+              placeholder={t("app.Search theaters, cities, locations…")}
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
               className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -974,9 +985,9 @@ export default function TheatersPage() {
             className="appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
             style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
           >
-            <option value="ALL">All Status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
+            <option value="ALL">{t("app.All Status")}</option>
+            <option value="ACTIVE">{t("app.Active")}</option>
+            <option value="INACTIVE">{t("app.Inactive")}</option>
           </select>
           
           <select 

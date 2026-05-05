@@ -120,10 +120,10 @@ const OwnerDashboard = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
-                  Theater Owner Dashboard
+                  {t("app.Theater Owner Dashboard")}
                 </h1>
                 <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                  Welcome back! Here is what is happening with your theater today.
+                  {t("app.Welcome back! Here is what is happening with your theater today.")}
                 </p>
               </div>
             </div>
@@ -145,49 +145,49 @@ const OwnerDashboard = () => {
         {/* Stats Grid - 4 columns as per design */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
-            label="Total Shows"
+            label={t("app.Total Shows")}
             value={stats.totalShows}
             icon={SiMyshows}
             color="purple"
           />
           <StatsCard
-            label="Total Theaters"
+            label={t("app.Total Theaters")}
             value={stats.totalTheaters}
             icon={LiaTheaterMasksSolid}
             color="blue"
           />
           <StatsCard
-            label="Total Screens"
+            label={t("app.Total Screens")}
             value={stats.totalScreens}
             icon={GiTheater}
             color="indigo"
           />
           <StatsCard
-            label="Active Shows"
+            label={t("app.Active Shows")}
             value={stats.activeShows}
             icon={FaFilm}
             color="green"
           />
           <StatsCard
-            label="Upcoming Shows"
+            label={t("app.Upcoming Shows")}
             value={stats.upcomingShows}
             icon={FaCalendarAlt}
             color="yellow"
           />
           <StatsCard
-            label="Total Bookings"
+            label={t("app.Total Bookings")}
             value={stats.totalBookings}
             icon={FaTicketAlt}
             color="cyan"
           />
           <StatsCard
-            label="Revenue"
+            label={t("app.Revenue")}
             value={`₹${(stats.totalRevenue || 0).toLocaleString()}`}
             icon={FaRupeeSign}
             color="emerald"
           />
           <StatsCard
-            label="Seats Booked"
+            label={t("app.Seats Booked")}
             value={stats.totalSeatsBooked}
             icon={MdEventSeat}
             color="orange"
