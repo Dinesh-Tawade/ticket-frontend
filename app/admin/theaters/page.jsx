@@ -7,10 +7,10 @@ import { toast, Toaster } from "react-hot-toast";
 import { useSelector } from "react-redux";
 import {
   getAllTheatersAdmin,
-  deleteTheater,
-  updateTheater,
+  deleteTheaterAdmin,
+  updateTheaterAdmin,
   getAllUsers,
-} from "@/app/services/adminCommunication";
+} from "../../services/adminCommunication";
 import {
   FaBuilding, FaMapMarkerAlt, FaPhone, FaTicketAlt, FaCouch, FaWifi,
   FaParking, FaCoffee, FaAccessibleIcon, FaEdit, FaTrash, FaPlus,
@@ -833,7 +833,7 @@ export default function TheatersPage() {
   }), [theaters]);
 
   const deleteMutation = useMutation({ 
-    mutationFn: deleteTheater, 
+    mutationFn: deleteTheaterAdmin, 
     onSuccess: () => { 
       queryClient.invalidateQueries(["allTheatersAdmin"]); 
       toast.success("Theater deleted successfully!"); 
@@ -843,7 +843,7 @@ export default function TheatersPage() {
   });
   
   const statusMutation = useMutation({ 
-    mutationFn: ({ id, data }) => updateTheater(id, data), 
+    mutationFn: ({ id, data }) => updateTheaterAdmin(id, data), 
     onSuccess: () => { 
       queryClient.invalidateQueries(["allTheatersAdmin"]); 
       toast.success(`Theater ${statusAction === "activate" ? "activated" : "deactivated"} successfully!`); 
@@ -854,7 +854,7 @@ export default function TheatersPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateTheater(id, data),
+    mutationFn: ({ id, data }) => updateTheaterAdmin(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["allTheatersAdmin"]);
       toast.success("Theater updated successfully!");

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { createShow } from "@/app/services/adminCommunication";
+import { createShowAdmin } from "../../../services/adminCommunication";
 import { getAllTheatersAdmin } from "@/app/services/adminCommunication";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from 'next/navigation';
@@ -199,7 +199,7 @@ export default function CreateShow() {
 
   // Create show mutation
   const createMutation = useMutation({
-    mutationFn: createShow,
+    mutationFn: createShowAdmin,
     onSuccess: () => {
       toast.success('Show created successfully! 🎬');
       setTimeout(() => router.push('/admin/shows'), 2000);

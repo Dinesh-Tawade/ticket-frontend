@@ -32,10 +32,10 @@ import {
   deleteUser,
   getAllUsers,
   getUserById,
-  getUserStats,
+  getDashboardStats,
   updateUser,
   updateUserStatus,
-} from "@/app/services/adminCommunication";
+} from "../../services/adminCommunication";
 import useAuth from "@/app/hooks/useAuth";
 import useTheme from "@/app/hooks/useTheme";
 
@@ -330,7 +330,7 @@ export default function Users() {
 
   const { data: statsData } = useQuery({
     queryKey: ["adminUserStats"],
-    queryFn: getUserStats,
+    queryFn: getDashboardStats,
   });
 
   const users = useMemo(() => data?.data || [], [data?.data]);
