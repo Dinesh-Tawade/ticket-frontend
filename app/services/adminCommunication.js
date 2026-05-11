@@ -602,9 +602,47 @@ export const verifyTicket = async (qrData) => {
 };
 
 // Protected - Auth needed
+// export const markTicketAsUsed = async (bookingId) => {
+//   const res = await axios.put(`${BE_URL}/verify/ticket/use/${bookingId}`, {}, getAuthHeader());
+//   return res.data;
+// };
+// services/adminCommunication.js
+
 export const markTicketAsUsed = async (bookingId) => {
-  const res = await axios.put(`${BE_URL}/verify/ticket/use/${bookingId}`, {}, getAuthHeader());
-  return res.data;
+  try {
+    const token = localStorage.getItem('token');
+    
+    console.log('=== FRONTEND API CALL ===');
+    console.log('Booking ID:', bookingId);
+    console.log('Token exists:', !!token);
+    
+    if (!token) {
+      throw new Error('No authentication token found. Please login again.');
+    }
+    
+    // 🔥 IMPORTANT: Match with Postman working URL
+    const url = `${BE_URL}/ticket/use/${bookingId}`;
+    console.log('Request URL:', url);
+    
+    const response = await axios.put(
+      url,
+      {},
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    console.log('Response:', response.data);
+    return response.data;
+    
+  } catch (error) {
+    console.error('API Error:', error.response?.data || error.message);
+    console.error('Error Status:', error.response?.status);
+    throw error;
+  }
 };
 
 export const getTicketDetails = async (bookingId) => {

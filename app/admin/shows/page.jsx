@@ -2,9 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "react-i18next";
-
-import { getAllShowsAdmin, updateShowStatus, deleteShow } from "@/app/services/adminCommunication";
+import { getAllShowsAdmin, updateShowStatusAdmin, deleteShowAdmin } from "../../services/adminCommunication";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "react-hot-toast";
 import { 
@@ -789,7 +787,7 @@ export default function ShowsManagement() {
   const shows = data?.data || [];
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, statusData }) => updateShowStatus(id, statusData),
+    mutationFn: ({ id, statusData }) => updateShowStatusAdmin(id, statusData),
     onSuccess: () => {
       queryClient.invalidateQueries(['allShows']);
       toast.success('Show status updated successfully');
@@ -800,7 +798,7 @@ export default function ShowsManagement() {
   });
 
   const updateShowMutation = useMutation({
-    mutationFn: ({ id, data }) => updateShowStatus(id, data),
+    mutationFn: ({ id, data }) => updateShowAdmin(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['allShows']);
       toast.success('Show updated successfully');
@@ -813,7 +811,7 @@ export default function ShowsManagement() {
   });
 
   const deleteShowMutation = useMutation({
-    mutationFn: (id) => deleteShow(id),
+    mutationFn: (id) => deleteShowAdmin(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['allShows']);
       toast.success('Show deleted successfully');
