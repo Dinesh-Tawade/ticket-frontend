@@ -15,6 +15,7 @@ import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat, MdLocalMovies } f
 import { GiFilmProjector } from 'react-icons/gi';
 import useTheme from "@/app/hooks/useTheme";
 import "../../i18n";
+import { useTranslation } from "react-i18next";
 
 
 const SEAT_TYPES = {

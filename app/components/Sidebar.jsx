@@ -3,15 +3,15 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   FaUser,
-  FaBuilding,
   FaFilm,
   FaSignOutAlt,
   FaBars,
   FaTimes,
+  FaChevronLeft,
   FaChevronRight,
-  FaArrowsAlt,
+  FaSprayCan,
+  FaSellcast,
 } from "react-icons/fa";
-import { RiAdminLine } from "react-icons/ri";
 import { SiMyshows } from "react-icons/si";
 import { MdDashboard } from "react-icons/md";
 import { useRouter, usePathname } from "next/navigation";
@@ -24,7 +24,7 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // ✅ Responsive
+  // Responsive check
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -37,13 +37,16 @@ export default function Sidebar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ Menu
+  // Menu items
   const menuItems = useMemo(
     () => [
       { name: "Dashboard", path: "/admin/dashboard", icon: MdDashboard },
       { name: "Theaters", path: "/admin/theaters", icon: FaFilm },
       { name: "Shows", path: "/admin/shows", icon: SiMyshows },
       { name: "Users", path: "/admin/users", icon: FaUser },
+      { name: "Add Theater Owner", path: "/admin/theater-owners", icon: FaBars },
+      { name: "Scan Ticket", path: "/admin/scan-ticket", icon: FaSprayCan },
+      { name: "Settings", path: "/admin/settings", icon: FaSellcast },
     ],
     []
   );
@@ -53,7 +56,7 @@ export default function Sidebar() {
     if (isMobile) setIsMobileMenuOpen(false);
   };
 
-  // ✅ Sidebar Item
+  // Sidebar Item Component
   const SidebarItem = ({ item }) => {
     const Icon = item.icon;
     const isActive = pathname === item.path;
@@ -62,125 +65,156 @@ export default function Sidebar() {
       <li onClick={() => handleNavigate(item.path)} className="group">
         <div
           className={`
-            relative flex items-center gap-4 cursor-pointer rounded-lg px-4 py-3
-            transition-all duration-300 overflow-hidden
-
+            relative flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5
+            transition-all duration-300
             ${
               isActive
-                ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg"
-                : "text-gray-300"
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-300 hover:bg-gray-800"
             }
           `}
         >
-          {/* Left Indicator */}
-          <span
-            className={`
-              absolute left-0 top-0 h-full w-1 bg-blue-500
-              transition-all duration-300
-              ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
-            `}
-          />
-
-          {/* Icon */}
-          <Icon
-            className={`
-              text-lg transition-all duration-300
-              ${
-                isActive
-                  ? "text-white"
-                  : "text-gray-400 group-hover:text-blue-400 group-hover:translate-x-1"
-              }
-            `}
-          />
-
-          {/* Text */}
-          {(!isCollapsed || isMobile) && (
-            <span
-              className={`
-                text-sm font-medium transition-all duration-300
-                ${!isActive && "group-hover:translate-x-1"}
-              `}
-            >
+          <Icon className="text-xl flex-shrink-0" />
+          {!isCollapsed && (
+            <span className="text-sm font-medium whitespace-nowrap">
               {item.name}
             </span>
-          )}
-
-          {/* Hover Background */}
-          {!isActive && (
-            <span className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition duration-300 rounded-lg"></span>
           )}
         </div>
       </li>
     );
   };
 
-  // ✅ Sidebar Content
-  const SidebarContent = () => (
-    <div className="h-full flex flex-col justify-between p-4">
+  // Desktop Sidebar Content
+  const DesktopSidebarContent = () => (
+    <div className="h-full flex flex-col bg-[#0f172a]">
       {/* Header */}
-      <div>
-        <div className="mb-8 flex items-center justify-between">
-          {(!isCollapsed || isMobile) ? (
-            <h1 className="text-3xl font-bold text-white">
-              Super Admin
-            </h1>
+      <div className="flex-shrink-0 p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          {!isCollapsed ? (
+            <h1 className="text-xl font-bold text-white">Super Admin</h1>
           ) : (
-            <span className="text-xl mx-auto">🎟</span>
-          )}
-
-          {isMobile && (
-            <FaTimes
-              className="text-gray-400 cursor-pointer"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
+            <span className="text-2xl text-center block text-white">🎟</span>
           )}
         </div>
+      </div>
 
-        {/* Menu */}
-        <ul className="space-y-2">
+      {/* Menu - NO SCROLL */}
+      <div className="flex-1 p-3">
+        <ul className="space-y-1">
           {menuItems.map((item) => (
             <SidebarItem key={item.name} item={item} />
           ))}
         </ul>
+      </div>
+
+      {/* Logout Button */}
+      <div className="flex-shrink-0 p-3 border-t border-gray-700">
+        <div
+          onClick={() => {
+            localStorage.removeItem("token");
+            router.push("/admin/login");
+          }}
+          className={`
+            flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5
+            text-gray-300 hover:bg-red-500/10 hover:text-red-400
+            transition-all duration-300
+            ${!isCollapsed ? "justify-start" : "justify-center"}
+          `}
+        >
+          <FaSignOutAlt className="text-xl flex-shrink-0" />
+          {!isCollapsed && (
+            <span className="text-sm font-medium">Logout</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Mobile Sidebar Content
+  const MobileSidebarContent = () => (
+    <div className="h-full flex flex-col bg-[#0f172a]">
+      <div className="flex-shrink-0 p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-white">Super Admin</h1>
+          <FaTimes
+            className="text-gray-400 cursor-pointer hover:text-white text-xl"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 p-3">
+        <ul className="space-y-1">
+          {menuItems.map((item) => (
+            <li key={item.name} onClick={() => handleNavigate(item.path)}>
+              <div
+                className={`
+                  flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5
+                  transition-all duration-300
+                  ${
+                    pathname === item.path
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-300 hover:bg-gray-800"
+                  }
+                `}
+              >
+                <item.icon className="text-xl flex-shrink-0" />
+                <span className="text-sm font-medium">{item.name}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="flex-shrink-0 p-3 border-t border-gray-700">
+        <div
+          onClick={() => {
+            localStorage.removeItem("token");
+            router.push("/admin/login");
+          }}
+          className="flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5 text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-all duration-300"
+        >
+          <FaSignOutAlt className="text-xl" />
+          <span className="text-sm font-medium">Logout</span>
+        </div>
       </div>
     </div>
   );
 
   return (
     <>
-      {/* Mobile Button */}
+      {/* Mobile Menu Button */}
       {isMobile && (
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="fixed top-4 left-4 z-30 p-3 bg-[#0f172a] rounded-lg shadow"
+          className="fixed top-4 left-4 z-50 p-2 bg-[#0f172a] rounded-lg shadow-lg"
         >
-          <FaBars className="text-white" />
+          <FaBars className="text-white text-xl" />
         </button>
       )}
 
       {/* Desktop Sidebar */}
       {!isMobile && (
         <aside
-          className="fixed left-0 top-0 h-screen overflow-y-auto bg-[#0f172a] transition-all duration-300 shadow-lg z-40"
+          className="fixed left-0 top-0 h-screen bg-[#0f172a] shadow-xl z-40 transition-all duration-300"
           style={{
-            width: isCollapsed ? "80px" : "260px",
-            minWidth: isCollapsed ? "80px" : "260px",   // ✅ FIX
-            maxWidth: isCollapsed ? "80px" : "260px",   // ✅ FIX
+            width: isCollapsed ? "72px" : "240px",
           }}
         >
           {/* Collapse Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full z-50"
+            className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full z-50 hover:bg-blue-700 transition-colors shadow-md"
           >
-            <FaChevronRight
-              className={`text-white ${
-                isCollapsed ? "rotate-180" : ""
-              }`}
-            />
+            {isCollapsed ? (
+              <FaChevronRight className="text-white text-xs" />
+            ) : (
+              <FaChevronLeft className="text-white text-xs" />
+            )}
           </button>
 
-          <SidebarContent />
+          <DesktopSidebarContent />
         </aside>
       )}
 
@@ -191,21 +225,10 @@ export default function Sidebar() {
             className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50 overflow-y-auto">
-            <SidebarContent />
+          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50 shadow-xl">
+            <MobileSidebarContent />
           </div>
         </>
-      )}
-
-      {/* Content spacing */}
-      {!isMobile && (
-        <div
-          style={{
-            marginLeft: isCollapsed ? "80px" : "260px",
-            minWidth: "0", 
-          }}
-          className="transition-all duration-300"
-        />
       )}
     </>
   );
