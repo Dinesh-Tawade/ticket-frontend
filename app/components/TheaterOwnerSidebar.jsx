@@ -36,7 +36,7 @@ export default function TheaterOwnerSidebar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ Menu items
+  // ✅ Menu items 
   const menuItems = useMemo(
     () => [
       { name: "Dashboard", path: "/theater-owner/dashboard", icon: MdDashboard },
