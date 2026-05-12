@@ -8,6 +8,7 @@ import Navbar from "../components/Navbar";
 export default function TheaterOwnerLayout({ children }) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -18,24 +19,35 @@ export default function TheaterOwnerLayout({ children }) {
     } else if (user.role !== "THEATER_OWNER") {
       router.push("/");
     } else {
+      setAuthenticated(true);
       setChecking(false);
     }
   }, [router]);
 
+  // Loading state
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400 text-sm">Checking authentication...</p>
+        </div>
       </div>
     );
   }
 
+  if (!authenticated) {
+    return null;
+  }
+
   return (
-    <div className="flex">
+    <div className="h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 min-h-screen">
+      <div className="flex flex-col h-screen" style={{ marginLeft: "240px" }}>
         <Navbar />
-        <div className="p-6">{children}</div>
+        <main className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900">
+          {children}
+        </main>
       </div>
     </div>
   );

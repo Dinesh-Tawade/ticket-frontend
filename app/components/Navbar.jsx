@@ -139,8 +139,8 @@ export default function Navbar() {
   }, [showLangDropdown, showUserDropdown]);
 
   return (
-    <nav
-      className="sticky top-0 z-10 w-full border-b transition-colors duration-200"
+      <nav
+      className="flex-shrink-0 w-full border-b transition-colors duration-200 bg-white dark:bg-gray-900"
       style={{
         background: "var(--background)",
         borderColor: "var(--card-border)",

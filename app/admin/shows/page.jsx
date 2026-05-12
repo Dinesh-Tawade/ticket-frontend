@@ -14,6 +14,9 @@ import {
 import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat, MdLocalMovies } from 'react-icons/md';
 import { GiFilmProjector } from 'react-icons/gi';
 import useTheme from "@/app/hooks/useTheme";
+import "../../i18n";
+import { useTranslation } from "react-i18next";
+
 
 const SEAT_TYPES = {
   NORMAL: { label: "Standard", color: "blue", symbol: "S", mult: "1×", icon: MdEventSeat },
@@ -763,6 +766,7 @@ const ShowCard = ({ show, onViewSeats, onEdit, onDelete, onStatusToggle }) => {
 
 // Main Component
 export default function ShowsManagement() {
+  const {t} = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -908,10 +912,10 @@ export default function ShowsManagement() {
               </div>
               <div>
                 <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
-                  Shows Management
+                  {t("app.Shows Management")}
                 </h1>
                 <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                  Manage movie screenings & seat availability
+                  {t("app.Manage movie screenings & seat availability")}
                 </p>
               </div>
             </div>
@@ -931,7 +935,7 @@ export default function ShowsManagement() {
                 className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border"
                 style={{ borderColor: "var(--card-border)" }}
               >
-                <FaPlus className="text-[11px]" /> Create New Show
+                <FaPlus className="text-[11px]" /> {t("app.create new show")}
               </button>
             </div>
           </div>
@@ -941,11 +945,11 @@ export default function ShowsManagement() {
       <div className=" mx-auto pt-8">
         {/* Stats Cards with Animated Counter */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <StatsCard label="Total Shows" value={stats.total} icon={FaFilm} color="purple" />
-          <StatsCard label="Booking Open" value={stats.bookingOpen} icon={FaCheckCircle} color="green" />
-          <StatsCard label="Booking Closed" value={stats.bookingClosed} icon={FaEyeSlash} color="yellow" />
-          <StatsCard label="Cancelled" value={stats.cancelled} icon={FaTimesCircle} color="red" />
-          <StatsCard label="Total Seats" value={stats.totalSeats} icon={FaChair} color="blue" />
+          <StatsCard label={t("app.Total Shows")} value={stats.total} icon={FaFilm} color="purple" />
+          <StatsCard label={t("app.Booking Open")} value={stats.bookingOpen} icon={FaCheckCircle} color="green" />
+          <StatsCard label={t("app.Booking Closed")} value={stats.bookingClosed} icon={FaEyeSlash} color="yellow" />
+          <StatsCard label={t("app.Cancelled")} value={stats.cancelled} icon={FaTimesCircle} color="red" />
+          <StatsCard label={t("app.Total Seats")} value={stats.totalSeats} icon={FaChair} color="blue" />
         </div>
         
         {/* Search and Filter */}
@@ -953,15 +957,15 @@ export default function ShowsManagement() {
           style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <div className="flex-1 min-w-[220px] relative">
             <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: "var(--foreground)", opacity: 0.4 }} />
-            <input type="text" placeholder="Search by movie or theater..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
+            <input type="text" placeholder={t("app.Search by movie or theater...")} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
               style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} />
           </div>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border"
             style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
-            <option value="ALL">All Status</option>
-            <option value="BOOKING_OPEN">Booking Open</option>
-            <option value="BOOKING_CLOSED">Booking Closed</option>
-            <option value="CANCELLED">Cancelled</option>
+            <option value="ALL">{t("app.All Status")}</option>
+            <option value="BOOKING_OPEN">{t("app.Booking Open")}</option>
+            <option value="BOOKING_CLOSED">{t("app.Booking Closed")}</option>
+            <option value="CANCELLED">{t("app.Cancelled")}</option>
           </select>
           {hasFilters && <button onClick={clearFilters} className="px-3.5 py-2.5 rounded-xl border border-red-500/30 bg-transparent text-red-500 font-bold text-xs flex items-center gap-1.5 hover:bg-red-500/10 transition-all hover:scale-105"><FaTimes className="text-[10px]" /> Clear</button>}
           <div className="ml-auto text-xs font-semibold" style={{ color: "var(--foreground)", opacity: 0.4 }}>{filtered.length} show{filtered.length !== 1 ? "s" : ""}</div>

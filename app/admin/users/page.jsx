@@ -488,36 +488,6 @@ export default function Users() {
 
   const hasFilters = search || roleFilter !== "ALL" || statusFilter !== "ALL";
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center" style={{ background: "var(--background)" }}>
-        <div className="text-center">
-          <div className="mx-auto h-11 w-11 animate-spin rounded-full border-4" style={{ borderColor: "var(--card-border)", borderTopColor: "var(--foreground)" }} />
-          <p className="mt-4 text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading users...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center px-4" style={{ background: "var(--background)" }}>
-        <div className="w-full max-w-md rounded-lg border p-6 text-center shadow-sm" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <h2 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>Users could not be loaded</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-            {error.response?.data?.message || error.message || "Please check the API and try again."}
-          </p>
-          <button
-            onClick={() => refetch()}
-            className="mt-5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-            style={{ background: "var(--gradient-primary)" }}
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen transition-colors duration-300" style={{ background: "var(--background)" }}>

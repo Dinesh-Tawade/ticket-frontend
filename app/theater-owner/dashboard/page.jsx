@@ -389,10 +389,10 @@ const OwnerDashboard = () => {
                 </div>
               </div>
               <div>
-                <h1 className="text-xl md:text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
+                <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
                   Theater Owner Dashboard
                 </h1>
-                <p className="text-xs md:text-sm font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                   Welcome back! Here is what is happening with your theater today.
                 </p>
               </div>
@@ -415,78 +415,56 @@ const OwnerDashboard = () => {
         </div>
       </div>
 
-      {/* Stats Grid - Responsive 2/4 columns */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-        <StatsCard label="Total Shows" value={stats.totalShows} icon={SiMyshows} color="purple" />
-        <StatsCard label="Total Theaters" value={stats.totalTheaters} icon={LiaTheaterMasksSolid} color="blue" />
-        <StatsCard label="Total Screens" value={stats.totalScreens} icon={GiTheater} color="indigo" />
-        <StatsCard label="Active Shows" value={stats.activeShows} icon={FaFilm} color="green" />
-        <StatsCard label="Upcoming Shows" value={stats.upcomingShows} icon={FaCalendarAlt} color="yellow" />
-        <StatsCard label="Total Bookings" value={stats.totalBookings} icon={FaTicketAlt} color="cyan" />
-        <StatsCard label="Total Revenue" value={`₹${stats.totalRevenue.toLocaleString()}`} icon={FaRupeeSign} color="emerald" />
-        <StatsCard label="Seats Booked" value={stats.totalSeatsBooked} icon={MdEventSeat} color="orange" />
-      </div>
-
-      {/* Charts Section - 2 columns grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Revenue Chart */}
-        <div className="rounded-xl p-4 md:p-6 transition-all duration-300" style={{ background: "var(--card)", border: "1px solid var(--card-border)", boxShadow: "var(--card-shadow)" }}>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-3">
-            <div>
-              <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Revenue Overview</h2>
-              <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Daily revenue trend</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setChartType("area")}
-                className={`p-2 rounded-lg transition-all ${chartType === "area" ? "bg-purple-500 text-white" : ""}`}
-                style={chartType !== "area" ? { background: "var(--background)", color: "var(--foreground)" } : {}}
-              >
-                <FaChartLine />
-              </button>
-              <button
-                onClick={() => setChartType("bar")}
-                className={`p-2 rounded-lg transition-all ${chartType === "bar" ? "bg-purple-500 text-white" : ""}`}
-                style={chartType !== "bar" ? { background: "var(--background)", color: "var(--foreground)" } : {}}
-              >
-                <FaChartBar />
-              </button>
-            </div>
-          </div>
-          {chartType === "area" ? (
-            <RevenueChart data={chartData} isLoading={isLoading} />
-          ) : (
-            <BookingsChart data={chartData} isLoading={isLoading} />
-          )}
-        </div>
-
-        {/* Shows Distribution */}
-        <div className="rounded-xl p-4 md:p-6 transition-all duration-300" style={{ background: "var(--card)", border: "1px solid var(--card-border)", boxShadow: "var(--card-shadow)" }}>
-          <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Shows Distribution</h2>
-          <ShowsDistributionChart 
-            activeShows={stats.activeShows} 
-            upcomingShows={stats.upcomingShows} 
-            completedShows={stats.completedShows}
-            isLoading={isLoading}
+      <div className=" mx-auto">
+        {/* Stats Grid - 4 columns as per design */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatsCard
+            label="Total Shows"
+            value={stats.totalShows}
+            icon={SiMyshows}
+            color="purple"
           />
-        </div>
-      </div>
-
-      {/* Second Row of Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bookings Trend */}
-        <div className="rounded-xl p-4 md:p-6 transition-all duration-300" style={{ background: "var(--card)", border: "1px solid var(--card-border)", boxShadow: "var(--card-shadow)" }}>
-          <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Bookings Trend</h2>
-          <BookingsChart data={chartData} isLoading={isLoading} />
-        </div>
-
-        {/* Seat Occupancy */}
-        <div className="rounded-xl p-4 md:p-6 transition-all duration-300" style={{ background: "var(--card)", border: "1px solid var(--card-border)", boxShadow: "var(--card-shadow)" }}>
-          <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Seat Occupancy</h2>
-          <SeatOccupancyChart 
-            totalSeats={stats.totalSeats} 
-            bookedSeats={stats.totalSeatsBooked}
-            isLoading={isLoading}
+          <StatsCard
+            label="Total Theaters"
+            value={stats.totalTheaters}
+            icon={LiaTheaterMasksSolid}
+            color="blue"
+          />
+          <StatsCard
+            label="Total Screens"
+            value={stats.totalScreens}
+            icon={GiTheater}
+            color="indigo"
+          />
+          <StatsCard
+            label="Active Shows"
+            value={stats.activeShows}
+            icon={FaFilm}
+            color="green"
+          />
+          <StatsCard
+            label="Upcoming Shows"
+            value={stats.upcomingShows}
+            icon={FaCalendarAlt}
+            color="yellow"
+          />
+          <StatsCard
+            label="Total Bookings"
+            value={stats.totalBookings}
+            icon={FaTicketAlt}
+            color="cyan"
+          />
+          <StatsCard
+            label="Revenue"
+            value={`₹${(stats.totalRevenue || 0).toLocaleString()}`}
+            icon={FaRupeeSign}
+            color="emerald"
+          />
+          <StatsCard
+            label="Seats Booked"
+            value={stats.totalSeatsBooked}
+            icon={MdEventSeat}
+            color="orange"
           />
         </div>
       </div>

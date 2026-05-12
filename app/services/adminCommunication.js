@@ -620,7 +620,7 @@ export const markTicketAsUsed = async (bookingId) => {
       throw new Error('No authentication token found. Please login again.');
     }
     
-    // 🔥 IMPORTANT: Match with Postman working URL
+   
     const url = `${BE_URL}/ticket/use/${bookingId}`;
     console.log('Request URL:', url);
     
