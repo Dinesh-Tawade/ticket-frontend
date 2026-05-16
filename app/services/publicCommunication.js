@@ -179,3 +179,76 @@ export const setupSuperAdmin = async (adminData) => {
   const res = await axios.post(`${BE_URL}/setup/create-super-admin`, adminData);
   return res.data;
 };
+
+// ==================== BUYER FOOD ORDER APIs (Auth Required) ====================
+
+// Cart Management
+export const addToCart = async (cartData) => {
+  const res = await axios.post(`${BE_URL}/buyer/cart/add`, cartData, getAuthHeader());
+  return res.data;
+};
+
+export const getCart = async () => {
+  const res = await axios.get(`${BE_URL}/buyer/cart`, getAuthHeader());
+  return res.data;
+};
+
+export const updateCartItem = async (productId, quantity) => {
+  const res = await axios.put(`${BE_URL}/buyer/cart/update/${productId}`, { quantity }, getAuthHeader());
+  return res.data;
+};
+
+export const removeFromCart = async (productId) => {
+  const res = await axios.delete(`${BE_URL}/buyer/cart/remove/${productId}`, getAuthHeader());
+  return res.data;
+};
+
+export const clearCart = async () => {
+  const res = await axios.delete(`${BE_URL}/buyer/cart/clear`, getAuthHeader());
+  return res.data;
+};
+
+// Order Management
+export const placeOrder = async (orderData) => {
+  const res = await axios.post(`${BE_URL}/buyer/order/place`, orderData, getAuthHeader());
+  return res.data;
+};
+
+export const getMyOrders = async (status = "") => {
+  const url = status ? `${BE_URL}/buyer/orders?status=${status}` : `${BE_URL}/buyer/orders`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
+};
+
+export const getOrderDetails = async (orderId) => {
+  const res = await axios.get(`${BE_URL}/buyer/order/${orderId}`, getAuthHeader());
+  return res.data;
+};
+
+export const trackOrder = async (orderId) => {
+  const res = await axios.get(`${BE_URL}/buyer/order/track/${orderId}`, getAuthHeader());
+  return res.data;
+};
+
+export const cancelOrder = async (orderId) => {
+  const res = await axios.put(`${BE_URL}/buyer/order/cancel/${orderId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+// Payment
+export const processPayment = async (orderId, paymentData) => {
+  const res = await axios.post(`${BE_URL}/buyer/order/pay/${orderId}`, paymentData, getAuthHeader());
+  return res.data;
+};
+
+// Browse Products
+export const getTheaterProducts = async (theaterId, category = "") => {
+  const url = category ? `${BE_URL}/buyer/theater/${theaterId}/products?category=${category}` : `${BE_URL}/buyer/theater/${theaterId}/products`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
+};
+
+export const getProductCategories = async () => {
+  const res = await axios.get(`${BE_URL}/buyer/categories`, getAuthHeader());
+  return res.data;
+};

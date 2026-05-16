@@ -1,28 +1,29 @@
-
-
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getAvailableSeats, createBooking, confirmPayment,
+  getAvailableSeats, createBooking, confirmPayment, getTheaterProducts
 } from "@/app/services/publicCommunication";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  FaArrowLeft, FaCreditCard, FaTicketAlt, FaTimes, FaCheck,
+  FaArrowLeft, FaCreditCard, FaTicketAlt, FaTimes, FaCheck, FaPlus, FaMinus, FaHamburger, FaSpinner
 } from "react-icons/fa";
 import AuthModal from "@/app/components/public/AuthModal";
 
-/* ─── Category accent colours (cycles if more than 4) ─── */
+/* ─── Category accent colours ─── */
 const CATEGORY_COLORS = ["#d4af37", "#a855f7", "#3b82f6", "#22c55e"];
 
-function SeatSelection({ showId, showDetails, onBack }) {
+function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelected }) {
   const router = useRouter();
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [bookingData, setBookingData] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  // Food Modal States
+  const [showFoodModal, setShowFoodModal] = useState(false);
+  const [cart, setCart] = useState({});
 
   /* ── Seat data ── */
   const { data: seatData, isLoading, error } = useQuery({
@@ -31,12 +32,21 @@ function SeatSelection({ showId, showDetails, onBack }) {
     enabled: !!showId,
   });
 
+  /* ── Food Products from API ── */
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ["theater-products", showDetails?.theaterId?._id],
+    queryFn: () => getTheaterProducts(showDetails?.theaterId?._id),
+    enabled: !!showDetails?.theaterId?._id && showFoodModal,
+  });
+
   /* ── Booking mutation ── */
   const createBookingMutation = useMutation({
-    mutationFn: (seats) => createBooking({ showId, seats }),
+    mutationFn: (payload) => createBooking({ showId, ...payload }),
     onSuccess: (data) => {
       setBookingData(data.data);
+      setShowFoodModal(false);
       if (data.data.paymentStatus === "FREE") router.push("/public/my-bookings");
+      if (onSeatsSelected) onSeatsSelected(selectedSeats, data.data);
     },
     onError: (err) => {
       alert(err.response?.data?.message || "Booking failed. Please try again.");
@@ -85,19 +95,58 @@ function SeatSelection({ showId, showDetails, onBack }) {
   const isSelected = (rowName, seatNumber, categoryName) =>
     selectedSeats.some(s => s.rowName === rowName && s.seatNumber === seatNumber && s.category === categoryName);
 
-  const handleProceed = () => {
+  /* ── Handles Initial Confirm Click ── */
+  const handleInitialProceed = () => {
     if (selectedSeats.length === 0) { alert("Please select at least one seat"); return; }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setShowAuthModal(true);
+      if (onNeedLogin) onNeedLogin();
+      else setShowAuthModal(true);
       return;
     }
 
-    createBookingMutation.mutate(selectedSeats.map(s => ({ rowName: s.rowName, seatNumber: s.seatNumber })));
+    setShowFoodModal(true);
   };
 
-  const totalAmount = useMemo(() => selectedSeats.reduce((sum, s) => sum + s.price, 0), [selectedSeats]);
+  /* ── Handles Final Booking (With/Without Food) ── */
+  const handleFinalBooking = () => {
+    const formattedSeats = selectedSeats.map(s => ({ rowName: s.rowName, seatNumber: s.seatNumber }));
+    
+    // Format cart for API
+    const snacksPayload = Object.entries(cart)
+      .filter(([_, qty]) => qty > 0)
+      .map(([id, quantity]) => ({ productId: id, quantity }));
+
+    createBookingMutation.mutate({ 
+      seats: formattedSeats,
+      snacks: snacksPayload
+    });
+  };
+
+  /* ── Cart Helpers ── */
+  const updateCart = (id, delta) => {
+    setCart(prev => {
+      const current = prev[id] || 0;
+      const next = Math.max(0, current + delta);
+      if (next === 0) {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const seatsTotal = useMemo(() => selectedSeats.reduce((sum, s) => sum + s.price, 0), [selectedSeats]);
+  const foodTotal = useMemo(() => {
+    if (!productsData?.data?.products) return 0;
+    const allProducts = Object.values(productsData.data.products).flat();
+    return Object.entries(cart).reduce((sum, [id, qty]) => {
+      const product = allProducts.find(p => p._id === id);
+      return sum + (product ? (product.discountPrice || product.price) * qty : 0);
+    }, 0);
+  }, [cart, productsData]);
+  const grandTotal = seatsTotal + foodTotal;
 
   /* ── Category colour map ── */
   const seatMap = seatData?.data?.seatMap;
@@ -106,272 +155,301 @@ function SeatSelection({ showId, showDetails, onBack }) {
     categoryKeys.map((k, i) => [k, CATEGORY_COLORS[i % CATEGORY_COLORS.length]])
   );
 
-  /* ── Urgency indicator for time remaining ── */
   const isUrgent = timeLeft && parseInt(timeLeft.split(":")[0]) < 5;
 
-  /* ────────────────── payment modal ────────────────── */
+  // Get all products as flat array
+  const allProducts = useMemo(() => {
+    if (!productsData?.data?.products) return [];
+    return Object.values(productsData.data.products).flat();
+  }, [productsData]);
+
+  /* ────────────────── Payment Modal ────────────────── */
   if (bookingData?.paymentStatus === "PENDING") {
     return (
-      <>
-        <style>{STYLES}</style>
-        <div className="ss-page ss-payment-bg">
-          <div className="ss-modal">
-            {/* Icon */}
-            <div className="ss-modal__icon">
-              <FaCreditCard size={24} />
+      <div className="min-h-screen flex items-center justify-center bg-black/90 p-4 font-sans backdrop-blur-sm">
+        <div className="w-full max-w-md rounded-3xl border border-[#d4af37]/30 bg-[var(--card)] p-8 flex flex-col items-center shadow-[0_32px_64px_rgba(0,0,0,0.6)] animate-[modal-in_0.35s_ease-out_forwards]">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#d4af37] to-[#b8860b] flex items-center justify-center text-black mb-5 shadow-[0_8px_24px_rgba(212,175,55,0.4)]">
+            <FaCreditCard size={28} />
+          </div>
+          <h2 className="font-serif text-2xl font-bold text-[var(--foreground)] mb-2">Complete Payment</h2>
+          <p className="text-[13px] text-[var(--foreground)]/50 text-center mb-6">Seats reserved. Complete payment before time runs out.</p>
+
+          <div className={`w-full rounded-2xl p-5 text-center mb-6 transition-colors ${isUrgent ? "bg-red-500/10 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-pulse" : "bg-[#d4af37]/10 border border-[#d4af37]/25"}`}>
+            <p className="text-[11px] uppercase tracking-widest text-[var(--foreground)]/50 mb-1.5">Time Remaining</p>
+            <p className={`font-mono text-4xl font-bold leading-none ${isUrgent ? "text-red-500" : "text-[#d4af37]"}`}>{timeLeft || "14:59"}</p>
+          </div>
+
+          <div className="w-full mb-6 text-sm text-[var(--foreground)] space-y-4">
+            <div className="flex justify-between pb-3 border-b border-[var(--card-border)]">
+              <span className="opacity-60">Booking ID</span>
+              <span className="font-mono text-xs">{bookingData.bookingId}</span>
             </div>
-
-            <h2 className="ss-modal__title">Complete Payment</h2>
-            <p className="ss-modal__subtitle">Seats are reserved. Complete payment before time runs out.</p>
-
-            {/* Timer */}
-            <div className={`ss-timer ${isUrgent ? "ss-timer--urgent" : ""}`}>
-              <p className="ss-timer__label">Time Remaining</p>
-              <p className="ss-timer__value">{timeLeft || "14:59"}</p>
-              <div className="ss-timer__bar-track">
-                <div className="ss-timer__bar-fill" />
-              </div>
+            <div className="flex justify-between pb-3 border-b border-[var(--card-border)]">
+              <span className="opacity-60">Seats</span>
+              <span className="font-medium">{selectedSeats.length} seat(s)</span>
             </div>
-
-            {/* Summary */}
-            <div className="ss-modal__rows">
-              <div className="ss-modal__row">
-                <span>Booking ID</span>
-                <span className="ss-mono">{bookingData.bookingId}</span>
-              </div>
-              <div className="ss-modal__row">
-                <span>Seats</span>
-                <span>{selectedSeats.length} seat{selectedSeats.length > 1 ? "s" : ""}</span>
-              </div>
-              <div className="ss-modal__row ss-modal__row--total">
-                <span>Total Amount</span>
-                <span className="ss-modal__total">₹{bookingData.totalAmount}</span>
-              </div>
-            </div>
-
-            <div className="ss-modal__actions">
-              <button
-                className="ss-btn-pay"
-                onClick={() => confirmPaymentMutation.mutate(bookingData.bookingId)}
-                disabled={confirmPaymentMutation.isPending}
-              >
-                <FaCheck size={13} />
-                {confirmPaymentMutation.isPending ? "Processing…" : "Pay ₹" + bookingData.totalAmount}
-              </button>
-              <button className="ss-btn-cancel" onClick={() => router.push("/public/shows")}>
-                <FaTimes size={13} /> Cancel
-              </button>
+            <div className="flex justify-between pt-2">
+              <span className="opacity-60 font-medium">Total Amount</span>
+              <span className="text-2xl font-bold text-[#d4af37]">₹{bookingData.totalAmount}</span>
             </div>
           </div>
+
+          <div className="flex gap-3 w-full">
+            <button className="flex-1 flex justify-center items-center gap-2 py-3.5 rounded-xl font-bold bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg transition-transform hover:-translate-y-0.5 disabled:opacity-50" onClick={() => confirmPaymentMutation.mutate(bookingData.bookingId)} disabled={confirmPaymentMutation.isPending}>
+              <FaCheck /> {confirmPaymentMutation.isPending ? "Processing…" : `Pay ₹${bookingData.totalAmount}`}
+            </button>
+            <button className="px-5 py-3.5 rounded-xl font-semibold border border-[var(--card-border)] text-[var(--foreground)]/60 hover:text-red-500 hover:border-red-500 transition-colors flex items-center gap-2" onClick={() => router.push("/public/shows")}>
+              <FaTimes /> Cancel
+            </button>
+          </div>
         </div>
-      </>
+      </div>
     );
   }
 
-  /* ────────────────── loading / error ────────────────── */
+  /* ────────────────── Main Loading / Error ────────────────── */
   if (isLoading) {
     return (
-      <>
-        <style>{STYLES}</style>
-        <div className="ss-page ss-center">
-          <div className="ss-spinner" />
-          <p className="ss-muted">Loading theater layout…</p>
-        </div>
-      </>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)]">
+        <div className="w-12 h-12 border-[3px] border-[#d4af37]/20 border-t-[#d4af37] rounded-full animate-spin"></div>
+        <p className="mt-4 text-sm text-[var(--foreground)]/50 tracking-wider">Loading theater layout…</p>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <>
-        <style>{STYLES}</style>
-        <div className="ss-page ss-center">
-          <div className="ss-error-card">
-            <FaTimes className="ss-error-icon" />
-            <p>Failed to load seats</p>
-            <button className="ss-btn-ghost" onClick={onBack}>Go Back</button>
-          </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)] px-4">
+        <div className="text-center p-10 rounded-2xl border border-red-500/20 bg-[var(--card)] flex flex-col items-center gap-4">
+          <FaTimes className="text-4xl text-red-500" />
+          <p className="text-lg text-[var(--foreground)]">Failed to load seating layout</p>
+          <button className="px-6 py-2.5 rounded-xl border border-[var(--card-border)] text-[var(--foreground)] hover:text-[#d4af37] hover:border-[#d4af37] transition-colors" onClick={onBack}>Go Back</button>
         </div>
-      </>
+      </div>
     );
   }
 
-  /* ────────────────── main seat map ────────────────── */
+  /* ────────────────── Main Seat Map ────────────────── */
   return (
-    <>
-      <style>{STYLES}</style>
-
-      <div className="ss-page">
-
-        {/* ── Sticky header ── */}
-        <header className="ss-header">
-          <div className="ss-header__inner">
-            <button className="ss-back-btn" onClick={onBack}>
-              <FaArrowLeft size={13} /> Back
-            </button>
-            <div className="ss-header__info">
-              <h1 className="ss-header__title">{showDetails?.movie?.name}</h1>
-              <p className="ss-header__subtitle">
-                {showDetails?.theaterId?.name}
-                {showDetails?.startTime && ` · ${showDetails.startTime}`}
-              </p>
+    <div className="min-h-screen bg-[var(--background)] font-sans pb-32 text-[var(--foreground)]">
+      
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur-xl border-b border-[#d4af37]/20">
+        <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center gap-4">
+          <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 text-[13px] font-medium text-white/80 hover:bg-white/10 hover:text-white transition-colors" onClick={onBack}>
+            <FaArrowLeft size={12} /> Back
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-serif text-lg font-bold text-white truncate">{showDetails?.movie?.name}</h1>
+            <p className="text-xs text-white/50 mt-0.5">{showDetails?.theaterId?.name} {showDetails?.startTime && ` • ${showDetails.startTime}`}</p>
+          </div>
+          {selectedSeats.length > 0 && (
+            <div className="px-3.5 py-1.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/30 text-[#f4d03f] text-xs font-bold whitespace-nowrap animate-[pop_0.3s_ease-out]">
+              {selectedSeats.length} Selected
             </div>
-            {/* Seat count pill */}
-            {selectedSeats.length > 0 && (
-              <div className="ss-header__count">
-                {selectedSeats.length} selected
-              </div>
-            )}
+          )}
+        </div>
+      </header>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        
+        {/* Screen Graphic */}
+        <div className="flex justify-center mb-12 perspective-[600px]">
+          <div className="relative w-[min(580px,90%)] h-14">
+            <div className="absolute inset-0 rounded-[60%/100%_100%_0_0] bg-[radial-gradient(ellipse_at_50%_100%,rgba(212,175,55,0.22)_0%,transparent_72%)]" />
+            <div className="absolute bottom-0 inset-x-0 h-1 rounded-sm bg-gradient-to-r from-transparent via-[#d4af37]/80 to-transparent shadow-[0_0_24px_rgba(212,175,55,0.4)]" />
+            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] tracking-[0.4em] font-bold text-white/30 uppercase">Screen This Way</p>
           </div>
-        </header>
-
-        <div className="ss-content">
-
-          {/* ── Screen ── */}
-          <div className="ss-screen-wrap">
-            <div className="ss-screen">
-              <div className="ss-screen__glow" />
-              <div className="ss-screen__surface" />
-              <p className="ss-screen__label">SCREEN</p>
-            </div>
-          </div>
-
-          {/* ── Category legend ── */}
-          <div className="ss-legend-row">
-            {categoryKeys.map(cat => (
-              <div key={cat} className="ss-cat-legend">
-                <span className="ss-cat-legend__dot" style={{ background: categoryColors[cat] }} />
-                <span className="ss-cat-legend__name">{cat}</span>
-                <span className="ss-cat-legend__price">
-                  ₹{Object.values(seatMap[cat])[0]?.[0]?.price || 0}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Seat map ── */}
-          <div className="ss-seatmap">
-            {seatMap && categoryKeys.map((categoryName) => {
-              const rows = seatMap[categoryName];
-              const accent = categoryColors[categoryName];
-              return (
-                <div key={categoryName} className="ss-category">
-                  {/* Category header */}
-                  <div className="ss-category__header">
-                    <div className="ss-category__line" style={{ background: accent }} />
-                    <h3 className="ss-category__name">{categoryName}</h3>
-                    <span className="ss-category__price" style={{ color: accent }}>
-                      ₹{Object.values(rows)[0]?.[0]?.price || 0} / seat
-                    </span>
-                  </div>
-
-                  {/* Rows */}
-                  <div className="ss-rows">
-                    {Object.entries(rows).map(([rowName, seats]) => (
-                      <div key={rowName} className="ss-row">
-                        <span className="ss-row__label">{rowName}</span>
-                        <div className="ss-row__seats">
-                          {seats.map((seat) => {
-                            const sel = isSelected(rowName, seat.seatNumber, categoryName);
-                            const state = seat.isBooked ? "booked" : sel ? "selected" : "free";
-                            return (
-                              <button
-                                key={seat.seatNumber}
-                                className={`ss-seat ss-seat--${state}`}
-                                style={sel ? { "--accent": accent } : {}}
-                                onClick={() =>
-                                  !seat.isBooked && handleSeatSelect(categoryName, rowName, seat.seatNumber, seat.price)
-                                }
-                                disabled={seat.isBooked}
-                                aria-label={`${rowName}${seat.seatNumber} – ${state}`}
-                                aria-pressed={sel}
-                              >
-                                <span className="ss-seat__num">{seat.seatNumber}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <span className="ss-row__label ss-row__label--right">{rowName}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* ── State legend ── */}
-          <div className="ss-state-legend">
-            {[
-              { state: "free", label: "Available" },
-              { state: "selected", label: "Your Selection" },
-              { state: "booked", label: "Taken" },
-            ].map(({ state, label }) => (
-              <div key={state} className="ss-state-item">
-                <div className={`ss-state-swatch ss-state-swatch--${state}`} />
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Spacer for floating bar */}
-          <div style={{ height: "100px" }} />
         </div>
 
-        {/* ── Floating summary bar ── */}
-        <div className={`ss-bar ${selectedSeats.length > 0 ? "ss-bar--visible" : ""}`}>
-          <div className="ss-bar__inner">
-            {/* Selected seat chips */}
-            <div className="ss-bar__seats">
-              {selectedSeats.length === 0 ? (
-                <p className="ss-bar__hint">Select seats above</p>
-              ) : (
-                <>
-                  <p className="ss-bar__count">{selectedSeats.length} seat{selectedSeats.length !== 1 ? "s" : ""}</p>
-                  <div className="ss-bar__chips">
-                    {selectedSeats.slice(0, 7).map(s => (
-                      <span key={s.seatKey} className="ss-chip"
-                        style={{ "--accent": categoryColors[s.category] }}
-                      >
-                        {s.rowName}{s.seatNumber}
-                      </span>
-                    ))}
-                    {selectedSeats.length > 7 && (
-                      <span className="ss-chip ss-chip--more">+{selectedSeats.length - 7}</span>
-                    )}
-                  </div>
-                </>
-              )}
+        {/* Legend */}
+        <div className="flex flex-wrap justify-center gap-3 mb-10">
+          {categoryKeys.map(cat => (
+            <div key={cat} className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--card)] border border-[var(--card-border)] text-xs">
+              <span className="w-2 h-2 rounded-full" style={{ background: categoryColors[cat] }} />
+              <span className="font-semibold text-white/90">{cat}</span>
+              <span className="text-white/40">₹{Object.values(seatMap[cat])[0]?.[0]?.price || 0}</span>
             </div>
+          ))}
+        </div>
 
-            {/* Total + proceed */}
-            <div className="ss-bar__right">
-              {selectedSeats.length > 0 && (
-                <div className="ss-bar__total">
-                  <span className="ss-bar__total-label">Total</span>
-                  <span className="ss-bar__total-value">₹{totalAmount}</span>
+        {/* Seats Container */}
+        <div className="flex flex-col gap-8">
+          {seatMap && categoryKeys.map((categoryName) => {
+            const rows = seatMap[categoryName];
+            const accent = categoryColors[categoryName];
+            return (
+              <div key={categoryName} className="rounded-2xl border border-[var(--card-border)] bg-[var(--card)] p-5 overflow-hidden">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-1 h-5 rounded-full" style={{ background: accent }} />
+                  <h3 className="font-serif text-lg font-bold text-white flex-1">{categoryName}</h3>
+                  <span className="text-sm font-semibold" style={{ color: accent }}>₹{Object.values(rows)[0]?.[0]?.price || 0} / seat</span>
                 </div>
-              )}
-              <button
-                className="ss-bar__btn"
-                onClick={handleProceed}
-                disabled={selectedSeats.length === 0 || createBookingMutation.isPending}
-              >
-                <FaTicketAlt size={13} />
-                {createBookingMutation.isPending ? "Processing…" : "Confirm"}
-              </button>
+
+                <div className="flex flex-col gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {Object.entries(rows).map(([rowName, seats]) => (
+                    <div key={rowName} className="flex items-center gap-3 min-w-max">
+                      <span className="w-5 text-center text-[11px] font-bold text-white/30 font-mono flex-shrink-0">{rowName}</span>
+                      <div className="flex gap-1.5">
+                        {seats.map((seat) => {
+                          const sel = isSelected(rowName, seat.seatNumber, categoryName);
+                          return (
+                            <button
+                              key={seat.seatNumber}
+                              onClick={() => !seat.isBooked && handleSeatSelect(categoryName, rowName, seat.seatNumber, seat.price)}
+                              disabled={seat.isBooked}
+                              style={sel ? { backgroundColor: accent, color: '#000', boxShadow: `0 4px 15px ${accent}40` } : {}}
+                              className={`
+                                relative w-9 h-9 flex items-center justify-center rounded-t-lg rounded-b-md text-[10px] font-bold font-mono transition-all flex-shrink-0
+                                before:content-[''] before:absolute before:-bottom-[3px] before:inset-x-0.5 before:h-[3px] before:rounded-b-sm
+                                ${seat.isBooked 
+                                  ? "bg-gray-800 text-gray-600 opacity-50 cursor-not-allowed before:bg-gray-900 line-through" 
+                                  : sel 
+                                    ? "scale-110 -translate-y-1 before:bg-black/40" 
+                                    : "bg-[#2d3748] text-white/70 hover:bg-[#4a5568] hover:text-white hover:-translate-y-1 before:bg-[#1a202c]"
+                                }
+                              `}
+                            >
+                              {seat.seatNumber}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="w-5 text-center text-[11px] font-bold text-white/10 font-mono flex-shrink-0">{rowName}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* State Legend */}
+        <div className="flex flex-wrap justify-center gap-6 mt-10 p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)]">
+          <div className="flex items-center gap-2 text-xs text-white/70"><div className="w-6 h-5 rounded-t-md bg-[#2d3748] relative after:absolute after:-bottom-1 after:inset-x-0.5 after:h-1 after:bg-[#1a202c]"></div> Available</div>
+          <div className="flex items-center gap-2 text-xs text-white/70"><div className="w-6 h-5 rounded-t-md bg-[#d4af37] relative after:absolute after:-bottom-1 after:inset-x-0.5 after:h-1 after:bg-[#b8860b]"></div> Selected</div>
+          <div className="flex items-center gap-2 text-xs text-white/70 opacity-60"><div className="w-6 h-5 rounded-t-md bg-gray-800 relative after:absolute after:-bottom-1 after:inset-x-0.5 after:h-1 after:bg-gray-900"></div> Booked</div>
+        </div>
+      </div>
+
+      {/* Floating Bottom Bar */}
+      <div className={`fixed bottom-0 inset-x-0 z-40 bg-[var(--card)] border-t border-[#d4af37]/25 backdrop-blur-xl transition-transform duration-300 ${selectedSeats.length > 0 ? "translate-y-0" : "translate-y-full"}`}>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white/60 mb-1">{selectedSeats.length} Seat{selectedSeats.length > 1 && 's'} Selected</p>
+            <div className="flex flex-wrap gap-1.5 overflow-hidden h-[24px]">
+              {selectedSeats.slice(0, 5).map(s => (
+                <span key={s.seatKey} className="px-2 py-0.5 rounded text-[10px] font-bold font-mono border border-current" style={{ color: categoryColors[s.category], backgroundColor: `${categoryColors[s.category]}15` }}>
+                  {s.rowName}{s.seatNumber}
+                </span>
+              ))}
+              {selectedSeats.length > 5 && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 text-white/60">+{selectedSeats.length - 5} more</span>}
             </div>
+          </div>
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] uppercase tracking-widest text-white/50">Total Price</p>
+              <p className="text-xl font-bold text-[#d4af37]">₹{seatsTotal}</p>
+            </div>
+            <button
+              onClick={handleInitialProceed}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-br from-[#d4af37] to-[#b8860b] text-black font-bold text-sm shadow-[0_4px_15px_rgba(212,175,55,0.4)] hover:-translate-y-0.5 transition-transform"
+            >
+              <FaTicketAlt /> Confirm Seats
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          initialMode="login"
-        />
+      {/* ────────────────── Food & Snacks Modal (API Data) ────────────────── */}
+      {showFoodModal && (
+        <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-[fade-in_0.2s_ease-out]">
+          <div className="border border-[#d4af37]/20 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh] animate-[slide-up_0.3s_ease-out]">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-[var(--card-border)] flex justify-between items-center bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#d4af37]/20 text-[#d4af37] flex items-center justify-center text-lg"><FaHamburger /></div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Grab a Snack?</h2>
+                  <p className="text-xs text-white/50">Enhance your movie experience</p>
+                </div>
+              </div>
+              <button onClick={() => setShowFoodModal(false)} className="text-white/40 hover:text-white p-2"><FaTimes size={18} /></button>
+            </div>
+
+            {/* Food List - Loading State */}
+            {productsLoading ? (
+              <div className="p-12 flex flex-col items-center justify-center">
+                <FaSpinner className="animate-spin text-3xl text-[#d4af37] mb-3" />
+                <p className="text-white/50 text-sm">Loading menu...</p>
+              </div>
+            ) : allProducts.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-white/50 text-sm">No food items available for this theater</p>
+                <button
+                  onClick={handleFinalBooking}
+                  className="mt-4 px-6 py-2 rounded-xl bg-[#d4af37] text-black font-semibold"
+                >
+                  Continue without snacks
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                  {allProducts.map((item) => (
+                    <div key={item._id} className="flex justify-between items-center p-4 rounded-2xl border border-[var(--card-border)] bg-[#323335] hover:border-[#d4af37]/30 transition-colors">
+                      <div className="flex gap-4 items-center">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover bg-white/5" />
+                        ) : (
+                          <span className="text-3xl bg-white/5 p-2 rounded-xl">🍿</span>
+                        )}
+                        <div>
+                          <h4 className="font-bold text-sm text-white">{item.name}</h4>
+                          <p className="text-xs text-white/50 mb-1">{item.description || "Delicious snack"}</p>
+                          <p className="font-semibold text-[#d4af37] text-sm">₹{item.discountPrice || item.price}</p>
+                        </div>
+                      </div>
+
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-3 bg-[var(--card)] border border-[var(--card-border)] rounded-full p-1">
+                        <button onClick={() => updateCart(item._id, -1)} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white"><FaMinus size={10} /></button>
+                        <span className="w-4 text-center text-sm font-bold text-white">{cart[item._id] || 0}</span>
+                        <button onClick={() => updateCart(item._id, 1)} className="w-7 h-7 rounded-full bg-[#d4af37]/20 text-[#d4af37] flex items-center justify-center hover:bg-[#d4af37]/40"><FaPlus size={10} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-5 border-t border-[var(--card-border)] bg-black/40">
+                  <div className="flex justify-between text-sm mb-3 px-2">
+                    <span className="text-white/60">Tickets (x{selectedSeats.length})</span>
+                    <span className="font-semibold text-white">₹{seatsTotal}</span>
+                  </div>
+                  {foodTotal > 0 && (
+                    <div className="flex justify-between text-sm mb-3 px-2 text-[#d4af37]">
+                      <span>Food & Beverages</span>
+                      <span className="font-semibold">+ ₹{foodTotal}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg mb-5 px-2 border-t border-[var(--card-border)] pt-3">
+                    <span className="font-bold text-white">Grand Total</span>
+                    <span className="font-bold text-[#d4af37]">₹{grandTotal}</span>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button onClick={handleFinalBooking} disabled={createBookingMutation.isPending} className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b8860b] text-black font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
+                      {createBookingMutation.isPending ? <FaSpinner className="animate-spin mx-auto" /> : `Proceed to Pay ₹${grandTotal}`}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Auth Modal */}
@@ -382,396 +460,8 @@ function SeatSelection({ showId, showDetails, onBack }) {
           initialMode="login"
         />
       )}
-    </>
+    </div>
   );
 }
-
-/* ─────────────────────────── STYLES ─────────────────────────── */
-const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
-
-  .ss-page { font-family: 'DM Sans', sans-serif; min-height: 100vh; background: var(--background); position: relative; }
-  .ss-center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
-  .ss-payment-bg { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: rgba(0,0,0,0.85); }
-
-  /* Spinner */
-  .ss-spinner {
-    width: 44px; height: 44px;
-    border: 3px solid rgba(212,175,55,0.2);
-    border-top-color: #d4af37;
-    border-radius: 50%;
-    animation: ss-spin 0.75s linear infinite;
-  }
-  @keyframes ss-spin { to { transform: rotate(360deg); } }
-  .ss-muted { font-size: 14px; color: var(--foreground); opacity: 0.45; }
-
-  /* Error */
-  .ss-error-card {
-    text-align: center; padding: 40px;
-    border-radius: 20px; border: 1px solid rgba(239,68,68,0.2);
-    background: var(--card); display: flex; flex-direction: column; align-items: center; gap: 14px;
-  }
-  .ss-error-icon { font-size: 36px; color: #ef4444; }
-  .ss-btn-ghost {
-    padding: 10px 22px; border-radius: 12px; font-size: 14px; font-weight: 600;
-    border: 1px solid var(--card-border); background: transparent;
-    color: var(--foreground); cursor: pointer; transition: all 0.2s ease;
-  }
-  .ss-btn-ghost:hover { border-color: #d4af37; color: #d4af37; }
-
-  /* ── Header ── */
-  .ss-header {
-    position: sticky; top: 0; z-index: 40;
-    background: rgba(0,0,0,0.88);
-    backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(212,175,55,0.18);
-  }
-  .ss-header__inner {
-    max-width: 900px; margin: 0 auto;
-    padding: 14px 16px;
-    display: flex; align-items: center; gap: 14px;
-  }
-  .ss-back-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 8px 14px; border-radius: 10px;
-    font-size: 13px; font-weight: 500;
-    color: rgba(255,255,255,0.8);
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    cursor: pointer; transition: all 0.2s ease; flex-shrink: 0;
-  }
-  .ss-back-btn:hover { background: rgba(255,255,255,0.14); color: white; transform: translateX(-2px); }
-
-  .ss-header__info { flex: 1; min-width: 0; }
-  .ss-header__title {
-    font-family: 'Playfair Display', serif;
-    font-size: 17px; font-weight: 700; color: white;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
-  }
-  .ss-header__subtitle { font-size: 12px; color: rgba(255,255,255,0.5); margin: 2px 0 0; }
-
-  .ss-header__count {
-    padding: 5px 12px; border-radius: 20px;
-    background: rgba(212,175,55,0.2);
-    border: 1px solid rgba(212,175,55,0.35);
-    color: #f4d03f; font-size: 12px; font-weight: 600;
-    flex-shrink: 0;
-    animation: ss-pop 0.3s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  @keyframes ss-pop { from { transform: scale(0.75); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-  /* ── Content ── */
-  .ss-content { max-width: 900px; margin: 0 auto; padding: 32px 16px; }
-
-  /* ── Screen ── */
-  .ss-screen-wrap { display: flex; justify-content: center; margin-bottom: 32px; perspective: 600px; }
-  .ss-screen {
-    position: relative; width: min(580px, 90%);
-    height: 56px;
-  }
-  .ss-screen__glow {
-    position: absolute; inset: 0;
-    border-radius: 60% 60% 0 0 / 100% 100% 0 0;
-    background: radial-gradient(ellipse at 50% 100%, rgba(212,175,55,0.22) 0%, transparent 72%);
-  }
-  .ss-screen__surface {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    height: 4px; border-radius: 2px;
-    background: linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 30%, rgba(244,208,63,0.9) 50%, rgba(212,175,55,0.6) 70%, transparent 100%);
-    box-shadow: 0 0 24px rgba(212,175,55,0.4);
-  }
-  .ss-screen__label {
-    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-    font-size: 10px; letter-spacing: 0.4em; font-weight: 600;
-    color: rgba(255,255,255,0.35); text-transform: uppercase;
-  }
-
-  /* Category legend */
-  .ss-legend-row {
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
-    margin-bottom: 32px;
-  }
-  .ss-cat-legend {
-    display: flex; align-items: center; gap: 6px;
-    padding: 6px 14px; border-radius: 20px;
-    background: var(--card); border: 1px solid var(--card-border);
-    font-size: 12px;
-  }
-  .ss-cat-legend__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .ss-cat-legend__name { font-weight: 600; color: var(--foreground); }
-  .ss-cat-legend__price { color: var(--foreground); opacity: 0.5; font-size: 11px; }
-
-  /* ── Seat map ── */
-  .ss-seatmap { display: flex; flex-direction: column; gap: 28px; }
-
-  .ss-category {
-    border-radius: 18px;
-    border: 1px solid var(--card-border);
-    background: var(--card);
-    padding: 20px;
-    overflow: hidden;
-  }
-  .ss-category__header {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 20px;
-  }
-  .ss-category__line { width: 4px; height: 18px; border-radius: 4px; flex-shrink: 0; }
-  .ss-category__name {
-    font-family: 'Playfair Display', serif;
-    font-size: 16px; font-weight: 700; color: var(--foreground); flex: 1;
-  }
-  .ss-category__price { font-size: 13px; font-weight: 600; }
-
-  /* Rows */
-  .ss-rows { display: flex; flex-direction: column; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-  .ss-row { display: flex; align-items: center; gap: 12px; min-width: max-content; }
-  .ss-row__label {
-    width: 20px; text-align: center;
-    font-size: 11px; font-weight: 700; color: var(--foreground); opacity: 0.35;
-    font-family: 'JetBrains Mono', monospace; flex-shrink: 0;
-  }
-  .ss-row__label--right { opacity: 0.2; }
-  .ss-row__seats { display: flex; gap: 5px; }
-
-  /* ── Seats ── */
-  .ss-seat {
-    width: 36px; height: 36px;
-    border-radius: 8px 8px 4px 4px;
-    border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: relative; flex-shrink: 0;
-  }
-  .ss-seat__num {
-    font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
-    line-height: 1; pointer-events: none;
-  }
-
-  /* Bottom "armrest" shape */
-  .ss-seat::before {
-    content: '';
-    position: absolute; bottom: -3px; left: 2px; right: 2px; height: 3px;
-    border-radius: 0 0 4px 4px;
-  }
-
-  .ss-seat--free {
-    background: #2d3748;
-    color: rgba(255,255,255,0.7);
-  }
-  .ss-seat--free::before { background: #1a202c; }
-  .ss-seat--free:hover {
-    transform: translateY(-4px) scale(1.08);
-    background: #4a5568;
-    color: white;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.35);
-  }
-
-  .ss-seat--selected {
-    background: var(--accent, #d4af37);
-    color: #000;
-    transform: translateY(-4px) scale(1.08);
-    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent, #d4af37) 45%, transparent);
-  }
-  .ss-seat--selected::before { background: color-mix(in srgb, var(--accent, #d4af37) 60%, black); }
-  .ss-seat--selected:hover { transform: translateY(-5px) scale(1.1); }
-
-  .ss-seat--booked {
-    background: #1a202c;
-    color: #374151;
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-  .ss-seat--booked::before { background: #111827; }
-  .ss-seat--booked .ss-seat__num { text-decoration: line-through; }
-
-  /* ── State legend ── */
-  .ss-state-legend {
-    display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;
-    margin-top: 32px; padding: 16px;
-    border-radius: 14px;
-    background: var(--card); border: 1px solid var(--card-border);
-  }
-  .ss-state-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--foreground); opacity: 0.7; }
-  .ss-state-swatch {
-    width: 28px; height: 24px; border-radius: 6px 6px 3px 3px;
-    position: relative;
-  }
-  .ss-state-swatch::after {
-    content: ''; position: absolute; bottom: -3px; left: 2px; right: 2px; height: 3px;
-    border-radius: 0 0 3px 3px;
-  }
-  .ss-state-swatch--free { background: #2d3748; }
-  .ss-state-swatch--free::after { background: #1a202c; }
-  .ss-state-swatch--selected { background: #d4af37; }
-  .ss-state-swatch--selected::after { background: #b8860b; }
-  .ss-state-swatch--booked { background: #1a202c; opacity: 0.4; }
-  .ss-state-swatch--booked::after { background: #0f172a; }
-
-  /* ── Floating bar ── */
-  .ss-bar {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    z-index: 50;
-    transform: translateY(100%);
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    background: var(--card, white);
-    border-top: 1px solid rgba(212,175,55,0.25);
-    box-shadow: 0 -8px 32px rgba(0,0,0,0.2);
-    backdrop-filter: blur(16px);
-    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-  }
-  .ss-bar--visible { transform: translateY(0); }
-  .ss-bar__inner {
-    max-width: 900px; margin: 0 auto;
-    display: flex; align-items: center; gap: 16px;
-  }
-  .ss-bar__seats { flex: 1; min-width: 0; }
-  .ss-bar__hint { font-size: 13px; color: var(--foreground); opacity: 0.4; }
-  .ss-bar__count { font-size: 12px; font-weight: 600; color: var(--foreground); opacity: 0.6; margin-bottom: 4px; }
-  .ss-bar__chips { display: flex; flex-wrap: wrap; gap: 4px; }
-
-  .ss-chip {
-    display: inline-flex; align-items: center;
-    padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
-    background: color-mix(in srgb, var(--accent, #d4af37) 15%, transparent);
-    color: var(--accent, #d4af37);
-    border: 1px solid color-mix(in srgb, var(--accent, #d4af37) 30%, transparent);
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .ss-chip--more {
-    background: var(--card-border, rgba(0,0,0,0.06));
-    color: var(--foreground); border-color: transparent; opacity: 0.6;
-  }
-
-  .ss-bar__right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-  .ss-bar__total { text-align: right; }
-  .ss-bar__total-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--foreground); opacity: 0.45; display: block; }
-  .ss-bar__total-value { font-size: 22px; font-weight: 700; color: #d4af37; line-height: 1.1; }
-
-  .ss-bar__btn {
-    display: flex; align-items: center; gap: 8px;
-    padding: 12px 22px; border-radius: 12px;
-    font-size: 14px; font-weight: 700;
-    background: linear-gradient(135deg, #d4af37, #b8860b);
-    color: #000; border: none; cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 18px rgba(212,175,55,0.4);
-    white-space: nowrap;
-  }
-  .ss-bar__btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(212,175,55,0.55);
-  }
-  .ss-bar__btn:disabled {
-    background: var(--card-border); color: var(--foreground); opacity: 0.4;
-    cursor: not-allowed; box-shadow: none;
-  }
-
-  /* ── Payment modal ── */
-  .ss-modal {
-    width: min(460px, 92vw);
-    border-radius: 24px;
-    border: 1px solid rgba(212,175,55,0.35);
-    background: var(--card, #111);
-    padding: 32px;
-    display: flex; flex-direction: column; align-items: center;
-    box-shadow: 0 32px 64px rgba(0,0,0,0.6);
-    animation: ss-modal-in 0.35s cubic-bezier(0.22,1,0.36,1) forwards;
-  }
-  @keyframes ss-modal-in {
-    from { opacity: 0; transform: scale(0.9) translateY(16px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-  .ss-modal__icon {
-    width: 60px; height: 60px; border-radius: 18px;
-    background: linear-gradient(135deg, #d4af37, #b8860b);
-    display: flex; align-items: center; justify-content: center;
-    color: #000; margin-bottom: 20px;
-    box-shadow: 0 8px 24px rgba(212,175,55,0.4);
-  }
-  .ss-modal__title {
-    font-family: 'Playfair Display', serif;
-    font-size: 24px; font-weight: 700; color: var(--foreground);
-    margin: 0 0 8px; text-align: center;
-  }
-  .ss-modal__subtitle { font-size: 13px; color: var(--foreground); opacity: 0.5; text-align: center; margin: 0 0 24px; }
-
-  /* Timer */
-  .ss-timer {
-    width: 100%; border-radius: 16px; padding: 18px;
-    background: rgba(212,175,55,0.08);
-    border: 1px solid rgba(212,175,55,0.25);
-    text-align: center; margin-bottom: 20px;
-    transition: all 0.3s ease;
-  }
-  .ss-timer--urgent {
-    background: rgba(239,68,68,0.1);
-    border-color: rgba(239,68,68,0.3);
-    animation: ss-urgent-pulse 1s ease infinite;
-  }
-  @keyframes ss-urgent-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.2); }
-    50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
-  }
-  .ss-timer__label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--foreground); opacity: 0.45; margin-bottom: 6px; }
-  .ss-timer__value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 44px; font-weight: 700;
-    color: #d4af37; line-height: 1;
-    transition: color 0.3s ease;
-  }
-  .ss-timer--urgent .ss-timer__value { color: #ef4444; }
-  .ss-timer__bar-track {
-    height: 3px; border-radius: 3px;
-    background: rgba(255,255,255,0.1);
-    margin-top: 12px; overflow: hidden;
-  }
-  .ss-timer__bar-fill {
-    height: 100%; border-radius: 3px;
-    background: linear-gradient(90deg, #22c55e, #d4af37, #ef4444);
-    animation: ss-timer-drain 900s linear forwards;
-    transform-origin: left;
-  }
-  @keyframes ss-timer-drain { from { width: 100%; } to { width: 0%; } }
-
-  /* Modal rows */
-  .ss-modal__rows { width: 100%; margin-bottom: 24px; }
-  .ss-modal__row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--card-border, rgba(0,0,0,0.07));
-    font-size: 14px;
-    color: var(--foreground);
-  }
-  .ss-modal__row span:first-child { opacity: 0.55; }
-  .ss-modal__row--total {
-    border-bottom: none; padding-top: 16px; margin-top: 4px;
-    border-top: 1px solid var(--card-border, rgba(0,0,0,0.07));
-  }
-  .ss-modal__total { font-size: 24px; font-weight: 700; color: #d4af37; }
-  .ss-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-
-  .ss-modal__actions { display: flex; gap: 10px; width: 100%; }
-  .ss-btn-pay {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 14px; border-radius: 14px;
-    font-size: 15px; font-weight: 700;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    color: white; border: none; cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 18px rgba(34,197,94,0.35);
-  }
-  .ss-btn-pay:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(34,197,94,0.5); }
-  .ss-btn-pay:disabled { opacity: 0.5; cursor: not-allowed; }
-  .ss-btn-cancel {
-    display: flex; align-items: center; gap: 7px;
-    padding: 14px 20px; border-radius: 14px;
-    font-size: 14px; font-weight: 600;
-    background: transparent;
-    border: 1px solid var(--card-border, rgba(0,0,0,0.1));
-    color: var(--foreground); opacity: 0.6;
-    cursor: pointer; transition: all 0.2s ease;
-  }
-  .ss-btn-cancel:hover { opacity: 1; border-color: #ef4444; color: #ef4444; }
-`;
 
 export default SeatSelection;
