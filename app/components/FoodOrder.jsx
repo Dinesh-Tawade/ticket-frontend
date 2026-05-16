@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "react-hot-toast";
 import { 
   addToCart, 
@@ -10,8 +10,8 @@ import {
   removeFromCart, 
   clearCart, 
   placeOrder 
-} from "../services/publicCommunication";
-import { FaPlus, FaMinus, FaTrash, FaShoppingCart, FaRupeeSign, FaClock, FaUtensils } from "react-icons/fa";
+} from "@/app/services/publicCommunication";
+import { FaPlus, FaMinus, FaTrash, FaShoppingCart, FaRupeeSign, FaClock, FaUtensils, FaSpinner } from "react-icons/fa";
 
 function FoodOrder({ theaterId, products, isLoading: productsLoading, bookingId, onComplete, onSkip }) {
   const queryClient = useQueryClient();
@@ -19,7 +19,7 @@ function FoodOrder({ theaterId, products, isLoading: productsLoading, bookingId,
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch cart
-  const { data: cartData, refetch: refetchCart } = useQuery({
+  const { data: cartData, refetch: refetchCart, isLoading: cartLoading } = useQuery({
     queryKey: ["cart"],
     queryFn: getCart,
     enabled: true,
@@ -97,15 +97,16 @@ function FoodOrder({ theaterId, products, isLoading: productsLoading, bookingId,
     });
   };
 
-  if (productsLoading) {
+  if (productsLoading || cartLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-2" style={{ borderColor: "var(--card-border)", borderTopColor: "var(--foreground)" }} />
+        <FaSpinner className="animate-spin text-3xl text-yellow-500" />
       </div>
     );
   }
 
   const hasProducts = Object.keys(products).length > 0;
+  const allProducts = Object.values(products).flat();
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -120,7 +121,7 @@ function FoodOrder({ theaterId, products, isLoading: productsLoading, bookingId,
               <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Add Snacks & Beverages</h2>
             </div>
             
-            {!hasProducts ? (
+            {!hasProducts || allProducts.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-400">No food items available for this theater</p>
                 <button
@@ -144,16 +145,16 @@ function FoodOrder({ theaterId, products, isLoading: productsLoading, bookingId,
                           className="flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.02]"
                           style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
                         >
-                          <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
-                              src={product.image || "https://images.unsplash.com/photo-1585238342024-af6a5e7e1675?w=100&h=100&fit=crop"}
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="w-16 h-16 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg bg-gray-700 flex items-center justify-center">
+                              <FaUtensils className="text-gray-400 text-2xl" />
+                            </div>
+                          )}
                           <div className="flex-1">
                             <h4 className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{product.name}</h4>
-                            <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{product.description}</p>
+                            <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{product.description || "Delicious snack"}</p>
                             <div className="flex items-center justify-between mt-2">
                               <span className="text-sm font-bold text-yellow-500">₹{product.discountPrice || product.price}</span>
                               <button
@@ -254,7 +255,7 @@ function FoodOrder({ theaterId, products, isLoading: productsLoading, bookingId,
                 disabled={isSubmitting}
                 className="flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-yellow-500 to-amber-500 text-black hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {isSubmitting ? "Processing..." : cart.itemCount > 0 ? "Place Order" : "Skip & Continue"}
+                {isSubmitting ? <FaSpinner className="animate-spin" /> : cart.itemCount > 0 ? "Place Order" : "Skip & Continue"}
               </button>
             </div>
           </div>

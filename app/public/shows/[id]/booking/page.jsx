@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getPublicShowById, getTheaterProducts } from "../../../../services/publicCommunication";
+import { getPublicShowById, getTheaterProducts } from "@/app/services/publicCommunication";
 import SeatSelection from "../../components/SeatSelection";
 import FoodOrder from "../../../../components/FoodOrder";
 import AuthModal from "@/app/components/public/AuthModal";
@@ -195,3 +195,4 @@ function BookingPage() {
 }
 
 export default BookingPage;
+
