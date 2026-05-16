@@ -146,7 +146,6 @@ export const getDashboardStats = async () => {
 
 // ==================== USER MANAGEMENT ====================
 
-// Create Users
 export const createTheaterOwner = async (userData) => {
   const isFormData = userData instanceof FormData;
   const res = await axios.post(`${BE_URL}/admin/create-theater-owner`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
@@ -171,7 +170,6 @@ export const createSuperAdminByAdmin = async (userData) => {
   return res.data;
 };
 
-// Get Users
 export const getAllUsers = async (filters = {}) => {
   const params = new URLSearchParams(filters).toString();
   const url = params ? `${BE_URL}/admin/users?${params}` : `${BE_URL}/admin/users`;
@@ -184,7 +182,6 @@ export const getUserById = async (id) => {
   return res.data;
 };
 
-// Update Users
 export const updateUser = async (id, userData) => {
   const isFormData = userData instanceof FormData;
   const res = await axios.put(`${BE_URL}/admin/users/${id}`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
@@ -196,13 +193,11 @@ export const updateUserStatus = async (id, statusData) => {
   return res.data;
 };
 
-// Theater to Owner
 export const addTheaterToOwner = async (theaterOwnerId, theaterData) => {
   const res = await axios.post(`${BE_URL}/admin/add-theater/${theaterOwnerId}`, theaterData, getAuthHeader());
   return res.data;
 };
 
-// Delete User
 export const deleteUser = async (id) => {
   const res = await axios.delete(`${BE_URL}/admin/users/${id}`, getAuthHeader());
   return res.data;
@@ -287,13 +282,11 @@ export const getAllBookingsAdmin = async (filters = {}) => {
 
 // ==================== THEATER OWNER API's ====================
 
-// Dashboard
 export const getDashboardStatsOwner = async () => {
   const res = await axios.get(`${BE_URL}/theater-owner/dashboard-stats`, getAuthHeader());
   return res.data;
 };
 
-// Theater Management (Theater Owner)
 export const getMyTheaters = async () => {
   const res = await axios.get(`${BE_URL}/theater-owner/my-theaters`, getAuthHeader());
   return res.data;
@@ -314,7 +307,6 @@ export const deleteTheaterOwner = async (id) => {
   return res.data;
 };
 
-// Screen Management (Theater Owner)
 export const getTheaterScreens = async (theaterId) => {
   const res = await axios.get(`${BE_URL}/theater-owner/theater/${theaterId}/screens`, getAuthHeader());
   return res.data;
@@ -340,7 +332,6 @@ export const deleteScreenOwner = async (theaterId, screenId) => {
   return res.data;
 };
 
-// Show Management (Theater Owner)
 export const getMyShowsOwner = async () => {
   const res = await axios.get(`${BE_URL}/theater-owner/my-shows`, getAuthHeader());
   return res.data;
@@ -361,7 +352,6 @@ export const updateShowStatusOwner = async (id, statusData) => {
   return res.data;
 };
 
-// Booking Reports (Theater Owner)
 export const getMyTheaterBookings = async () => {
   const res = await axios.get(`${BE_URL}/theater-owner/my-bookings`, getAuthHeader());
   return res.data;
@@ -374,13 +364,11 @@ export const getTheaterBookings = async (theaterId) => {
 
 // ==================== VENDOR API's ====================
 
-// Dashboard
 export const getVendorDashboardStats = async () => {
   const res = await axios.get(`${BE_URL}/vendor/dashboard-stats`, getAuthHeader());
   return res.data;
 };
 
-// Store Management
 export const createOrUpdateStore = async (storeData) => {
   const isFormData = storeData instanceof FormData;
   const res = await axios.post(`${BE_URL}/vendor/store/create`, storeData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
@@ -397,7 +385,6 @@ export const toggleStoreStatus = async () => {
   return res.data;
 };
 
-// Product Management
 export const addProduct = async (productData) => {
   const isFormData = productData instanceof FormData;
   const res = await axios.post(`${BE_URL}/vendor/product/add`, productData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
@@ -430,11 +417,9 @@ export const deleteProduct = async (id) => {
   return res.data;
 };
 
-// Order Management (Vendor)
-export const getVendorOrders = async (filters = {}) => {
-  const params = new URLSearchParams(filters).toString();
-  const url = params ? `${BE_URL}/vendor/orders?${params}` : `${BE_URL}/vendor/orders`;
-  const res = await axios.get(url, getAuthHeader());
+// ✅ FIXED: No params - simple GET request
+export const getVendorOrders = async () => {
+  const res = await axios.get(`${BE_URL}/vendor/orders`, getAuthHeader());
   return res.data;
 };
 
@@ -448,7 +433,6 @@ export const updateVendorOrderStatus = async (orderId, statusData) => {
   return res.data;
 };
 
-// Sales & Reports (Vendor)
 export const getVendorSalesReport = async (params = {}) => {
   const queryParams = new URLSearchParams(params).toString();
   const url = queryParams ? `${BE_URL}/vendor/sales-report?${queryParams}` : `${BE_URL}/vendor/sales-report`;
@@ -456,7 +440,6 @@ export const getVendorSalesReport = async (params = {}) => {
   return res.data;
 };
 
-// Payments (Vendor)
 export const getVendorPayments = async () => {
   const res = await axios.get(`${BE_URL}/vendor/payments`, getAuthHeader());
   return res.data;
@@ -495,7 +478,6 @@ export const getAvailableSeats = async (showId) => {
 
 // ==================== BUYER APIs ====================
 
-// Cart
 export const addToCart = async (cartData) => {
   const res = await axios.post(`${BE_URL}/buyer/cart/add`, cartData, getAuthHeader());
   return res.data;
@@ -521,7 +503,6 @@ export const clearCart = async () => {
   return res.data;
 };
 
-// Order (Buyer)
 export const placeOrder = async (orderData) => {
   const res = await axios.post(`${BE_URL}/buyer/order/place`, orderData, getAuthHeader());
   return res.data;
@@ -554,7 +535,6 @@ export const processPayment = async (orderId, paymentData) => {
   return res.data;
 };
 
-// Buyer Products
 export const getTheaterProducts = async (theaterId, filters = {}) => {
   const params = new URLSearchParams(filters).toString();
   const url = params ? `${BE_URL}/buyer/theater/${theaterId}/products?${params}` : `${BE_URL}/buyer/theater/${theaterId}/products`;
@@ -589,7 +569,7 @@ export const cancelTicketBooking = async (bookingId) => {
   return res.data;
 };
 
-// ==================== VERIFICATION APIs (Theater Owner/Super Admin) ====================
+// ==================== VERIFICATION APIs ====================
 
 export const verifyTicket = async (qrData) => {
   try {
@@ -601,29 +581,13 @@ export const verifyTicket = async (qrData) => {
   }
 };
 
-// Protected - Auth needed
-// export const markTicketAsUsed = async (bookingId) => {
-//   const res = await axios.put(`${BE_URL}/verify/ticket/use/${bookingId}`, {}, getAuthHeader());
-//   return res.data;
-// };
-// services/adminCommunication.js
-
 export const markTicketAsUsed = async (bookingId) => {
   try {
     const token = localStorage.getItem('token');
-    
-    console.log('=== FRONTEND API CALL ===');
-    console.log('Booking ID:', bookingId);
-    console.log('Token exists:', !!token);
-    
     if (!token) {
-      throw new Error('No authentication token found. Please login again.');
+      throw new Error('No authentication token found');
     }
-    
-   
     const url = `${BE_URL}/ticket/use/${bookingId}`;
-    console.log('Request URL:', url);
-    
     const response = await axios.put(
       url,
       {},
@@ -634,13 +598,9 @@ export const markTicketAsUsed = async (bookingId) => {
         }
       }
     );
-    
-    console.log('Response:', response.data);
     return response.data;
-    
   } catch (error) {
     console.error('API Error:', error.response?.data || error.message);
-    console.error('Error Status:', error.response?.status);
     throw error;
   }
 };
@@ -652,5 +612,46 @@ export const getTicketDetails = async (bookingId) => {
 
 export const getShowTickets = async (showId) => {
   const res = await axios.get(`${BE_URL}/verify/show/${showId}/tickets`, getAuthHeader());
+  return res.data;
+};
+
+// ==================== SHOW MANAGEMENT (Additional) ====================
+
+export const updateShow = async (id, showData) => {
+  const res = await axios.put(`${BE_URL}/admin/show/update/${id}`, showData, getAuthHeader());
+  return res.data;
+};
+
+export const setAllShowsPaymentMode = async (paymentData) => {
+  const res = await axios.put(`${BE_URL}/admin/shows/set-paid-all`, paymentData, getAuthHeader());
+  return res.data;
+};
+
+// ==================== PAYMENT & BOOKING ====================
+
+export const createPaymentOrder = async (bookingId) => {
+  const res = await axios.post(`${BE_URL}/public/booking/create-payment-order/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+export const confirmPaymentForBooking = async (bookingId, paymentData) => {
+  const res = await axios.put(`${BE_URL}/public/booking/confirm-payment/${bookingId}`, paymentData, getAuthHeader());
+  return res.data;
+};
+
+export const getMyBookings = async () => {
+  const res = await axios.get(`${BE_URL}/public/booking/my-bookings`, getAuthHeader());
+  return res.data;
+};
+
+export const cancelBooking = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+// ==================== PUBLIC API ====================
+
+export const getShowSeats = async (showId) => {
+  const res = await axios.get(`${BE_URL}/public/shows/${showId}/seats`);
   return res.data;
 };

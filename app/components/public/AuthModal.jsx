@@ -73,8 +73,8 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
       setTimeout(() => {
         if (role === "SUPER_ADMIN") {
           router.push("/admin/dashboard");
-        } else if (role === "SELLER") {
-          router.push("/seller/dashboard");
+        } else if (role === "VENDOR") {
+          router.push("/vendor/dashboard");
         } else if (role === "THEATER_OWNER") {
           router.push("/theater-owner/dashboard");
         } else if (role === "BUYER") {

@@ -45,6 +45,7 @@ export default function Sidebar() {
       { name: "Shows", path: "/admin/shows", icon: SiMyshows },
       { name: "Users", path: "/admin/users", icon: FaUser },
       { name: "Add Theater Owner", path: "/admin/theater-owners", icon: FaBars },
+      { name: "Add Vendor", path: "/admin/vendors", icon: FaFilm },
       { name: "Scan Ticket", path: "/admin/scan-ticket", icon: FaSprayCan },
       { name: "Settings", path: "/admin/settings", icon: FaSellcast },
     ],

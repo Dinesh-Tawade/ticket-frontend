@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useSelector } from "react-redux";
+import Foods from "../food/Foods";
 import { getMyBookings, cancelBooking } from "@/app/services/publicCommunication";
 import {
   FaTicketAlt, FaCalendarAlt, FaClock, FaChair,
@@ -427,6 +428,7 @@ const MyBookingsPage = () => {
         </main>
       </div>
       </div>
+      <Foods/>
       <Footer />
 
       {selected && <TicketModal booking={selected} onClose={() => setSelected(null)} />}
