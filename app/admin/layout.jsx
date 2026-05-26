@@ -32,7 +32,7 @@ export default function AdminLayout({ children }) {
       <Sidebar />
       <div className="flex flex-col h-screen" style={{ marginLeft: "260px" }}>
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <main className="flex-1 overflow-y-auto  bg-gray-50">
           {children}
         </main>
       </div>

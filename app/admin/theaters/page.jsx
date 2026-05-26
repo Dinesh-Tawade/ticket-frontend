@@ -3,25 +3,22 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "react-i18next";
 import { toast, Toaster } from "react-hot-toast";
-import { useSelector } from "react-redux";
 import {
   getAllTheatersAdmin,
   deleteTheaterAdmin,
   updateTheaterAdmin,
+  getTheaterByIdAdmin,
 } from "../../services/adminCommunication";
 import {
   FaBuilding, FaMapMarkerAlt, FaPhone, FaTicketAlt, FaCouch, FaWifi,
   FaParking, FaCoffee, FaAccessibleIcon, FaEdit, FaTrash, FaPlus,
   FaSearch, FaTimes, FaCheckCircle, FaTimesCircle, FaChevronDown,
-  FaStar, FaRegGem, FaCrown, FaSpinner, FaEye, FaChevronLeft, FaChevronRight,
-  FaFilter, FaSort, FaSortUp, FaSortDown
+  FaSpinner, FaEye, FaChevronLeft, FaChevronRight,
+  FaSort, FaSortUp, FaSortDown, FaExpand, FaCompress
 } from "react-icons/fa";
-import { MdTheaters, MdLocationOn, MdEventSeat } from "react-icons/md";
+import { MdTheaters, MdEventSeat, MdScreenShare } from "react-icons/md";
 import { GiTheaterCurtains } from "react-icons/gi";
-import useTheme from "@/app/hooks/useTheme";
-import "../../i18n";
 
 const AMENITIES = [
   { icon: FaCouch, name: "Recliner", key: "hasRecliner", color: "blue" },
@@ -31,7 +28,338 @@ const AMENITIES = [
   { icon: FaAccessibleIcon, name: "Wheelchair", key: "hasWheelchair", color: "purple" },
 ];
 
-// Table Header Component with Sort
+// ==================== SEAT LAYOUT PREVIEW COMPONENT (2D Visual) ====================
+const SeatLayoutPreview = ({ zones, screenPosition }) => {
+  const [hoveredSeat, setHoveredSeat] = useState(null);
+  
+  if (!zones || zones.length === 0) {
+    return (
+      <div className="text-center py-12 text-foreground/40">
+        <MdEventSeat className="text-5xl mx-auto mb-3 opacity-30" />
+        <p className="text-sm">No zones configured for this screen</p>
+      </div>
+    );
+  }
+  
+  const renderZoneSeats = (zone) => {
+    if (!zone.rows || zone.rows.length === 0) {
+      return <div className="text-center text-xs opacity-40 py-4">No seats in this zone</div>;
+    }
+    
+    return zone.rows.map((row, rowIdx) => (
+      <div key={row.rowId || rowIdx} className="flex items-center justify-center gap-1 mb-1.5">
+        <div className="w-6 text-[10px] font-bold text-foreground/40 text-right">
+          {row.rowName}
+        </div>
+        <div className="flex flex-wrap justify-center gap-1">
+          {row.seats && row.seats.map((seat, seatIdx) => (
+            <div
+              key={seat.seatId || seatIdx}
+              className="relative group"
+              onMouseEnter={() => setHoveredSeat(seat.seatId)}
+              onMouseLeave={() => setHoveredSeat(null)}
+            >
+              <div
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center text-[9px] sm:text-[10px] font-mono font-bold transition-all cursor-pointer hover:scale-110 hover:shadow-lg"
+                style={{ 
+                  background: `${zone.color}20`, 
+                  color: zone.color, 
+                  border: `1.5px solid ${zone.color}50`,
+                  boxShadow: hoveredSeat === seat.seatId ? `0 0 0 2px ${zone.color}` : 'none'
+                }}
+              >
+                {seat.seatLabel || seat.seatNumber}
+              </div>
+              {hoveredSeat === seat.seatId && (
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-foreground text-background text-[9px] px-2 py-0.5 rounded whitespace-nowrap z-10 shadow-lg">
+                  {seat.seatLabel} • ₹{zone.basePrice * zone.priceMultiplier}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    ));
+  };
+  
+  const zonesByPosition = {
+    top: zones.filter(z => z.position === 'top'),
+    left: zones.filter(z => z.position === 'left'),
+    center: zones.filter(z => z.position === 'center'),
+    right: zones.filter(z => z.position === 'right'),
+    bottom: zones.filter(z => z.position === 'bottom'),
+  };
+  
+  return (
+    <div className="bg-background border-2 rounded-2xl overflow-hidden" style={{ borderColor: "var(--card-border)" }}>
+      {screenPosition === "top" && (
+        <div className="text-center py-5 bg-gradient-to-b from-red-500/15 to-transparent">
+          <div className="inline-block px-8 py-2.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-bold shadow-lg">
+            🎬 S C R E E N
+          </div>
+          <p className="text-[10px] text-foreground/40 mt-2">← AUDIENCE VIEW →</p>
+        </div>
+      )}
+      
+      <div className="p-5">
+        {zonesByPosition.top.length > 0 && (
+          <div className="mb-6">
+            <div className="text-center mb-3">
+              <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-foreground/10 text-foreground/60">
+                ⬆️ BALCONY / UPPER LEVEL ⬆️
+              </span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-6">
+              {zonesByPosition.top.map(zone => (
+                <div key={zone.id} className="bg-card rounded-xl p-4 shadow-md" style={{ border: `2px solid ${zone.color}30` }}>
+                  <div className="text-center mb-3">
+                    <span className="text-sm font-bold px-4 py-1.5 rounded-full" style={{ background: `${zone.color}20`, color: zone.color }}>
+                      {zone.name}
+                    </span>
+                    <div className="text-[10px] text-foreground/40 mt-1">{zone.totalSeats} seats • ₹{zone.basePrice * zone.priceMultiplier}/seat</div>
+                  </div>
+                  {renderZoneSeats(zone)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="flex flex-wrap justify-center gap-6 items-start">
+          {zonesByPosition.left.length > 0 && (
+            <div className="flex-shrink-0">
+              <div className="text-center mb-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-foreground/10">⬅️ LEFT WING</span>
+              </div>
+              {zonesByPosition.left.map(zone => (
+                <div key={zone.id} className="bg-card rounded-xl p-3 mb-3 shadow-md" style={{ border: `1px solid ${zone.color}40` }}>
+                  <div className="text-center mb-2">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded" style={{ background: `${zone.color}20`, color: zone.color }}>
+                      {zone.name}
+                    </span>
+                  </div>
+                  {renderZoneSeats(zone)}
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {zonesByPosition.center.length > 0 && (
+            <div className="flex-shrink-0">
+              <div className="text-center mb-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-foreground/10">🎯 CENTER STAGE</span>
+              </div>
+              {zonesByPosition.center.map(zone => (
+                <div key={zone.id} className="bg-card rounded-xl p-4 mb-3 shadow-lg" style={{ border: `2px solid ${zone.color}50` }}>
+                  <div className="text-center mb-3">
+                    <span className="text-sm font-bold px-5 py-1.5 rounded-full" style={{ background: `${zone.color}25`, color: zone.color }}>
+                      {zone.name}
+                    </span>
+                    <div className="text-[10px] text-foreground/40 mt-1.5">{zone.totalSeats} seats • ₹{zone.basePrice * zone.priceMultiplier}/seat</div>
+                  </div>
+                  {renderZoneSeats(zone)}
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {zonesByPosition.right.length > 0 && (
+            <div className="flex-shrink-0">
+              <div className="text-center mb-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-foreground/10">RIGHT WING ➡️</span>
+              </div>
+              {zonesByPosition.right.map(zone => (
+                <div key={zone.id} className="bg-card rounded-xl p-3 mb-3 shadow-md" style={{ border: `1px solid ${zone.color}40` }}>
+                  <div className="text-center mb-2">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded" style={{ background: `${zone.color}20`, color: zone.color }}>
+                      {zone.name}
+                    </span>
+                  </div>
+                  {renderZoneSeats(zone)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {zonesByPosition.bottom.length > 0 && (
+          <div className="mt-6">
+            <div className="text-center mb-3">
+              <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-foreground/10 text-foreground/60">
+                ⬇️ FRONT ROWS ⬇️
+              </span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-6">
+              {zonesByPosition.bottom.map(zone => (
+                <div key={zone.id} className="bg-card rounded-xl p-4 shadow-md" style={{ border: `2px solid ${zone.color}30` }}>
+                  <div className="text-center mb-3">
+                    <span className="text-sm font-bold px-4 py-1.5 rounded-full" style={{ background: `${zone.color}20`, color: zone.color }}>
+                      {zone.name}
+                    </span>
+                    <div className="text-[10px] text-foreground/40 mt-1">{zone.totalSeats} seats • ₹{zone.basePrice * zone.priceMultiplier}/seat</div>
+                  </div>
+                  {renderZoneSeats(zone)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {screenPosition === "bottom" && (
+        <div className="text-center py-5 bg-gradient-to-t from-red-500/15 to-transparent">
+          <div className="inline-block px-8 py-2.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-bold shadow-lg">
+            🎬 S C R E E N
+          </div>
+          <p className="text-[10px] text-foreground/40 mt-2">← AUDIENCE VIEW →</p>
+        </div>
+      )}
+      
+      <div className="border-t p-3 flex flex-wrap gap-3 justify-center text-[10px]" style={{ borderColor: "var(--card-border)" }}>
+        {zones.map(zone => (
+          <div key={zone.id} className="flex items-center gap-1.5">
+            <div className="w-3.5 h-3.5 rounded-sm" style={{ background: zone.color }} />
+            <span className="text-foreground/70 font-medium">{zone.name}</span>
+            <span className="text-foreground/40">₹{zone.basePrice * zone.priceMultiplier}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ==================== THEATER DETAIL MODAL ====================
+const TheaterDetailModal = ({ theaterId, onClose }) => {
+  const [theater, setTheater] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  useEffect(() => {
+    if (theaterId) {
+      loadTheaterDetails();
+    }
+  }, [theaterId]);
+  
+  const loadTheaterDetails = async () => {
+    setLoading(true);
+    try {
+      const res = await getTheaterByIdAdmin(theaterId);
+      console.log("🎭 Theater Data:", res.data);
+      setTheater(res.data);
+    } catch (error) {
+      console.error("Error loading theater details:", error);
+      toast.error("Failed to load theater details");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  if (!theaterId) return null;
+  
+  // Collect all zones from all screens
+  const getAllZones = () => {
+    if (!theater?.screens) return [];
+    const allZones = [];
+    theater.screens.forEach(screen => {
+      if (screen.zones && screen.zones.length > 0) {
+        allZones.push(...screen.zones);
+      }
+    });
+    return allZones;
+  };
+  
+  const allZones = getAllZones();
+  const totalZones = allZones.length;
+  const totalSeats = allZones.reduce((sum, z) => sum + (z.totalSeats || 0), 0);
+  
+  return (
+    <div className="fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }}>
+      <div className="rounded-2xl w-full max-w-7xl max-h-[90vh] overflow-y-auto shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+        <div className="sticky top-0 p-5 border-b flex justify-between items-center z-10" style={{ background: "var(--card)", borderColor: "var(--card-border) " }}>
+          <div>
+            <h2 className="text-xl font-extrabold text-foreground">{theater?.name || "Theater Details"}</h2>
+            <p className="text-xs text-foreground/50">{theater?.location}, {theater?.city}</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 rounded-lg hover:bg-foreground/10 transition-all">
+              {isExpanded ? <FaCompress size={14} /> : <FaExpand size={14} />}
+            </button>
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-foreground/10 transition-all">
+              <FaTimes size={16} />
+            </button>
+          </div>
+        </div>
+        
+        {loading ? (
+          <div className="p-12 text-center">
+            <FaSpinner className="animate-spin text-2xl mx-auto text-blue-500" />
+            <p className="mt-2 text-foreground/50">Loading theater details...</p>
+          </div>
+        ) : theater ? (
+          <div className={`p-6 space-y-6 ${isExpanded ? 'scale-100' : ''}`}>
+            {/* Basic Info Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <div className="text-xs opacity-60">Contact</div>
+                <div className="font-semibold">{theater.contactNumber || "N/A"}</div>
+              </div>
+              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <div className="text-xs opacity-60">Pincode</div>
+                <div className="font-semibold">{theater.pincode || "N/A"}</div>
+              </div>
+              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <div className="text-xs opacity-60">Total Screens</div>
+                <div className="font-semibold">{theater.screens?.length || 0}</div>
+              </div>
+              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <div className="text-xs opacity-60">Total Seats</div>
+                <div className="font-semibold">{theater.totalSeats || totalSeats}</div>
+              </div>
+            </div>
+            
+            {/* Amenities */}
+            <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+              <div className="text-xs opacity-60 mb-2">Amenities</div>
+              <div className="flex flex-wrap gap-2">
+                {AMENITIES.filter(a => theater[a.key]).map(a => (
+                  <span key={a.key} className="px-2 py-1 rounded-full text-xs flex items-center gap-1" style={{ background: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>
+                    <a.icon className="text-[10px]" /> {a.name}
+                  </span>
+                ))}
+                {!AMENITIES.some(a => theater[a.key]) && <span className="text-xs opacity-40">No amenities</span>}
+              </div>
+            </div>
+            
+            {/* 2D Seat Layout - All Zones Together */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <MdScreenShare className="text-purple-500 text-lg" /> 2D Seat Layout
+                </h3>
+                <div className="text-xs text-foreground/50">
+                  {totalZones} zones • {totalSeats} total seats
+                </div>
+              </div>
+              
+              {allZones.length > 0 ? (
+                <SeatLayoutPreview zones={allZones} screenPosition={theater.screenPosition || "top"} />
+              ) : (
+                <div className="text-center py-12 text-foreground/40 bg-foreground/5 rounded-xl">
+                  <MdEventSeat className="text-5xl mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">No zones configured for this theater</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="p-12 text-center text-foreground/50">Theater not found</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Table Header Component
 const TableHeader = ({ column, label, sortField, sortOrder, onSort }) => {
   const isActive = sortField === column;
   
@@ -55,42 +383,69 @@ const TableHeader = ({ column, label, sortField, sortOrder, onSort }) => {
   );
 };
 
+// Confirm Modal Component
+const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, color, title, body, confirmLabel }) => {
+  if (!isOpen) return null;
+  
+  const colorMap = { red: "#ef4444", green: "#22c55e", yellow: "#eab308" };
+  const themeColor = colorMap[color] || colorMap.red;
+  
+  return (
+    <div className="fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+      <div className="rounded-2xl p-8 max-w-md w-full shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: `${themeColor}20`, border: `1px solid ${themeColor}40`, color: themeColor }}>
+          {icon}
+        </div>
+        <h2 className="text-xl font-extrabold mb-2" style={{ color: "var(--foreground)" }}>{title}</h2>
+        <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.7 }}>{body}</p>
+        <div className="flex gap-2.5">
+          <button onClick={onConfirm} className="flex-1 rounded-xl py-2.5 text-white font-bold text-sm transition-all hover:scale-105" style={{ background: themeColor }}>{confirmLabel}</button>
+          <button onClick={onClose} className="flex-1 rounded-xl py-2.5 font-bold text-sm transition-all" style={{ border: "1px solid var(--card-border)", color: "var(--foreground)" }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Component
 export default function TheatersPage() {
-  const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { theme } = useTheme();
   
-  // Filters State
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [cityFilter, setCityFilter] = useState("ALL");
-  
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  
-  // Sorting State
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
-  
-  // Modal States
   const [deletingTheater, setDeletingTheater] = useState(null);
   const [statusTheater, setStatusTheater] = useState(null);
   const [statusAction, setStatusAction] = useState("");
-  const [viewingTheater, setViewingTheater] = useState(null);
+  const [viewingTheaterId, setViewingTheaterId] = useState(null);
   
-  // Query
-  const { data, refetch, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["allTheatersAdmin"],
     queryFn: getAllTheatersAdmin,
   });
   const theaters = data?.data || [];
 
-  // Get unique cities for filter
   const cities = useMemo(() => ["ALL", ...new Set(theaters.map(t => t.city).filter(Boolean))].sort(), [theaters]);
 
-  // Filter theaters
+  const calculateTotalSeats = useCallback((theater) => {
+    if (theater.totalSeats) return theater.totalSeats;
+    if (theater.screens && theater.screens.length > 0) {
+      return theater.screens.reduce((sum, screen) => {
+        if (screen.totalSeatsInScreen) return sum + screen.totalSeatsInScreen;
+        if (screen.zones && screen.zones.length > 0) {
+          return sum + screen.zones.reduce((zSum, zone) => zSum + (zone.totalSeats || 0), 0);
+        }
+        return sum;
+      }, 0);
+    }
+    return 0;
+  }, []);
+
   const filteredTheaters = useMemo(() => {
     let result = theaters.filter(t => {
       const q = searchTerm.toLowerCase();
@@ -99,14 +454,13 @@ export default function TheatersPage() {
         (cityFilter === "ALL" || t.city === cityFilter);
     });
     
-    // Sort
     result = [...result].sort((a, b) => {
       let aVal = a[sortField];
       let bVal = b[sortField];
       
       if (sortField === "totalSeats") {
-        aVal = a.screens?.reduce((sum, s) => sum + (s.seatRows?.reduce((rSum, r) => rSum + (r.endSeat - r.startSeat + 1), 0) || 0), 0) || 0;
-        bVal = b.screens?.reduce((sum, s) => sum + (s.seatRows?.reduce((rSum, r) => rSum + (r.endSeat - r.startSeat + 1), 0) || 0), 0) || 0;
+        aVal = calculateTotalSeats(a);
+        bVal = calculateTotalSeats(b);
       }
       
       if (sortField === "screens") {
@@ -121,20 +475,17 @@ export default function TheatersPage() {
     });
     
     return result;
-  }, [theaters, searchTerm, statusFilter, cityFilter, sortField, sortOrder]);
+  }, [theaters, searchTerm, statusFilter, cityFilter, sortField, sortOrder, calculateTotalSeats]);
 
-  // Pagination
   const totalItems = filteredTheaters.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTheaters = filteredTheaters.slice(startIndex, startIndex + itemsPerPage);
   
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, cityFilter]);
 
-  // Stats
   const stats = useMemo(() => ({
     total: theaters.length,
     active: theaters.filter(t => t.status === "ACTIVE").length,
@@ -143,7 +494,6 @@ export default function TheatersPage() {
     cities: new Set(theaters.map(t => t.city)).size,
   }), [theaters]);
 
-  // Handle Sort
   const handleSort = (field) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -153,7 +503,6 @@ export default function TheatersPage() {
     }
   };
 
-  // Mutations
   const deleteMutation = useMutation({ 
     mutationFn: deleteTheaterAdmin, 
     onSuccess: () => { 
@@ -182,7 +531,6 @@ export default function TheatersPage() {
     setCityFilter("ALL"); 
   }, []);
 
-  // Pagination Controls Component
   const PaginationControls = () => {
     const getPageNumbers = () => {
       const pages = [];
@@ -212,7 +560,7 @@ export default function TheatersPage() {
 
     return (
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t" style={{ borderColor: "var(--card-border)" }}>
-        <div className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+        <div className="text-sm text-foreground/50">
           Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, totalItems)} of {totalItems} theaters
         </div>
         
@@ -228,7 +576,7 @@ export default function TheatersPage() {
           
           {getPageNumbers().map((page, idx) => (
             page === '...' ? (
-              <span key={idx} className="px-2" style={{ color: "var(--foreground)", opacity: 0.4 }}>...</span>
+              <span key={idx} className="px-2 text-foreground/40">...</span>
             ) : (
               <button
                 key={idx}
@@ -269,108 +617,10 @@ export default function TheatersPage() {
     );
   };
 
-  // Confirm Modal Component
-  const ConfirmModal = ({ isOpen, onClose, onConfirm, icon, color, title, body, confirmLabel }) => {
-    if (!isOpen) return null;
-    
-    const colorMap = { red: "#ef4444", green: "#22c55e", yellow: "#eab308" };
-    const themeColor = colorMap[color] || colorMap.red;
-    
-    return (
-      <div className="fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
-        <div className="rounded-2xl p-8 max-w-md w-full shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: `${themeColor}20`, border: `1px solid ${themeColor}40`, color: themeColor }}>
-            {icon}
-          </div>
-          <h2 className="text-xl font-extrabold mb-2" style={{ color: "var(--foreground)" }}>{title}</h2>
-          <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.7 }}>{body}</p>
-          <div className="flex gap-2.5">
-            <button onClick={onConfirm} className="flex-1 rounded-xl py-2.5 text-white font-bold text-sm transition-all hover:scale-105" style={{ background: themeColor }}>{confirmLabel}</button>
-            <button onClick={onClose} className="flex-1 rounded-xl py-2.5 font-bold text-sm transition-all" style={{ border: "1px solid var(--card-border)", color: "var(--foreground)" }}>Cancel</button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // View Modal
-  const ViewModal = ({ theater, onClose }) => {
-    if (!theater) return null;
-    
-    const totalSeats = theater.screens?.reduce((sum, s) => sum + (s.seatRows?.reduce((rSum, r) => rSum + (r.endSeat - r.startSeat + 1), 0) || 0), 0) || 0;
-    
-    return (
-      <div className="fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
-        <div className="rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-          <div className="sticky top-0 p-6 border-b" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-2xl font-extrabold" style={{ color: "var(--foreground)" }}>{theater.name}</h2>
-                <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>{theater.location}, {theater.city}</p>
-              </div>
-              <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-all">
-                <FaTimes className="text-sm" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
-                <div className="text-xs opacity-60">Contact</div>
-                <div className="font-semibold">{theater.contactNumber || "N/A"}</div>
-              </div>
-              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
-                <div className="text-xs opacity-60">Pincode</div>
-                <div className="font-semibold">{theater.pincode || "N/A"}</div>
-              </div>
-              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
-                <div className="text-xs opacity-60">Total Screens</div>
-                <div className="font-semibold">{theater.screens?.length || 0}</div>
-              </div>
-              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
-                <div className="text-xs opacity-60">Total Seats</div>
-                <div className="font-semibold">{totalSeats}</div>
-              </div>
-            </div>
-            
-            <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
-              <div className="text-xs opacity-60 mb-2">Amenities</div>
-              <div className="flex flex-wrap gap-2">
-                {AMENITIES.filter(a => theater[a.key]).map(a => (
-                  <span key={a.key} className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>{a.name}</span>
-                ))}
-                {!AMENITIES.some(a => theater[a.key]) && <span className="text-xs opacity-40">No amenities</span>}
-              </div>
-            </div>
-            
-            {theater.screens?.length > 0 && (
-              <div className="p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
-                <div className="text-xs opacity-60 mb-2">Screens</div>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {theater.screens.map(screen => {
-                    const seats = screen.seatRows?.reduce((sum, r) => sum + (r.endSeat - r.startSeat + 1), 0) || 0;
-                    return (
-                      <div key={screen._id} className="flex justify-between items-center p-2 rounded-lg" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-                        <span className="font-medium">{screen.name}</span>
-                        <span className="text-sm opacity-60">{seats} seats</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
-      {/* Header */}
       <div className="relative border-b shadow-lg rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
         <div className="px-8 py-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -383,7 +633,7 @@ export default function TheatersPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-black" style={{ color: "var(--foreground)" }}>Theater Management</h1>
-                <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Manage and monitor all theaters</p>
+                <p className="text-xs text-foreground/50">Manage and monitor all theaters</p>
               </div>
             </div>
             
@@ -394,7 +644,6 @@ export default function TheatersPage() {
         </div>
       </div>
       
-      {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <div className="rounded-xl p-4 text-center" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
           <div className="text-2xl font-black text-blue-500">{stats.total}</div>
@@ -418,13 +667,17 @@ export default function TheatersPage() {
         </div>
       </div>
       
-      {/* Filters */}
       <div className="rounded-xl p-5 mb-6 flex flex-wrap gap-3 items-center" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
         <div className="flex-1 min-w-[200px] relative">
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-40" />
-          <input type="text" placeholder="Search by name, city, location..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} 
+          <input 
+            type="text" 
+            placeholder="Search by name, city, location..." 
+            value={searchTerm} 
+            onChange={e => setSearchTerm(e.target.value)} 
             className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }} />
+            style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }} 
+          />
         </div>
         
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} 
@@ -448,7 +701,6 @@ export default function TheatersPage() {
         )}
       </div>
       
-      {/* Data Table */}
       <div className="rounded-xl overflow-hidden shadow-lg" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -480,7 +732,7 @@ export default function TheatersPage() {
                 </tr>
               ) : (
                 paginatedTheaters.map((theater) => {
-                  const totalSeats = theater.screens?.reduce((sum, s) => sum + (s.seatRows?.reduce((rSum, r) => rSum + (r.endSeat - r.startSeat + 1), 0) || 0), 0) || 0;
+                  const totalSeats = calculateTotalSeats(theater);
                   const amenitiesCount = AMENITIES.filter(a => theater[a.key]).length;
                   
                   return (
@@ -520,17 +772,32 @@ export default function TheatersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => setViewingTheater(theater)} className="p-1.5 rounded-lg hover:bg-blue-500/10 transition-all" title="View Details">
+                          <button 
+                            onClick={() => setViewingTheaterId(theater._id)} 
+                            className="p-1.5 rounded-lg hover:bg-blue-500/10 transition-all" 
+                            title="View Details & Layout"
+                          >
                             <FaEye className="text-blue-500 text-sm" />
                           </button>
-                          <button onClick={() => router.push(`/admin/theaters/edit/${theater._id}`)} className="p-1.5 rounded-lg hover:bg-yellow-500/10 transition-all" title="Edit">
+                          <button 
+                            onClick={() => router.push(`/admin/theaters/edit/${theater._id}`)} 
+                            className="p-1.5 rounded-lg hover:bg-yellow-500/10 transition-all" 
+                            title="Edit"
+                          >
                             <FaEdit className="text-yellow-500 text-sm" />
                           </button>
-                          <button onClick={() => setStatusTheater(theater) || setStatusAction(theater.status === "ACTIVE" ? "deactivate" : "activate")} 
-                            className="p-1.5 rounded-lg hover:bg-green-500/10 transition-all" title={theater.status === "ACTIVE" ? "Deactivate" : "Activate"}>
+                          <button 
+                            onClick={() => { setStatusTheater(theater); setStatusAction(theater.status === "ACTIVE" ? "deactivate" : "activate"); }} 
+                            className="p-1.5 rounded-lg hover:bg-green-500/10 transition-all" 
+                            title={theater.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                          >
                             {theater.status === "ACTIVE" ? <FaTimesCircle className="text-red-500 text-sm" /> : <FaCheckCircle className="text-green-500 text-sm" />}
                           </button>
-                          <button onClick={() => setDeletingTheater(theater)} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-all" title="Delete">
+                          <button 
+                            onClick={() => setDeletingTheater(theater)} 
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 transition-all" 
+                            title="Delete"
+                          >
                             <FaTrash className="text-red-500 text-sm" />
                           </button>
                         </div>
@@ -543,24 +810,35 @@ export default function TheatersPage() {
           </table>
         </div>
         
-        {/* Pagination */}
         {totalItems > 0 && <PaginationControls />}
       </div>
       
-      {/* Modals */}
-      <ConfirmModal isOpen={!!deletingTheater} onClose={() => setDeletingTheater(null)} onConfirm={() => deletingTheater && deleteMutation.mutate(deletingTheater._id)} 
-        icon={<FaTrash className="text-red-500 text-xl" />} color="red" title="Delete Theater" 
-        body={<>Delete <strong>{deletingTheater?.name}</strong>? This action cannot be undone.</>} confirmLabel="Delete" />
+      <ConfirmModal 
+        isOpen={!!deletingTheater} 
+        onClose={() => setDeletingTheater(null)} 
+        onConfirm={() => deletingTheater && deleteMutation.mutate(deletingTheater._id)} 
+        icon={<FaTrash className="text-red-500 text-xl" />} 
+        color="red" 
+        title="Delete Theater" 
+        body={<>Delete <strong>{deletingTheater?.name}</strong>? This action cannot be undone.</>} 
+        confirmLabel="Delete" 
+      />
       
-      <ConfirmModal isOpen={!!statusTheater} onClose={() => { setStatusTheater(null); setStatusAction(""); }} 
+      <ConfirmModal 
+        isOpen={!!statusTheater} 
+        onClose={() => { setStatusTheater(null); setStatusAction(""); }} 
         onConfirm={() => statusTheater && statusMutation.mutate({ id: statusTheater._id, data: { status: statusAction === "activate" ? "ACTIVE" : "INACTIVE" } })} 
         icon={statusAction === "activate" ? <FaCheckCircle className="text-green-500 text-xl" /> : <FaTimesCircle className="text-yellow-500 text-xl" />} 
         color={statusAction === "activate" ? "green" : "yellow"} 
         title={statusAction === "activate" ? "Activate Theater" : "Deactivate Theater"} 
         body={<>Are you sure you want to {statusAction} <strong>{statusTheater?.name}</strong>?</>} 
-        confirmLabel={statusAction === "activate" ? "Activate" : "Deactivate"} />
+        confirmLabel={statusAction === "activate" ? "Activate" : "Deactivate"} 
+      />
       
-      <ViewModal theater={viewingTheater} onClose={() => setViewingTheater(null)} />
+      <TheaterDetailModal 
+        theaterId={viewingTheaterId} 
+        onClose={() => setViewingTheaterId(null)} 
+      />
     </div>
   );
 }

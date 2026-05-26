@@ -271,6 +271,8 @@ export const deleteShowAdmin = async (id) => {
   return res.data;
 };
 
+
+
 // ==================== BOOKING MANAGEMENT (Admin) ====================
 
 export const getAllBookingsAdmin = async (filters = {}) => {
@@ -334,6 +336,11 @@ export const deleteScreenOwner = async (theaterId, screenId) => {
 
 export const getMyShowsOwner = async () => {
   const res = await axios.get(`${BE_URL}/theater-owner/my-shows`, getAuthHeader());
+  return res.data;
+};
+
+export const updateShowAdmin = async (id, showData) => {
+  const res = await axios.put(`${BE_URL}/theater-owner/show/update/${id}`, showData, getAuthHeader());
   return res.data;
 };
 
@@ -653,5 +660,23 @@ export const cancelBooking = async (bookingId) => {
 
 export const getShowSeats = async (showId) => {
   const res = await axios.get(`${BE_URL}/public/shows/${showId}/seats`);
+  return res.data;
+};
+
+
+// ==================== ZONE MANAGEMENT (Admin) - NEW APIs ====================
+
+export const addZoneToScreenAdmin = async (theaterId, screenId, zoneData) => {
+  const res = await axios.post(`${BE_URL}/admin/theater/add-zone/${theaterId}/${screenId}`, zoneData, getAuthHeader());
+  return res.data;
+};
+
+export const updateZoneInScreenAdmin = async (theaterId, screenId, zoneId, zoneData) => {
+  const res = await axios.put(`${BE_URL}/admin/theater/update-zone/${theaterId}/${screenId}/${zoneId}`, zoneData, getAuthHeader());
+  return res.data;
+};
+
+export const deleteZoneFromScreenAdmin = async (theaterId, screenId, zoneId) => {
+  const res = await axios.delete(`${BE_URL}/admin/theater/delete-zone/${theaterId}/${screenId}/${zoneId}`, getAuthHeader());
   return res.data;
 };

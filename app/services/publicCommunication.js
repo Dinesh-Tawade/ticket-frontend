@@ -113,6 +113,9 @@ export const getTrendingShows = async () => {
   return res.data;
 };
 
+
+
+
 export const getPublicShowById = async (id) => {
   const res = await axios.get(`${BE_URL}/public/shows/${id}`);
   return res.data;
