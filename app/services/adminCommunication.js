@@ -162,6 +162,8 @@ export const createBuyerAdmin = async (userData) => {
   const isFormData = userData instanceof FormData;
   const res = await axios.post(`${BE_URL}/admin/create-buyer`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
   return res.data;
+
+  console.log("Create buyer request body:", userData);
 };
 
 export const createSuperAdminByAdmin = async (userData) => {
@@ -678,5 +680,36 @@ export const updateZoneInScreenAdmin = async (theaterId, screenId, zoneId, zoneD
 
 export const deleteZoneFromScreenAdmin = async (theaterId, screenId, zoneId) => {
   const res = await axios.delete(`${BE_URL}/admin/theater/delete-zone/${theaterId}/${screenId}/${zoneId}`, getAuthHeader());
+  return res.data;
+};
+
+
+export const assignSeatsToBuyer = async (assignData) => {
+  const res = await axios.post(`${BE_URL}/admin/buyer/assign-seats`, assignData, getAuthHeader());
+  return res.data;
+};
+
+// Get buyer's accessible seats
+export const getBuyerAccessibleSeats = async (buyerId, theaterId = null) => {
+  const url = theaterId 
+    ? `${BE_URL}/admin/buyer/accessible-seats/${buyerId}?theaterId=${theaterId}`
+    : `${BE_URL}/admin/buyer/accessible-seats/${buyerId}`;
+  const res = await axios.get(url, getAuthHeader());
+  return res.data;
+};
+
+// Remove seat access from buyer (full access or specific seats)
+export const removeBuyerSeatAccess = async (buyerId, accessId, seatNumbers = null) => {
+  const data = seatNumbers ? { seatNumbers } : {};
+  const res = await axios.delete(`${BE_URL}/admin/buyer/remove-seat-access/${buyerId}/${accessId}`, {
+    ...getAuthHeader(),
+    data
+  });
+  return res.data;
+};
+
+// Get all zones of a theater (for admin dropdown)
+export const getTheaterZones = async (theaterId) => {
+  const res = await axios.get(`${BE_URL}/admin/theater/${theaterId}`, getAuthHeader());
   return res.data;
 };

@@ -12,7 +12,7 @@ import {
   FaInfoCircle, FaDollarSign,
   FaBuilding, FaCheckCircle, FaSpinner, FaArrowLeft,
   FaArrowRight, FaCrown, FaRegGem, FaEye,
-  FaChevronDown, FaChevronUp
+  FaChevronDown, FaChevronUp, FaPlus, FaTrash, FaCopy
 } from 'react-icons/fa';
 import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat } from 'react-icons/md';
 import { GiFilmProjector } from 'react-icons/gi';
@@ -38,7 +38,6 @@ const DEFAULT_SEAT_CATEGORIES = [
 // ==================== SEAT LAYOUT PREVIEW COMPONENT ====================
 const SeatLayoutPreview = ({ zones, screenPosition }) => {
   const [hoveredSeat, setHoveredSeat] = useState(null);
-  const [expandedZone, setExpandedZone] = useState(null);
   
   if (!zones || zones.length === 0) {
     return (
@@ -64,8 +63,6 @@ const SeatLayoutPreview = ({ zones, screenPosition }) => {
             <div
               key={seat.seatId || seatIdx}
               className="relative group"
-              onMouseEnter={() => setHoveredSeat(seat.seatId)}
-              onMouseLeave={() => setHoveredSeat(null)}
             >
               <div
                 className="w-5 h-5 sm:w-6 sm:h-6 rounded-sm flex items-center justify-center text-[7px] sm:text-[8px] font-mono font-bold transition-all cursor-pointer hover:scale-110"
@@ -77,11 +74,6 @@ const SeatLayoutPreview = ({ zones, screenPosition }) => {
               >
                 {seat.seatLabel || seat.seatNumber}
               </div>
-              {hoveredSeat === seat.seatId && (
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[7px] px-1 py-0.5 rounded whitespace-nowrap z-10 shadow-lg">
-                  {seat.seatLabel}
-                </div>
-              )}
             </div>
           ))}
           {row.seatCount > 12 && (
@@ -214,6 +206,78 @@ const SeatLayoutPreview = ({ zones, screenPosition }) => {
   );
 };
 
+// ==================== SHOW TIMING COMPONENT ====================
+const ShowTiming = ({ timing, index, onUpdate, onRemove, canRemove, onCopy }) => {
+  return (
+    <div className="rounded-xl p-4 transition-all duration-300 bg-background/30 border" style={{ borderColor: "var(--card-border)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
+            <span className="text-xs font-bold text-blue-400">{index + 1}</span>
+          </div>
+          <span className="text-xs font-semibold text-foreground/60">Show Timing</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onCopy(index)}
+            className="p-1.5 rounded-lg transition-all hover:bg-blue-500/20"
+            title="Copy timing"
+          >
+            <FaCopy className="text-xs text-blue-400" />
+          </button>
+          {canRemove && (
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="p-1.5 rounded-lg transition-all hover:bg-red-500/20"
+              title="Remove timing"
+            >
+              <FaTrash className="text-xs text-red-400" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block text-foreground/50">Date</label>
+          <input
+            type="date"
+            value={timing.showDate}
+            onChange={(e) => onUpdate(index, 'showDate', e.target.value)}
+            min={new Date().toISOString().split('T')[0]}
+            className="w-full px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-card border"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+            required
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block text-foreground/50">Start Time</label>
+          <input
+            type="time"
+            value={timing.startTime}
+            onChange={(e) => onUpdate(index, 'startTime', e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-card border"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+            required
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block text-foreground/50">End Time</label>
+          <input
+            type="time"
+            value={timing.endTime}
+            onChange={(e) => onUpdate(index, 'endTime', e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-card border"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+            required
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Step Indicator Component
 const StepIndicator = ({ step, label, icon: Icon, isActive, isCompleted, onClick }) => (
   <button
@@ -247,10 +311,6 @@ const StepIndicator = ({ step, label, icon: Icon, isActive, isCompleted, onClick
         </div>
       </div>
     </div>
-    {step < 3 && (
-      <div className="absolute right-0 top-4 w-full h-px transition-all duration-300 hidden sm:block"
-        style={{ right: '-50%', width: '100%', background: isCompleted ? 'var(--gradient-primary)' : "var(--card-border)" }} />
-    )}
   </button>
 );
 
@@ -264,6 +324,11 @@ export default function CreateShow() {
   const [posterPreview, setPosterPreview] = useState('');
   const [screenZones, setScreenZones] = useState([]);
   const [screenPosition, setScreenPosition] = useState('top');
+  
+  // ✅ Multiple Timings State
+  const [showTimings, setShowTimings] = useState([
+    { showDate: '', startTime: '', endTime: '' }
+  ]);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -281,9 +346,6 @@ export default function CreateShow() {
       isTrending: false,
       releaseDate: ''
     },
-    showDate: '',
-    startTime: '',
-    endTime: '',
     seatCategories: [...DEFAULT_SEAT_CATEGORIES],
     isPaid: true,
     basePrice: 150
@@ -323,11 +385,36 @@ export default function CreateShow() {
     }
   }, [selectedTheater, formData.screenId]);
 
+  // ✅ Timing Handlers
+  const handleAddTiming = useCallback(() => {
+    setShowTimings(prev => [...prev, { showDate: '', startTime: '', endTime: '' }]);
+  }, []);
+
+  const handleRemoveTiming = useCallback((index) => {
+    if (showTimings.length > 1) {
+      setShowTimings(prev => prev.filter((_, i) => i !== index));
+    } else {
+      toast.error('At least one show timing is required');
+    }
+  }, [showTimings.length]);
+
+  const handleUpdateTiming = useCallback((index, field, value) => {
+    setShowTimings(prev => prev.map((timing, i) => 
+      i === index ? { ...timing, [field]: value } : timing
+    ));
+  }, []);
+
+  const handleCopyTiming = useCallback((index) => {
+    const timingToCopy = showTimings[index];
+    setShowTimings(prev => [...prev, { ...timingToCopy }]);
+    toast.success('Timing copied!');
+  }, [showTimings]);
+
   // Create show mutation
   const createMutation = useMutation({
     mutationFn: createShowAdmin,
     onSuccess: () => {
-      toast.success('Show created successfully! 🎬');
+      toast.success(`Show created with ${showTimings.length} timings! 🎬`);
       setTimeout(() => router.push('/admin/shows'), 2000);
     },
     onError: (error) => {
@@ -402,11 +489,25 @@ export default function CreateShow() {
       { condition: !formData.screenId, message: 'Please select a screen' },
       { condition: !formData.movie.name, message: 'Please enter movie name' },
       { condition: !formData.movie.duration, message: 'Please enter movie duration' },
-      { condition: !formData.movie.rating, message: 'Please enter movie rating' },
-      { condition: !formData.showDate, message: 'Please select show date' },
-      { condition: !formData.startTime, message: 'Please select start time' },
-      { condition: !formData.endTime, message: 'Please select end time' }
+      { condition: !formData.movie.rating, message: 'Please enter movie rating' }
     ];
+    
+    // ✅ Validate timings
+    for (let i = 0; i < showTimings.length; i++) {
+      const timing = showTimings[i];
+      if (!timing.showDate) {
+        validations.push({ condition: true, message: `Timing ${i + 1}: Please select show date` });
+        break;
+      }
+      if (!timing.startTime) {
+        validations.push({ condition: true, message: `Timing ${i + 1}: Please select start time` });
+        break;
+      }
+      if (!timing.endTime) {
+        validations.push({ condition: true, message: `Timing ${i + 1}: Please select end time` });
+        break;
+      }
+    }
     
     const failed = validations.find(v => v.condition);
     if (failed) {
@@ -414,7 +515,7 @@ export default function CreateShow() {
       return false;
     }
     return true;
-  }, [formData]);
+  }, [formData, showTimings]);
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
@@ -423,6 +524,17 @@ export default function CreateShow() {
       setActiveTab('basic');
       return;
     }
+    
+    // ✅ Build timings array for backend
+    const timingsData = showTimings.map(timing => ({
+      showDate: timing.showDate,
+      startTime: timing.startTime,
+      endTime: timing.endTime,
+      seatCategories: formData.seatCategories.map(cat => ({
+        category: cat.category,
+        pricePerSeat: parseInt(cat.pricePerSeat)
+      }))
+    }));
     
     const submitData = {
       theaterId: formData.theaterId,
@@ -439,9 +551,7 @@ export default function CreateShow() {
         isTrending: formData.movie.isTrending,
         releaseDate: formData.movie.releaseDate || new Date().toISOString().split('T')[0]
       },
-      showDate: formData.showDate,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
+      timings: timingsData,  // ✅ Send multiple timings
       seatCategories: formData.seatCategories.map(cat => ({
         category: cat.category,
         pricePerSeat: parseInt(cat.pricePerSeat)
@@ -450,12 +560,12 @@ export default function CreateShow() {
       basePrice: parseInt(formData.basePrice)
     };
     
-    console.log("📦 Submitting Show Data:", submitData);
+    console.log("📦 Submitting Show Data with", timingsData.length, "timings:", submitData);
     createMutation.mutate(submitData);
-  }, [formData, validateForm, createMutation]);
+  }, [formData, validateForm, createMutation, showTimings]);
 
   const steps = useMemo(() => [
-    { id: 'basic', label: 'Theater & Timing', icon: MdTheaters },
+    { id: 'basic', label: 'Theater & Timings', icon: MdTheaters },
     { id: 'movie', label: 'Movie Details', icon: FaFilm },
     { id: 'seats', label: 'Seat Pricing', icon: FaChair }
   ], []);
@@ -476,8 +586,14 @@ export default function CreateShow() {
 
   const handleNext = useCallback(() => {
     if (activeTab === 'basic') {
-      if (!formData.theaterId || !formData.screenId || !formData.showDate || !formData.startTime || !formData.endTime) {
-        toast.error('Please fill all required fields');
+      if (!formData.theaterId || !formData.screenId) {
+        toast.error('Please select theater and screen');
+        return;
+      }
+      // ✅ Check if at least one timing has data
+      const hasValidTiming = showTimings.some(t => t.showDate && t.startTime && t.endTime);
+      if (!hasValidTiming) {
+        toast.error('Please add at least one valid show timing');
         return;
       }
       setActiveTab('movie');
@@ -488,7 +604,7 @@ export default function CreateShow() {
       }
       setActiveTab('seats');
     }
-  }, [activeTab, formData]);
+  }, [activeTab, formData, showTimings]);
 
   const handleBack = useCallback(() => {
     if (activeTab === 'movie') setActiveTab('basic');
@@ -516,7 +632,7 @@ export default function CreateShow() {
                   Create New Show
                 </h1>
                 <p className="text-[10px] sm:text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                  Add a new movie screening to the system
+                  Add a new movie screening with multiple show timings
                 </p>
               </div>
             </div>
@@ -554,7 +670,7 @@ export default function CreateShow() {
           <div className="rounded-xl shadow-xl transition-all duration-300 overflow-hidden bg-card border"
             style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
 
-            {/* Basic Info Tab */}
+            {/* Basic Info Tab - Theater & Multiple Timings */}
             {activeTab === 'basic' && (
               <div className="p-4 sm:p-6">
                 <div className="mb-6">
@@ -562,10 +678,10 @@ export default function CreateShow() {
                     <div className="w-8 h-1 rounded-full bg-gradient-primary" />
                   </div>
                   <h2 className="text-xl font-extrabold" style={{ color: "var(--foreground)" }}>
-                    Theater & Screen Selection
+                    Theater & Show Timings
                   </h2>
                   <p className="text-xs mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                    Choose the venue and screen for your show
+                    Choose the venue and add multiple show timings for this movie
                   </p>
                 </div>
 
@@ -619,7 +735,7 @@ export default function CreateShow() {
                     </div>
                   </div>
 
-                  {/* Screen Selection - Shows only screens of selected theater */}
+                  {/* Screen Selection */}
                   {selectedTheater && (
                     <div>
                       <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
@@ -664,14 +780,13 @@ export default function CreateShow() {
                             ))}
                           </div>
 
-                          {/* 2D Seat Layout Preview for Selected Screen */}
+                          {/* 2D Seat Layout Preview */}
                           {selectedScreen && formData.screenId === selectedScreen._id && screenZones.length > 0 && (
                             <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: "var(--card-border)" }}>
                               <div className="bg-foreground/5 px-4 py-2 border-b" style={{ borderColor: "var(--card-border)" }}>
                                 <div className="flex items-center gap-2">
                                   <FaEye className="text-blue-500 text-xs" />
                                   <span className="text-xs font-semibold text-foreground/70">2D Seat Layout Preview</span>
-                                  <span className="text-[9px] text-foreground/40">(Hover on seats to see details)</span>
                                 </div>
                               </div>
                               <div className="p-3">
@@ -684,54 +799,44 @@ export default function CreateShow() {
                     </div>
                   )}
 
-                  {/* Date and Time */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* ✅ MULTIPLE SHOW TIMINGS SECTION */}
+                  {selectedScreen && (
                     <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        <FaCalendar className="text-blue-500" /> Show Date
-                      </label>
-                      <input
-                        type="date"
-                        name="showDate"
-                        value={formData.showDate}
-                        onChange={handleInputChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full px-3 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
-                        style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
-                        required
-                      />
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                          <FaCalendar className="text-green-500" /> Show Timings ({showTimings.length})
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleAddTiming}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/20 text-green-500 text-xs font-semibold hover:bg-green-500/30 transition-all"
+                        >
+                          <FaPlus className="text-[10px]" /> Add Timing
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {showTimings.map((timing, index) => (
+                          <ShowTiming
+                            key={index}
+                            timing={timing}
+                            index={index}
+                            onUpdate={handleUpdateTiming}
+                            onRemove={handleRemoveTiming}
+                            onCopy={handleCopyTiming}
+                            canRemove={showTimings.length > 1}
+                          />
+                        ))}
+                      </div>
+                      
+                      <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <p className="text-[10px] text-blue-400 flex items-center gap-1">
+                          <FaInfoCircle className="text-[10px]" />
+                          You can add multiple show timings for the same movie on different dates or times
+                        </p>
+                      </div>
                     </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        <FaClock className="text-green-500" /> Start Time
-                      </label>
-                      <input
-                        type="time"
-                        name="startTime"
-                        value={formData.startTime}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
-                        style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        <FaClock className="text-red-500" /> End Time
-                      </label>
-                      <input
-                        type="time"
-                        name="endTime"
-                        value={formData.endTime}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-background border"
-                        style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
-                        required
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   {/* Paid/Free Show Toggle */}
                   <div className="rounded-xl p-4 transition-all duration-300 bg-background/30 border" style={{ borderColor: "var(--card-border)" }}>
@@ -782,7 +887,7 @@ export default function CreateShow() {
               </div>
             )}
 
-            {/* Movie Details Tab */}
+            {/* Movie Details Tab (Same as before) */}
             {activeTab === 'movie' && (
               <div className="p-4 sm:p-6">
                 <div className="mb-6">
@@ -945,7 +1050,7 @@ export default function CreateShow() {
               </div>
             )}
 
-            {/* Seat Pricing Tab */}
+            {/* Seat Pricing Tab (Same as before) */}
             {activeTab === 'seats' && (
               <div className="p-4 sm:p-6">
                 <div className="mb-6">
@@ -1027,7 +1132,7 @@ export default function CreateShow() {
                       <p className="text-xs font-semibold mb-0.5 text-blue-400">Seat Layout Information</p>
                       <p className="text-[10px] text-blue-300/70">
                         Seat layout will be automatically generated based on the theater screen configuration.
-                        Each category's row allocation is pre-defined from the screen setup.
+                        These pricing will apply to ALL show timings you&apos;ve added.
                       </p>
                     </div>
                   </div>
@@ -1069,12 +1174,12 @@ export default function CreateShow() {
                   {createMutation.isPending ? (
                     <>
                       <FaSpinner className="animate-spin text-sm" />
-                      Creating...
+                      Creating {showTimings.length} Timing{showTimings.length > 1 ? 's' : ''}...
                     </>
                   ) : (
                     <>
                       <FaSave className="text-sm group-hover:scale-110 transition-transform" />
-                      Create Show
+                      Create Show {showTimings.length > 1 ? `(${showTimings.length} Timings)` : ''}
                     </>
                   )}
                 </button>
