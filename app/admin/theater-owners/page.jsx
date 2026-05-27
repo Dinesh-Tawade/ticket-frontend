@@ -201,7 +201,7 @@ function Page() {
       />
       
       <div className="max-w-6xl mx-auto p-6">
-        <h1 className='text-2xl font-bold mb-4'>Add Theater Owner</h1>
+        <h1 className='text-2xl font-bold mb-4'>Admin</h1>
         <p className='text-gray-600 mb-6'>Use the form below to add a new theater owner and assign them seat access.</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
