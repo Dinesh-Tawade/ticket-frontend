@@ -480,8 +480,14 @@ export const getPublicTheaters = async (filters = {}) => {
   return res.data;
 };
 
-export const getAvailableSeats = async (showId) => {
-  const res = await axios.get(`${BE_URL}/public/shows/${showId}/seats`);
+export const getAvailableSeats = async (showId, timingId = null) => {
+  const params = timingId ? `?timingId=${timingId}` : '';
+  const res = await axios.get(`${BE_URL}/public/shows/${showId}/seats${params}`, getAuthHeader());
+  return res.data;
+};
+
+export const getMe = async () => {
+  const res = await axios.get(`${BE_URL}/auth/me`, getAuthHeader());
   return res.data;
 };
 
@@ -558,25 +564,25 @@ export const getProductCategories = async () => {
 
 // ==================== TICKET BOOKING (Buyer) ====================
 
-export const createBooking = async (bookingData) => {
-  const res = await axios.post(`${BE_URL}/public/booking/create`, bookingData, getAuthHeader());
-  return res.data;
-};
+// export const createBooking = async (bookingData) => {
+//   const res = await axios.post(`${BE_URL}/public/booking/create`, bookingData, getAuthHeader());
+//   return res.data;
+// };
 
-export const confirmPayment = async (bookingId) => {
-  const res = await axios.put(`${BE_URL}/public/booking/confirm-payment/${bookingId}`, {}, getAuthHeader());
-  return res.data;
-};
+// export const confirmPayment = async (bookingId) => {
+//   const res = await axios.put(`${BE_URL}/public/booking/confirm-payment/${bookingId}`, {}, getAuthHeader());
+//   return res.data;
+// };
 
-export const getMyTicketBookings = async () => {
-  const res = await axios.get(`${BE_URL}/public/booking/my-bookings`, getAuthHeader());
-  return res.data;
-};
+// export const getMyTicketBookings = async () => {
+//   const res = await axios.get(`${BE_URL}/public/booking/my-bookings`, getAuthHeader());
+//   return res.data;
+// };
 
-export const cancelTicketBooking = async (bookingId) => {
-  const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
-  return res.data;
-};
+// export const cancelTicketBooking = async (bookingId) => {
+//   const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
+//   return res.data;
+// };
 
 // ==================== VERIFICATION APIs ====================
 
@@ -711,5 +717,27 @@ export const removeBuyerSeatAccess = async (buyerId, accessId, seatNumbers = nul
 // Get all zones of a theater (for admin dropdown)
 export const getTheaterZones = async (theaterId) => {
   const res = await axios.get(`${BE_URL}/admin/theater/${theaterId}`, getAuthHeader());
+  return res.data;
+};
+
+// ==================== TICKET BOOKING (Buyer) ====================
+
+export const createBooking = async (bookingData) => {
+  const res = await axios.post(`${BE_URL}/public/booking/create`, bookingData, getAuthHeader());
+  return res.data;
+};
+
+export const confirmPayment = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/public/booking/confirm-payment/${bookingId}`, {}, getAuthHeader());
+  return res.data;
+};
+
+export const getMyTicketBookings = async () => {
+  const res = await axios.get(`${BE_URL}/public/booking/my-bookings`, getAuthHeader());
+  return res.data;
+};
+
+export const cancelTicketBooking = async (bookingId) => {
+  const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
   return res.data;
 };

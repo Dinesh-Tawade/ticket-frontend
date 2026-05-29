@@ -329,13 +329,7 @@ function Hero() {
                   <span>{t('hero.bookTickets', 'Book Tickets')}</span>
                 </a>
                 
-                {/* Active Trailer Button */}
-                <button className="trailer-btn w-full sm:w-auto inline-flex justify-center items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white text-base tracking-wide group">
-                  <div className="play-icon-wrap w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center group-hover:bg-amber-500/40 transition-colors">
-                    <FaPlay size={10} className="ml-1 text-amber-400 group-hover:text-white transition-colors" />
-                  </div>
-                  {t('hero.watchTrailer', 'Watch Trailer')}
-                </button>
+            
               </div>
             </div>
 
