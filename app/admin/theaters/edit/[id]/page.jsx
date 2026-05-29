@@ -9,10 +9,10 @@ import { toast, Toaster } from "react-hot-toast";
 import {
   FaPlus, FaTrash, FaBuilding, FaMapMarkerAlt, FaPhone, FaCity, FaFlag,
   FaCouch, FaWifi, FaParking, FaCoffee, FaAccessibleIcon, FaArrowLeft,
-  FaCheckCircle, FaUserTie, FaChevronDown, FaEye, FaEdit, FaSave, FaTimes
+  FaCheckCircle, FaChevronDown, FaEye, FaEdit, FaSave, FaTimes
 } from "react-icons/fa";
 import { MdScreenShare, MdTheaters, MdScreenRotation } from "react-icons/md";
-import { updateTheaterAdmin, getAllUsers, getTheaterByIdAdmin } from "@/app/services/adminCommunication";
+import { updateTheaterAdmin, getTheaterByIdAdmin } from "@/app/services/adminCommunication";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LAYOUT BUILDER CONSTANTS & HELPERS
@@ -733,7 +733,7 @@ export default function EditTheaterPage() {
   const [step, setStep] = useState(1);
 
   const [basicInfo, setBasicInfo] = useState({
-    ownerId:"", name:"", location:"", city:"", state:"", pincode:"", contactNumber:"",
+    name:"", location:"", city:"", state:"", pincode:"", contactNumber:"",
     hasRecliner:false, hasWifi:false, hasParking:false, hasCafe:false, hasWheelchair:false,
   });
 
@@ -754,7 +754,6 @@ export default function EditTheaterPage() {
     if (!t) return;
 
     setBasicInfo({
-      ownerId:       t.ownerId?._id || t.ownerId || "",
       name:          t.name          || "",
       location:      t.location      || "",
       city:          t.city          || "",
@@ -773,11 +772,7 @@ export default function EditTheaterPage() {
     if (reconstructed) setInitialLayoutData(reconstructed);
   }, [theaterData]);
 
-  const { data: usersData, isLoading: isLoadingUsers } = useQuery({
-    queryKey: ["users","THEATER_OWNER"],
-    queryFn:  () => getAllUsers({ role:"THEATER_OWNER" }),
-  });
-  const owners = usersData?.data || [];
+
 
   const mutation = useMutation({
     mutationFn: (data) => updateTheaterAdmin(theaterId, data),
@@ -806,7 +801,6 @@ export default function EditTheaterPage() {
   };
 
   const validateStep1 = () => {
-    if (!basicInfo.ownerId)                                      { toast.error("Select a theater owner");          return false; }
     if (!basicInfo.name.trim())                                  { toast.error("Theater name is required");        return false; }
     if (!basicInfo.location.trim())                              { toast.error("Location is required");            return false; }
     if (!basicInfo.city.trim())                                  { toast.error("City is required");                return false; }
@@ -821,44 +815,196 @@ export default function EditTheaterPage() {
     const ld     = layoutData;
     const zones  = ld?.zones || [];
 
-    const buildZonesFromLevel = (levelKey, levelData) => {
+    // const buildZonesFromLevel = (levelKey, levelData) => {
+    //   if (!levelData?.generated) return [];
+    //   const { rows, cols, seats } = levelData;
+    //   // Include zones with painted seats OR no-seat label zones
+    //   return zones.filter(z => z.noSeat || Object.values(seats).some(s => s.zone === z.id)).map((z, idx) => {
+    //     const zoneSeats = Object.entries(seats).filter(([,v]) => v.zone === z.id);
+    //     const rowsData  = z.noSeat ? [] : Array.from({length:rows}, (_,r) => {
+    //       const rowSeats = Array.from({length:cols}, (_,c) => {
+    //         const k = seatKey(r,c);
+    //         if (seats[k]?.zone !== z.id) return null;
+    //         return {
+    //           seatId:       `${z.id}_${levelKey}_r${r}c${c}`,
+    //           seatNumber:   `${getRowLabel(r, ld.rowNaming||"alpha")}${c+1}`,
+    //           seatLabel:    `${getRowLabel(r, ld.rowNaming||"alpha")}${c+1}`,
+    //           rowNumber:    r+1, columnNumber: c+1,
+    //           rowName:      getRowLabel(r, ld.rowNaming||"alpha"),
+    //           isAvailable:  true, isBooked: false,
+    //         };
+    //       }).filter(Boolean);
+    //       return rowSeats.length
+    //         ? { rowId:`${z.id}_${levelKey}_row${r}`, rowName:getRowLabel(r, ld.rowNaming||"alpha"), rowNumber:r+1, seatCount:rowSeats.length, seats:rowSeats }
+    //         : null;
+    //     }).filter(Boolean);
+
+    //     return {
+    //       id:            `${z.id}_${levelKey}`,
+    //       zoneNumber:    idx+1,
+    //       name:          z.name,
+    //       position:      levelKey==="balcony" ? "top" : "center",
+    //       positionLabel: levelKey==="balcony" ? "Balcony" : "Center",
+    //       seatType:      "NORMAL",
+    //       color:         z.color,
+    //       icon:          "■",
+    //       basePrice:     z.basePrice ?? 0, priceMultiplier:1, finalPrice: z.basePrice ?? 0,
+    //       noSeat:        z.noSeat || false, label: z.label || "",
+    //       totalRows:     rowsData.length,
+    //       totalSeats:    zoneSeats.length,
+    //       rows:          rowsData,
+    //     };
+    //   });
+    // };
+
+//     const buildZonesFromLevel = (levelKey, levelData) => {
+//   if (!levelData?.generated) return [];
+//   const { rows, cols, seats } = levelData;
+
+//   return zones.filter(z => z.noSeat || Object.values(seats).some(s => s.zone === z.id)).map((z, idx) => {
+//     const zoneSeats = Object.entries(seats).filter(([, v]) => v.zone === z.id);
+
+//     let rowsData = [];
+
+//     if (z.noSeat) {
+//       // ── For no-seat zones, save the cell positions so preview can reconstruct them
+//       const rowMap = {};
+//       zoneSeats.forEach(([key]) => {
+//         const [r, c] = key.split("-").map(Number);
+//         if (!rowMap[r]) rowMap[r] = [];
+//         rowMap[r].push(c);
+//       });
+//       rowsData = Object.entries(rowMap).map(([r, cols]) => ({
+//         rowId:     `${z.id}_${levelKey}_row${r}`,
+//         rowName:   getRowLabel(Number(r), ld.rowNaming || "alpha"),
+//         rowNumber: Number(r) + 1,
+//         seatCount: cols.length,
+//         seats:     cols.map(c => ({
+//           seatId:       `${z.id}_${levelKey}_r${r}c${c}`,
+//           seatNumber:   `${getRowLabel(Number(r), ld.rowNaming || "alpha")}${c + 1}`,
+//           seatLabel:    `${getRowLabel(Number(r), ld.rowNaming || "alpha")}${c + 1}`,
+//           rowNumber:    Number(r) + 1,
+//           columnNumber: c + 1,
+//           rowName:      getRowLabel(Number(r), ld.rowNaming || "alpha"),
+//           isAvailable:  false,
+//           isBooked:     false,
+//         })),
+//       }));
+//     } else {
+//       // ── Normal zones: existing logic unchanged
+//       rowsData = Array.from({ length: rows }, (_, r) => {
+//         const rowSeats = Array.from({ length: cols }, (_, c) => {
+//           const k = seatKey(r, c);
+//           if (seats[k]?.zone !== z.id) return null;
+//           return {
+//             seatId:       `${z.id}_${levelKey}_r${r}c${c}`,
+//             seatNumber:   `${getRowLabel(r, ld.rowNaming || "alpha")}${c + 1}`,
+//             seatLabel:    `${getRowLabel(r, ld.rowNaming || "alpha")}${c + 1}`,
+//             rowNumber:    r + 1,
+//             columnNumber: c + 1,
+//             rowName:      getRowLabel(r, ld.rowNaming || "alpha"),
+//             isAvailable:  true,
+//             isBooked:     false,
+//           };
+//         }).filter(Boolean);
+//         return rowSeats.length
+//           ? { rowId: `${z.id}_${levelKey}_row${r}`, rowName: getRowLabel(r, ld.rowNaming || "alpha"), rowNumber: r + 1, seatCount: rowSeats.length, seats: rowSeats }
+//           : null;
+//       }).filter(Boolean);
+//     }
+
+//     return {
+//       id:            `${z.id}_${levelKey}`,
+//       zoneNumber:    idx + 1,
+//       name:          z.name,
+//       position:      levelKey === "balcony" ? "top" : "center",
+//       positionLabel: levelKey === "balcony" ? "Balcony" : "Center",
+//       seatType:      "NORMAL",
+//       color:         z.color,
+//       icon:          "■",
+//       basePrice:     z.basePrice ?? 0,
+//       priceMultiplier: 1,
+//       finalPrice:    z.basePrice ?? 0,
+//       noSeat:        z.noSeat || false,
+//       label:         z.label || "",
+//       totalRows:     rowsData.length,
+//       totalSeats:    zoneSeats.length,
+//       rows:          rowsData,
+//     };
+//   });
+// };
+
+const buildZonesFromLevel = (levelKey, levelData) => {
       if (!levelData?.generated) return [];
       const { rows, cols, seats } = levelData;
-      // Include zones with painted seats OR no-seat label zones
       return zones.filter(z => z.noSeat || Object.values(seats).some(s => s.zone === z.id)).map((z, idx) => {
-        const zoneSeats = Object.entries(seats).filter(([,v]) => v.zone === z.id);
-        const rowsData  = z.noSeat ? [] : Array.from({length:rows}, (_,r) => {
-          const rowSeats = Array.from({length:cols}, (_,c) => {
-            const k = seatKey(r,c);
-            if (seats[k]?.zone !== z.id) return null;
-            return {
+        const zoneSeats = Object.entries(seats).filter(([, v]) => v.zone === z.id);
+
+        let rowsData = [];
+
+        if (z.noSeat) {
+          // Save cell positions for no-seat zones so preview can reconstruct them
+          const rowMap = {};
+          zoneSeats.forEach(([key]) => {
+            const [r, c] = key.split("-").map(Number);
+            if (!rowMap[r]) rowMap[r] = [];
+            rowMap[r].push(c);
+          });
+          rowsData = Object.entries(rowMap).map(([r, cs]) => ({
+            rowId:     `${z.id}_${levelKey}_row${r}`,
+            rowName:   getRowLabel(Number(r), ld.rowNaming || "alpha"),
+            rowNumber: Number(r) + 1,
+            seatCount: cs.length,
+            seats:     cs.map(c => ({
               seatId:       `${z.id}_${levelKey}_r${r}c${c}`,
-              seatNumber:   `${getRowLabel(r, ld.rowNaming||"alpha")}${c+1}`,
-              seatLabel:    `${getRowLabel(r, ld.rowNaming||"alpha")}${c+1}`,
-              rowNumber:    r+1, columnNumber: c+1,
-              rowName:      getRowLabel(r, ld.rowNaming||"alpha"),
-              isAvailable:  true, isBooked: false,
-            };
+              seatNumber:   `${getRowLabel(Number(r), ld.rowNaming || "alpha")}${c + 1}`,
+              seatLabel:    `${getRowLabel(Number(r), ld.rowNaming || "alpha")}${c + 1}`,
+              rowNumber:    Number(r) + 1,
+              columnNumber: Number(c) + 1,
+              rowName:      getRowLabel(Number(r), ld.rowNaming || "alpha"),
+              isAvailable:  false,
+              isBooked:     false,
+            })),
+          }));
+        } else {
+          rowsData = Array.from({ length: rows }, (_, r) => {
+            const rowSeats = Array.from({ length: cols }, (_, c) => {
+              const k = seatKey(r, c);
+              if (seats[k]?.zone !== z.id) return null;
+              return {
+                seatId:       `${z.id}_${levelKey}_r${r}c${c}`,
+                seatNumber:   `${getRowLabel(r, ld.rowNaming || "alpha")}${c + 1}`,
+                seatLabel:    `${getRowLabel(r, ld.rowNaming || "alpha")}${c + 1}`,
+                rowNumber:    r + 1,
+                columnNumber: c + 1,
+                rowName:      getRowLabel(r, ld.rowNaming || "alpha"),
+                isAvailable:  true,
+                isBooked:     false,
+              };
+            }).filter(Boolean);
+            return rowSeats.length
+              ? { rowId: `${z.id}_${levelKey}_row${r}`, rowName: getRowLabel(r, ld.rowNaming || "alpha"), rowNumber: r + 1, seatCount: rowSeats.length, seats: rowSeats }
+              : null;
           }).filter(Boolean);
-          return rowSeats.length
-            ? { rowId:`${z.id}_${levelKey}_row${r}`, rowName:getRowLabel(r, ld.rowNaming||"alpha"), rowNumber:r+1, seatCount:rowSeats.length, seats:rowSeats }
-            : null;
-        }).filter(Boolean);
+        }
 
         return {
-          id:            `${z.id}_${levelKey}`,
-          zoneNumber:    idx+1,
-          name:          z.name,
-          position:      levelKey==="balcony" ? "top" : "center",
-          positionLabel: levelKey==="balcony" ? "Balcony" : "Center",
-          seatType:      "NORMAL",
-          color:         z.color,
-          icon:          "■",
-          basePrice:     z.basePrice ?? 0, priceMultiplier:1, finalPrice: z.basePrice ?? 0,
-          noSeat:        z.noSeat || false, label: z.label || "",
-          totalRows:     rowsData.length,
-          totalSeats:    zoneSeats.length,
-          rows:          rowsData,
+          id:              `${z.id}_${levelKey}`,
+          zoneNumber:      idx + 1,
+          name:            z.name,
+          position:        levelKey === "balcony" ? "top" : "center",
+          positionLabel:   levelKey === "balcony" ? "Balcony" : "Center",
+          seatType:        "NORMAL",
+          color:           z.color,
+          icon:            "■",
+          basePrice:       z.basePrice ?? 0,
+          priceMultiplier: 1,
+          finalPrice:      z.basePrice ?? 0,
+          noSeat:          z.noSeat || false,
+          label:           z.label || "",
+          totalRows:       rowsData.length,
+          totalSeats:      zoneSeats.length,
+          rows:            rowsData,
         };
       });
     };
@@ -979,19 +1125,7 @@ export default function EditTheaterPage() {
           <div style={card}>
             <h2 style={{ fontSize:20, fontWeight:800, color:"#1a1a2e", marginBottom:20 }}>Theater Information</h2>
 
-            <div style={{ marginBottom:20 }}>
-              <label style={fieldLabel}>Theater Owner <span style={{ color:"#ef4444" }}>*</span></label>
-              <div style={{ position:"relative" }}>
-                <FaUserTie style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#9ca3af", fontSize:13 }} />
-                <select name="ownerId" value={basicInfo.ownerId} onChange={handleBasicChange}
-                  style={{ ...fieldInput, paddingLeft:36 }}>
-                  <option value="">— Select Theater Owner —</option>
-                  {isLoadingUsers
-                    ? <option disabled>Loading…</option>
-                    : owners.map(o=><option key={o._id} value={o._id}>{o.name} ({o.email})</option>)}
-                </select>
-              </div>
-            </div>
+
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
               {BASIC_FIELDS.map(f=>(
