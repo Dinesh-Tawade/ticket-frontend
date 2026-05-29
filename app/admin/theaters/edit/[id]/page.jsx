@@ -1,11 +1,10 @@
 
 
-
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { toast, Toaster } from "react-hot-toast";
 import {
   FaPlus, FaTrash, FaBuilding, FaMapMarkerAlt, FaPhone, FaCity, FaFlag,
@@ -13,7 +12,7 @@ import {
   FaCheckCircle, FaUserTie, FaChevronDown, FaEye, FaEdit, FaSave, FaTimes
 } from "react-icons/fa";
 import { MdScreenShare, MdTheaters, MdScreenRotation } from "react-icons/md";
-import { createTheater, getAllUsers } from "@/app/services/adminCommunication";
+import { updateTheaterAdmin, getAllUsers, getTheaterByIdAdmin } from "@/app/services/adminCommunication";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LAYOUT BUILDER CONSTANTS & HELPERS
@@ -46,7 +45,93 @@ function getRowLabel(index, naming) {
 function seatKey(r, c) { return `${r}-${c}`; }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LAYOUT BUILDER SUB-COMPONENTS
+// RECONSTRUCT LAYOUT DATA FROM SAVED THEATER SCREENS
+// This is the key function that rebuilds the builder state from the DB response.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function reconstructLayoutFromTheater(theater) {
+  if (!theater?.screens?.length) return null;
+
+  const meta = theater.layoutMeta || {};
+
+  // Rebuild zones from all screen zones, deduplicating by zone id prefix (e.g. "z1_ground" → "z1")
+  const zonesMap = new Map();
+  theater.screens.forEach((screen) => {
+    (screen.zones || []).forEach((z) => {
+      // Zone ids were stored as "z1_ground" or "z1_balcony" — strip the suffix
+      const baseId = z.id?.replace(/_ground$|_balcony$/, "") || z.id;
+      if (!zonesMap.has(baseId)) {
+        zonesMap.set(baseId, {
+          id:        baseId,
+          name:      z.name,
+          color:     z.color     || "#c0392b",
+          basePrice: z.basePrice ?? 0,
+          noSeat:    z.noSeat    || false,
+          label:     z.label     || "",
+        });
+      }
+    });
+  });
+  const zones = zonesMap.size > 0 ? Array.from(zonesMap.values()) : DEFAULT_ZONES;
+
+  // Helper: rebuild a flat seat map for one screen
+  const buildSeatMap = (screen) => {
+    const seats = {};
+    (screen.zones || []).forEach((z) => {
+      const baseId = z.id?.replace(/_ground$|_balcony$/, "") || z.id;
+      (z.rows || []).forEach((row) => {
+        (row.seats || []).forEach((seat) => {
+          const r = (seat.rowNumber || 1) - 1;
+          const c = (seat.columnNumber || 1) - 1;
+          seats[seatKey(r, c)] = { zone: baseId };
+        });
+      });
+    });
+    return seats;
+  };
+
+  // Ground screen = position !== "top" and name doesn't include "balcony"
+  const groundScreen  = theater.screens.find(
+    (s) => s.position !== "top" && !s.name?.toLowerCase().includes("balcony")
+  );
+  const balconyScreen = theater.screens.find(
+    (s) => s.position === "top" || s.name?.toLowerCase().includes("balcony")
+  );
+
+  const groundSeats  = groundScreen  ? buildSeatMap(groundScreen)  : {};
+  const balconySeats = balconyScreen ? buildSeatMap(balconyScreen) : {};
+
+  const groundRows  = groundScreen?.totalRows    || meta.groundRows    || 13;
+  const groundCols  = groundScreen?.totalColumns || meta.groundCols    || 14;
+  const balconyRows = balconyScreen?.totalRows    || meta.balconyRows   || 6;
+  const balconyCols = balconyScreen?.totalColumns || meta.balconyCols   || 14;
+
+  return {
+    zones,
+    rowNaming: meta.rowNaming || "alpha",
+    levels: {
+      ground: {
+        rows:      groundRows,
+        cols:      groundCols,
+        generated: !!groundScreen || !!meta.groundGenerated,
+        seats:     groundSeats,
+        aisleCols: meta.aisleCols        || [],
+        aisleRows:  meta.aisleRows         || [],
+      },
+      balcony: {
+        rows:      balconyRows,
+        cols:      balconyCols,
+        generated: !!balconyScreen || !!meta.balconyGenerated,
+        seats:     balconySeats,
+        aisleCols: meta.balconyAisleCols || [],
+        aisleRows:  meta.balconyAisleRows  || [],
+      },
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAYOUT BUILDER SUB-COMPONENTS (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function BuilderToast({ message, visible }) {
@@ -83,7 +168,6 @@ function ZoneColorItem({ zone, isActive, seatCount, onSelect, onDelete, onToggle
         <span style={{ fontSize:11, color:"#9ca3af", marginRight:4 }}>{zone.noSeat ? "–" : seatCount}</span>
         <button onClick={e=>{e.stopPropagation();onDelete();}} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#9ca3af", padding:"0 2px" }}>×</button>
       </div>
-
       <div style={{ padding:"0 10px 8px", borderTop:"1px solid #f0f0f0" }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6 }}>
           <span style={{ fontSize:11, color:"#6b7280", flex:1 }}>Price (₹)</span>
@@ -157,8 +241,9 @@ function SeatDot({ r, c, seatData, zones, onMouseDown, onMouseEnter }) {
   const zone = seatData?.zone ? zones.find(z=>z.id===seatData.zone) : null;
   let bg="#e74c3c", border="#c0392b", opacity=1, cursor="pointer";
   if (seatData?.blocked) { bg="#d1d5db"; border="#9ca3af"; opacity=0.7; }
-  else if (seatData?.aisle) { bg="transparent"; border="transparent"; opacity=0; cursor="default"; }
+  else if (seatData?.aisle) { bg="transparent"; border="transparent"; opacity:0; cursor="default"; }
   else if (zone) { bg=zone.color; border=zone.color; }
+  else { bg="#e5e7eb"; border="#d1d5db"; }
   return (
     <div onMouseDown={()=>onMouseDown(r,c)} onMouseEnter={()=>onMouseEnter(r,c)}
       style={{ width:22, height:22, borderRadius:5, background:bg, border:`1.5px solid ${border}`, cursor, opacity, flexShrink:0, transition:"transform .1s", userSelect:"none" }}
@@ -179,14 +264,18 @@ function AisleTag({ label, onRemove, style={} }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MAIN LAYOUT BUILDER (embedded)
+// THEATER LAYOUT BUILDER
+// Key change: accepts `initialData` and bootstraps all state from it on mount.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TheaterLayoutBuilder({ onLayoutChange }) {
-  const [rowNaming,   setRowNaming]   = useState("alpha");
-  const [zones,       setZones]       = useState(DEFAULT_ZONES);
-  const [tool,        setTool]        = useState("paint");
-  const [activeZone,  setActiveZone]  = useState("z1");
+function TheaterLayoutBuilder({ onLayoutChange, initialData }) {
+  // ── Initialise from prop, but only once (ref guards re-hydration) ──
+  const hydrated = useRef(false);
+
+  const [rowNaming,    setRowNaming]    = useState("alpha");
+  const [zones,        setZones]        = useState(DEFAULT_ZONES);
+  const [tool,         setTool]         = useState("paint");
+  const [activeZone,   setActiveZone]   = useState("z1");
   const [currentLevel, setCurrentLevel] = useState("ground");
 
   const [levels, setLevels] = useState({
@@ -194,40 +283,56 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
     balcony: { rows:6,  cols:14, generated:false, seats:{}, aisleCols:[], aisleRows:[] },
   });
 
-  const [groundRows, setGroundRows] = useState(13);
-  const [groundCols, setGroundCols] = useState(14);
+  const [groundRows,  setGroundRows]  = useState(13);
+  const [groundCols,  setGroundCols]  = useState(14);
   const [balconyRows, setBalconyRows] = useState(6);
   const [balconyCols, setBalconyCols] = useState(14);
 
-  const [newAisleCol, setNewAisleCol]     = useState("");
-  const [newAisleColGap, setNewAisleColGap] = useState(14);
-  const [newAisleRow, setNewAisleRow]     = useState("");
-  const [newAisleRowGap, setNewAisleRowGap] = useState(24);
+  const [newAisleCol,     setNewAisleCol]      = useState("");
+  const [newAisleColGap,  setNewAisleColGap]   = useState(14);
+  const [newAisleRow,     setNewAisleRow]      = useState("");
+  const [newAisleRowGap,  setNewAisleRowGap]   = useState(24);
 
   const [bToast,      setBToast]      = useState({ msg:"", visible:false });
   const [newZoneName, setNewZoneName] = useState("");
   const [showAddZone, setShowAddZone] = useState(false);
   const paintingRef = useRef(false);
 
+  // ── Hydrate builder state when initialData arrives ──
+  useEffect(() => {
+    if (!initialData || hydrated.current) return;
+    hydrated.current = true;
+
+    if (initialData.zones?.length)     setZones(initialData.zones);
+    if (initialData.rowNaming)         setRowNaming(initialData.rowNaming);
+    if (initialData.levels) {
+      const g = initialData.levels.ground;
+      const b = initialData.levels.balcony;
+      if (g) { setGroundRows(g.rows || 13); setGroundCols(g.cols || 14); }
+      if (b) { setBalconyRows(b.rows || 6);  setBalconyCols(b.cols || 14); }
+      setLevels(initialData.levels);
+    }
+
+    setActiveZone(initialData.zones?.[0]?.id || "z1");
+  }, [initialData]);
+
   const showBToast = useCallback(msg => {
     setBToast({ msg, visible:true });
     setTimeout(() => setBToast(t=>({...t,visible:false})), 2200);
   }, []);
 
-  const currentRows = currentLevel==="ground" ? groundRows : balconyRows;
-  const currentCols = currentLevel==="ground" ? groundCols : balconyCols;
-  const setCurrentRows = currentLevel==="ground" ? setGroundRows : setBalconyRows;
-  const setCurrentCols = currentLevel==="ground" ? setGroundCols : setBalconyCols;
+  const currentRows    = currentLevel==="ground" ? groundRows  : balconyRows;
+  const currentCols    = currentLevel==="ground" ? groundCols  : balconyCols;
+  const setCurrentRows = currentLevel==="ground" ? setGroundRows  : setBalconyRows;
+  const setCurrentCols = currentLevel==="ground" ? setGroundCols  : setBalconyCols;
 
   const getLevelData = (lv=currentLevel) => levels[lv];
   const updateLevel  = (lv, patch) => setLevels(prev=>({...prev,[lv]:{...prev[lv],...patch}}));
   const updateSeats  = (lv, fn)    => setLevels(prev=>({...prev,[lv]:{...prev[lv],seats:fn(prev[lv].seats)}}));
 
-  // Bubble layout changes up to parent
+  // Bubble changes to parent
   useEffect(() => {
-    if (onLayoutChange) {
-      onLayoutChange({ zones, levels, rowNaming });
-    }
+    onLayoutChange?.({ zones, levels, rowNaming });
   }, [zones, levels, rowNaming]);
 
   const generateGrid = () => {
@@ -257,9 +362,9 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
     updateSeats(currentLevel, prev=>{
       const next = {...prev};
       if (tool==="paint" && activeZone) next[k] = { zone:activeZone };
-      else if (tool==="block") next[k] = { blocked:true };
-      else if (tool==="aisle") next[k] = { aisle:true };
-      else if (tool==="erase") delete next[k];
+      else if (tool==="block")          next[k] = { blocked:true };
+      else if (tool==="aisle")          next[k] = { aisle:true };
+      else if (tool==="erase")          delete next[k];
       return next;
     });
   }, [tool, activeZone, currentLevel]);
@@ -275,7 +380,7 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
 
   const addZone = () => {
     if (!newZoneName.trim()) return;
-    const id = "z"+Date.now();
+    const id    = "z"+Date.now();
     const color = ZONE_PALETTE[zones.length % ZONE_PALETTE.length];
     setZones(prev=>[...prev,{id,name:newZoneName.trim(),color,noSeat:false,label:"",basePrice:150}]);
     setActiveZone(id); setNewZoneName(""); setShowAddZone(false);
@@ -333,15 +438,15 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
     display:"flex", alignItems:"center", gap:4, transition:"all .15s",
   });
 
-  const inp = { padding:"6px 10px", fontSize:12, border:"1px solid #e5e7eb", borderRadius:6, background:"#fafafa", color:"#1a1a2e", outline:"none", boxSizing:"border-box" };
+  const inp   = { padding:"6px 10px", fontSize:12, border:"1px solid #e5e7eb", borderRadius:6, background:"#fafafa", color:"#1a1a2e", outline:"none", boxSizing:"border-box" };
   const inpSm = { ...inp, width:50, padding:"5px 7px" };
 
   return (
     <div style={{ display:"flex", height:620, fontFamily:"'Segoe UI',system-ui,sans-serif", border:"1px solid #e5e7eb", borderRadius:12, overflow:"hidden", background:"#f9fafb" }}>
-      
-      {/* ── Builder Sidebar ── */}
+
+      {/* ── Sidebar ── */}
       <aside style={{ width:260, background:"#fff", borderRight:"1px solid #f0f0f0", display:"flex", flexDirection:"column", overflowY:"auto", flexShrink:0 }}>
-        
+
         {/* Level switcher */}
         <div style={{ padding:"12px 14px", borderBottom:"1px solid #f0f0f0" }}>
           <div style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:".07em", marginBottom:8 }}>Floor Level</div>
@@ -452,9 +557,8 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
         </div>
       </aside>
 
-      {/* ── Builder Canvas ── */}
+      {/* ── Canvas ── */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-        {/* Canvas Topbar */}
         <div style={{ background:"#1a1a2e", padding:"8px 16px", display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap" }}>
           <div style={{ display:"flex", gap:4, marginRight:6 }}>
             <button onClick={()=>setCurrentLevel("ground")}  style={tabStyle(currentLevel==="ground")}>🏛 Ground</button>
@@ -475,7 +579,6 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
           </span>
         </div>
 
-        {/* Grid */}
         <div style={{ flex:1, overflowY:"auto", overflowX:"auto", padding:20, display:"flex", flexDirection:"column", alignItems:"flex-start", gap:2 }}>
           {!lGenerated ? (
             <div style={{ width:"100%", textAlign:"center", paddingTop:80, color:"#9ca3af" }}>
@@ -495,7 +598,6 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
                   🏗 BALCONY LEVEL
                 </div>
               )}
-
               {/* Column headers */}
               <div style={{ display:"flex", alignItems:"center", gap:2, marginBottom:2 }}>
                 <div style={{ width:24 }} />
@@ -506,7 +608,6 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
                   </span>
                 ))}
               </div>
-
               {/* Rows */}
               {Array.from({length:lRows},(_,r)=>{
                 const segs = buildRowSegments(r, levelData);
@@ -542,7 +643,6 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
                   </span>
                 );
               })}
-
               {currentLevel==="ground" && (
                 <div style={{ background:"#1a1a2e", borderRadius:7, padding:"6px 24px", fontSize:11, color:"#fff", letterSpacing:".1em", textAlign:"center", marginTop:12, fontWeight:600, alignSelf:"stretch" }}>
                   ▲ PROJECTOR | TOTAL SEATS: {total}
@@ -559,33 +659,32 @@ function TheaterLayoutBuilder({ onLayoutChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ADD THEATER WIZARD CONSTANTS
+// WIZARD CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AMENITIES = [
-  { icon: FaCouch,          name: "Recliner Seats", key: "hasRecliner", desc: "Premium recliner chairs" },
-  { icon: FaWifi,           name: "Free WiFi",      key: "hasWifi",     desc: "High-speed internet" },
-  { icon: FaParking,        name: "Parking",        key: "hasParking",  desc: "Covered car parking" },
-  { icon: FaCoffee,         name: "Food & Café",    key: "hasCafe",     desc: "In-house café & snacks" },
+  { icon: FaCouch,          name: "Recliner Seats", key: "hasRecliner",   desc: "Premium recliner chairs" },
+  { icon: FaWifi,           name: "Free WiFi",      key: "hasWifi",       desc: "High-speed internet" },
+  { icon: FaParking,        name: "Parking",        key: "hasParking",    desc: "Covered car parking" },
+  { icon: FaCoffee,         name: "Food & Café",    key: "hasCafe",       desc: "In-house café & snacks" },
   { icon: FaAccessibleIcon, name: "Accessibility",  key: "hasWheelchair", desc: "Wheelchair friendly" },
 ];
 
 const STEPS = [
-  { id:1, label:"Theater Info",    icon: FaBuilding },
+  { id:1, label:"Theater Info",    icon: FaBuilding   },
   { id:2, label:"Seat Layout",     icon: MdScreenShare },
   { id:3, label:"Review & Submit", icon: FaCheckCircle },
 ];
 
 const BASIC_FIELDS = [
-  { name:"name",          label:"Theater Name",  placeholder:"e.g., PVR Cinemas",  icon:FaBuilding,     type:"text", required:true  },
+  { name:"name",          label:"Theater Name",   placeholder:"e.g., PVR Cinemas", icon:FaBuilding,     type:"text", required:true  },
   { name:"location",      label:"Location / Area",placeholder:"e.g., Juhu",        icon:FaMapMarkerAlt, type:"text", required:true  },
-  { name:"city",          label:"City",          placeholder:"e.g., Mumbai",        icon:FaCity,         type:"text", required:true  },
-  { name:"state",         label:"State",         placeholder:"e.g., Maharashtra",   icon:FaFlag,         type:"text", required:true  },
-  { name:"pincode",       label:"Pincode",       placeholder:"400049",              icon:null,           type:"text", required:false },
-  { name:"contactNumber", label:"Contact Number",placeholder:"9876543210",          icon:FaPhone,        type:"tel",  required:true  },
+  { name:"city",          label:"City",           placeholder:"e.g., Mumbai",       icon:FaCity,         type:"text", required:true  },
+  { name:"state",         label:"State",          placeholder:"e.g., Maharashtra",  icon:FaFlag,         type:"text", required:true  },
+  { name:"pincode",       label:"Pincode",        placeholder:"400049",             icon:null,           type:"text", required:false },
+  { name:"contactNumber", label:"Contact Number", placeholder:"9876543210",         icon:FaPhone,        type:"tel",  required:true  },
 ];
 
-// Step indicator
 function StepIndicator({ current }) {
   return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:0, marginBottom:24, overflowX:"auto", paddingBottom:8 }}>
@@ -602,8 +701,9 @@ function StepIndicator({ current }) {
                 boxShadow: done||active ? "0 4px 12px rgba(0,0,0,.12)" : "none",
                 transition:"all .3s",
               }}>
-                {done ? <FaCheckCircle style={{ color:"#fff", fontSize:14 }} /> :
-                  <s.icon style={{ color: active?"#fff":"#9ca3af", fontSize:14 }} />}
+                {done
+                  ? <FaCheckCircle style={{ color:"#fff", fontSize:14 }} />
+                  : <s.icon style={{ color: active?"#fff":"#9ca3af", fontSize:14 }} />}
               </div>
               <span style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", whiteSpace:"nowrap",
                 color: active||done?"#1a1a2e":"#9ca3af" }}>{s.label}</span>
@@ -622,12 +722,14 @@ function StepIndicator({ current }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MAIN ADD THEATER PAGE
+// MAIN EDIT THEATER PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function AddTheaterPage() {
-  const router       = useRouter();
-  const queryClient  = useQueryClient();
+export default function EditTheaterPage() {
+  const router      = useRouter();
+  const params      = useParams();
+  const theaterId   = params.id;
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
 
   const [basicInfo, setBasicInfo] = useState({
@@ -635,116 +737,162 @@ export default function AddTheaterPage() {
     hasRecliner:false, hasWifi:false, hasParking:false, hasCafe:false, hasWheelchair:false,
   });
 
-  // Layout data from the builder
-  const [layoutData, setLayoutData] = useState(null);
+  const [layoutData,        setLayoutData]        = useState(null);
+  // initialLayoutData drives the builder's hydration useEffect
+  const [initialLayoutData, setInitialLayoutData] = useState(null);
 
-  const { data:usersData, isLoading:isLoadingUsers } = useQuery({
-    queryKey:["users","THEATER_OWNER"],
-    queryFn: ()=>getAllUsers({ role:"THEATER_OWNER" }),
+  // ── Fetch theater ──
+  const { data: theaterData, isLoading: isLoadingTheater } = useQuery({
+    queryKey: ["theater", theaterId],
+    queryFn:  () => getTheaterByIdAdmin(theaterId),
+    enabled:  !!theaterId,
+  });
+
+  // ── Hydrate form + builder when data lands (replaces deprecated onSuccess) ──
+  useEffect(() => {
+    const t = theaterData?.data;
+    if (!t) return;
+
+    setBasicInfo({
+      ownerId:       t.ownerId?._id || t.ownerId || "",
+      name:          t.name          || "",
+      location:      t.location      || "",
+      city:          t.city          || "",
+      state:         t.state         || "",
+      pincode:       t.pincode       || "",
+      contactNumber: t.contactNumber || "",
+      hasRecliner:   t.hasRecliner   || false,
+      hasWifi:       t.hasWifi       || false,
+      hasParking:    t.hasParking    || false,
+      hasCafe:       t.hasCafe       || false,
+      hasWheelchair: t.hasWheelchair || false,
+    });
+
+    // Reconstruct full builder state from the saved screens + layoutMeta
+    const reconstructed = reconstructLayoutFromTheater(t);
+    if (reconstructed) setInitialLayoutData(reconstructed);
+  }, [theaterData]);
+
+  const { data: usersData, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ["users","THEATER_OWNER"],
+    queryFn:  () => getAllUsers({ role:"THEATER_OWNER" }),
   });
   const owners = usersData?.data || [];
 
   const mutation = useMutation({
-    mutationFn: createTheater,
+    mutationFn: (data) => updateTheaterAdmin(theaterId, data),
     onSuccess: () => {
-      toast.success("Theater created successfully! 🎉");
+      toast.success("Theater updated successfully! 🎉");
       queryClient.invalidateQueries(["allTheatersAdmin"]);
-      setTimeout(()=>router.push("/admin/theaters"), 2000);
+      queryClient.invalidateQueries(["theater", theaterId]);
+      setTimeout(() => router.push("/admin/theaters"), 2000);
     },
-    onError: err => {
-      toast.error(err.response?.data?.message || "Failed to create theater");
-    },
+    onError: err => toast.error(err.response?.data?.message || "Failed to update theater"),
   });
 
   const handleBasicChange = e => {
     const { name, value, type, checked } = e.target;
     if (name==="pincode") {
-      const v=value.replace(/[^0-9]/g,"");
-      if (v.length<=6) setBasicInfo(p=>({...p,[name]:v})); return;
+      const v = value.replace(/[^0-9]/g,"");
+      if (v.length<=6) setBasicInfo(p=>({...p,[name]:v}));
+      return;
     }
     if (name==="contactNumber") {
-      const v=value.replace(/[^0-9]/g,"");
-      if (v.length<=10) setBasicInfo(p=>({...p,[name]:v})); return;
+      const v = value.replace(/[^0-9]/g,"");
+      if (v.length<=10) setBasicInfo(p=>({...p,[name]:v}));
+      return;
     }
-    setBasicInfo(p=>({...p,[name]:type==="checkbox"?checked:value}));
+    setBasicInfo(p=>({...p,[name]: type==="checkbox" ? checked : value}));
   };
 
   const validateStep1 = () => {
-    if (!basicInfo.ownerId)                        { toast.error("Select a theater owner"); return false; }
-    if (!basicInfo.name.trim())                    { toast.error("Theater name is required"); return false; }
-    if (!basicInfo.location.trim())                { toast.error("Location is required"); return false; }
-    if (!basicInfo.city.trim())                    { toast.error("City is required"); return false; }
-    if (!basicInfo.state.trim())                   { toast.error("State is required"); return false; }
-    if (!basicInfo.contactNumber.trim())           { toast.error("Contact number is required"); return false; }
-    if (basicInfo.contactNumber.length!==10)       { toast.error("Contact number must be 10 digits"); return false; }
-    if (basicInfo.pincode && basicInfo.pincode.length!==6) { toast.error("Pincode must be 6 digits"); return false; }
+    if (!basicInfo.ownerId)                                      { toast.error("Select a theater owner");          return false; }
+    if (!basicInfo.name.trim())                                  { toast.error("Theater name is required");        return false; }
+    if (!basicInfo.location.trim())                              { toast.error("Location is required");            return false; }
+    if (!basicInfo.city.trim())                                  { toast.error("City is required");                return false; }
+    if (!basicInfo.state.trim())                                 { toast.error("State is required");               return false; }
+    if (!basicInfo.contactNumber.trim())                         { toast.error("Contact number is required");      return false; }
+    if (basicInfo.contactNumber.length !== 10)                   { toast.error("Contact number must be 10 digits");return false; }
+    if (basicInfo.pincode && basicInfo.pincode.length !== 6)    { toast.error("Pincode must be 6 digits");        return false; }
     return true;
   };
 
   const preparePayload = () => {
-    const ld = layoutData;
-    const groundSeats = ld?.levels?.ground?.seats || {};
-    const balconySeats= ld?.levels?.balcony?.seats || {};
-    const zones       = ld?.zones || [];
+    const ld     = layoutData;
+    const zones  = ld?.zones || [];
 
-    // Build a simple screen structure from the builder output
     const buildZonesFromLevel = (levelKey, levelData) => {
       if (!levelData?.generated) return [];
       const { rows, cols, seats } = levelData;
       // Include zones with painted seats OR no-seat label zones
-      return zones.filter(z => z.noSeat || Object.values(seats).some(s => s.zone === z.id)).map((z,idx)=>{
-        const zoneSeats = Object.entries(seats).filter(([,v])=>v.zone===z.id);
-        const rowsData  = z.noSeat ? [] : Array.from({length:rows},(_,r)=>{
-          const rowSeats = Array.from({length:cols},(_,c)=>{
-            const k=seatKey(r,c);
-            if(seats[k]?.zone!==z.id) return null;
+      return zones.filter(z => z.noSeat || Object.values(seats).some(s => s.zone === z.id)).map((z, idx) => {
+        const zoneSeats = Object.entries(seats).filter(([,v]) => v.zone === z.id);
+        const rowsData  = z.noSeat ? [] : Array.from({length:rows}, (_,r) => {
+          const rowSeats = Array.from({length:cols}, (_,c) => {
+            const k = seatKey(r,c);
+            if (seats[k]?.zone !== z.id) return null;
             return {
-              seatId:`${z.id}_${levelKey}_r${r}c${c}`,
-              seatNumber:`${getRowLabel(r,ld.rowNaming||"alpha")}${c+1}`,
-              seatLabel:`${getRowLabel(r,ld.rowNaming||"alpha")}${c+1}`,
-              rowNumber:r+1, columnNumber:c+1,
-              rowName:getRowLabel(r,ld.rowNaming||"alpha"),
-              isAvailable:true, isBooked:false,
+              seatId:       `${z.id}_${levelKey}_r${r}c${c}`,
+              seatNumber:   `${getRowLabel(r, ld.rowNaming||"alpha")}${c+1}`,
+              seatLabel:    `${getRowLabel(r, ld.rowNaming||"alpha")}${c+1}`,
+              rowNumber:    r+1, columnNumber: c+1,
+              rowName:      getRowLabel(r, ld.rowNaming||"alpha"),
+              isAvailable:  true, isBooked: false,
             };
           }).filter(Boolean);
-          return rowSeats.length ? { rowId:`${z.id}_${levelKey}_row${r}`, rowName:getRowLabel(r,ld.rowNaming||"alpha"), rowNumber:r+1, seatCount:rowSeats.length, seats:rowSeats } : null;
+          return rowSeats.length
+            ? { rowId:`${z.id}_${levelKey}_row${r}`, rowName:getRowLabel(r, ld.rowNaming||"alpha"), rowNumber:r+1, seatCount:rowSeats.length, seats:rowSeats }
+            : null;
         }).filter(Boolean);
+
         return {
-          id:`${z.id}_${levelKey}`, zoneNumber:idx+1, name:z.name,
-          position:levelKey==="balcony"?"top":"center", positionLabel:levelKey==="balcony"?"Balcony":"Center",
-          seatType:"NORMAL", color:z.color, icon:"■",
-          basePrice: z.basePrice ?? 0, priceMultiplier:1, finalPrice: z.basePrice ?? 0,
-          noSeat: z.noSeat || false, label: z.label || "",
-          totalRows:rowsData.length, totalSeats:zoneSeats.length,
-          rows:rowsData,
+          id:            `${z.id}_${levelKey}`,
+          zoneNumber:    idx+1,
+          name:          z.name,
+          position:      levelKey==="balcony" ? "top" : "center",
+          positionLabel: levelKey==="balcony" ? "Balcony" : "Center",
+          seatType:      "NORMAL",
+          color:         z.color,
+          icon:          "■",
+          basePrice:     z.basePrice ?? 0, priceMultiplier:1, finalPrice: z.basePrice ?? 0,
+          noSeat:        z.noSeat || false, label: z.label || "",
+          totalRows:     rowsData.length,
+          totalSeats:    zoneSeats.length,
+          rows:          rowsData,
         };
       });
     };
 
-    const groundZones  = buildZonesFromLevel("ground", ld?.levels?.ground);
+    const groundZones  = buildZonesFromLevel("ground",  ld?.levels?.ground);
     const balconyZones = buildZonesFromLevel("balcony", ld?.levels?.balcony);
-    const allZones     = [...groundZones,...balconyZones];
-    const totalSeats   = allZones.reduce((s,z)=>s+z.totalSeats,0);
+    const allZones     = [...groundZones, ...balconyZones];
+    const totalSeats   = allZones.reduce((s,z) => s+z.totalSeats, 0);
 
     return {
       ...basicInfo,
-      screens:[
-        { screenNumber:1, name:"Ground Floor", position:"center", positionLabel:"Main Floor",
-          totalRows:ld?.levels?.ground?.rows||0, totalColumns:ld?.levels?.ground?.cols||0,
-          totalZones:groundZones.length, totalSeatsInScreen:groundZones.reduce((s,z)=>s+z.totalSeats,0),
-          zones:groundZones, seatRows:[], status:"ACTIVE" },
+      screens: [
+        {
+          screenNumber:1, name:"Ground Floor", position:"center", positionLabel:"Main Floor",
+          totalRows:    ld?.levels?.ground?.rows    || 0,
+          totalColumns: ld?.levels?.ground?.cols    || 0,
+          totalZones:   groundZones.length,
+          totalSeatsInScreen: groundZones.reduce((s,z)=>s+z.totalSeats,0),
+          zones: groundZones, seatRows:[], status:"ACTIVE",
+        },
         ...(ld?.levels?.balcony?.generated ? [{
           screenNumber:2, name:"Balcony", position:"top", positionLabel:"Balcony",
-          totalRows:ld?.levels?.balcony?.rows||0, totalColumns:ld?.levels?.balcony?.cols||0,
-          totalZones:balconyZones.length, totalSeatsInScreen:balconyZones.reduce((s,z)=>s+z.totalSeats,0),
-          zones:balconyZones, seatRows:[], status:"ACTIVE",
+          totalRows:    ld?.levels?.balcony?.rows   || 0,
+          totalColumns: ld?.levels?.balcony?.cols   || 0,
+          totalZones:   balconyZones.length,
+          totalSeatsInScreen: balconyZones.reduce((s,z)=>s+z.totalSeats,0),
+          zones: balconyZones, seatRows:[], status:"ACTIVE",
         }] : []),
       ],
       totalScreens: ld?.levels?.balcony?.generated ? 2 : 1,
-      totalZones: allZones.length,
+      totalZones:   allZones.length,
       totalSeats,
-      screenPosition:"top",
-      images:[],
+      screenPosition: "top",
+      images: [],
       layoutMeta: ld ? {
         aisleCols:        ld.levels?.ground?.aisleCols  || [],
         aisleRows:        ld.levels?.ground?.aisleRows   || [],
@@ -753,6 +901,10 @@ export default function AddTheaterPage() {
         rowNaming:        ld.rowNaming,
         groundGenerated:  ld.levels?.ground?.generated,
         balconyGenerated: ld.levels?.balcony?.generated,
+        groundRows:       ld.levels?.ground?.rows,
+        groundCols:       ld.levels?.ground?.cols,
+        balconyRows:      ld.levels?.balcony?.rows,
+        balconyCols:      ld.levels?.balcony?.cols,
       } : null,
     };
   };
@@ -762,29 +914,40 @@ export default function AddTheaterPage() {
     mutation.mutate(preparePayload());
   };
 
-  // Summary stats for review step
   const reviewStats = () => {
     if (!layoutData) return { groundSeats:0, balconySeats:0, zones:0 };
     const ld = layoutData;
-    const gSeats = Object.values(ld.levels?.ground?.seats||{}).filter(s=>s.zone).length;
-    const bSeats = Object.values(ld.levels?.balcony?.seats||{}).filter(s=>s.zone).length;
-    return { groundSeats:gSeats, balconySeats:bSeats, zones: (ld.zones||[]).length };
+    return {
+      groundSeats:  Object.values(ld.levels?.ground?.seats  || {}).filter(s=>s.zone).length,
+      balconySeats: Object.values(ld.levels?.balcony?.seats || {}).filter(s=>s.zone).length,
+      zones:        (ld.zones||[]).length,
+    };
   };
-
   const rs = reviewStats();
 
-  // Shared card style
-  const card = { background:"#fff", border:"1px solid #e5e7eb", borderRadius:16, padding:"24px" };
-  const fieldLabel = { fontSize:13, fontWeight:600, display:"block", marginBottom:6, color:"#374151" };
-  const fieldInput = { width:"100%", padding:"10px 14px", fontSize:13, border:"1px solid #e5e7eb", borderRadius:10, background:"#fafafa", color:"#1a1a2e", outline:"none", boxSizing:"border-box", transition:"border .15s" };
-  const btnPrimary = { padding:"10px 24px", fontSize:14, borderRadius:10, border:"none", background:"linear-gradient(135deg,#3b82f6,#2563eb)", color:"#fff", cursor:"pointer", fontWeight:700, boxShadow:"0 4px 12px rgba(59,130,246,.3)", transition:"all .15s" };
-  const btnSecondary = { padding:"10px 20px", fontSize:13, borderRadius:10, border:"2px solid #e5e7eb", background:"#fff", color:"#374151", cursor:"pointer", fontWeight:600 };
+  // Shared styles
+  const card        = { background:"#fff", border:"1px solid #e5e7eb", borderRadius:16, padding:"24px" };
+  const fieldLabel  = { fontSize:13, fontWeight:600, display:"block", marginBottom:6, color:"#374151" };
+  const fieldInput  = { width:"100%", padding:"10px 14px", fontSize:13, border:"1px solid #e5e7eb", borderRadius:10, background:"#fafafa", color:"#1a1a2e", outline:"none", boxSizing:"border-box", transition:"border .15s" };
+  const btnPrimary  = { padding:"10px 24px", fontSize:14, borderRadius:10, border:"none", background:"linear-gradient(135deg,#3b82f6,#2563eb)", color:"#fff", cursor:"pointer", fontWeight:700, boxShadow:"0 4px 12px rgba(59,130,246,.3)", transition:"all .15s" };
+  const btnSecondary= { padding:"10px 20px", fontSize:13, borderRadius:10, border:"2px solid #e5e7eb", background:"#fff", color:"#374151", cursor:"pointer", fontWeight:600 };
+
+  if (isLoadingTheater) {
+    return (
+      <div style={{ minHeight:"100vh", background:"#f3f4f6", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ textAlign:"center" }}>
+          <div style={{ fontSize:32, marginBottom:16 }}>⏳</div>
+          <div style={{ fontSize:16, fontWeight:600, color:"#1a1a2e" }}>Loading theater details…</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight:"100vh", background:"#f3f4f6", fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
       <Toaster position="top-right" />
 
-      {/* Header */}
+      {/* ── Sticky header ── */}
       <div style={{ background:"#fff", borderBottom:"1px solid #e5e7eb", position:"sticky", top:0, zIndex:20, backdropFilter:"blur(8px)" }}>
         <div style={{ maxWidth:1200, margin:"0 auto", padding:"12px 24px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -795,8 +958,10 @@ export default function AddTheaterPage() {
               <MdTheaters style={{ color:"#fff", fontSize:20 }} />
             </div>
             <div>
-              <div style={{ fontSize:17, fontWeight:800, color:"#1a1a2e" }}>Add Theater</div>
-              <div style={{ fontSize:11, color:"#9ca3af" }}>Step {step} of 3</div>
+              <div style={{ fontSize:17, fontWeight:800, color:"#1a1a2e" }}>Edit Theater</div>
+              <div style={{ fontSize:11, color:"#9ca3af" }}>
+                {basicInfo.name ? `"${basicInfo.name}" · ` : ""}Step {step} of 3
+              </div>
             </div>
           </div>
           <div style={{ textAlign:"right" }}>
@@ -806,7 +971,7 @@ export default function AddTheaterPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth:step===2?1200:760, margin:"0 auto", padding:"28px 20px" }}>
+      <div style={{ maxWidth: step===2 ? 1200 : 760, margin:"0 auto", padding:"28px 20px" }}>
         <StepIndicator current={step} />
 
         {/* ── STEP 1: Theater Info ── */}
@@ -821,21 +986,22 @@ export default function AddTheaterPage() {
                 <select name="ownerId" value={basicInfo.ownerId} onChange={handleBasicChange}
                   style={{ ...fieldInput, paddingLeft:36 }}>
                   <option value="">— Select Theater Owner —</option>
-                  {isLoadingUsers ? <option disabled>Loading…</option> :
-                    owners.map(o=><option key={o._id} value={o._id}>{o.name} ({o.email})</option>)}
+                  {isLoadingUsers
+                    ? <option disabled>Loading…</option>
+                    : owners.map(o=><option key={o._id} value={o._id}>{o.name} ({o.email})</option>)}
                 </select>
               </div>
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
               {BASIC_FIELDS.map(f=>(
-                <div key={f.name} style={ f.name==="name"||f.name==="location"?{gridColumn:"1/-1"}:{} }>
-                  <label style={fieldLabel}>{f.label} {f.required&&<span style={{ color:"#ef4444" }}>*</span>}</label>
+                <div key={f.name} style={f.name==="name"||f.name==="location" ? {gridColumn:"1/-1"} : {}}>
+                  <label style={fieldLabel}>{f.label} {f.required && <span style={{ color:"#ef4444" }}>*</span>}</label>
                   <div style={{ position:"relative" }}>
                     {f.icon && <f.icon style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#9ca3af", fontSize:13 }} />}
                     <input type={f.type} name={f.name} value={basicInfo[f.name]} onChange={handleBasicChange}
-                      placeholder={f.placeholder} maxLength={f.maxLength}
-                      style={{ ...fieldInput, paddingLeft: f.icon?36:14 }} />
+                      placeholder={f.placeholder}
+                      style={{ ...fieldInput, paddingLeft: f.icon ? 36 : 14 }} />
                   </div>
                   {(f.name==="contactNumber"||f.name==="pincode") && (
                     <div style={{ fontSize:10, color:"#9ca3af", marginTop:3 }}>
@@ -851,21 +1017,23 @@ export default function AddTheaterPage() {
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10 }}>
                 {AMENITIES.map(a=>(
                   <label key={a.key} style={{
-                    display:"flex", alignItems:"center", gap:8, padding:"10px 12px", border:"1px solid #e5e7eb",
-                    borderRadius:10, cursor:"pointer", background: basicInfo[a.key]?"#eff6ff":"#fff",
-                    borderColor: basicInfo[a.key]?"#3b82f6":"#e5e7eb", transition:"all .15s",
+                    display:"flex", alignItems:"center", gap:8, padding:"10px 12px",
+                    border:"1px solid #e5e7eb", borderRadius:10, cursor:"pointer",
+                    background:    basicInfo[a.key] ? "#eff6ff" : "#fff",
+                    borderColor:   basicInfo[a.key] ? "#3b82f6" : "#e5e7eb",
+                    transition:"all .15s",
                   }}>
                     <input type="checkbox" name={a.key} checked={basicInfo[a.key]} onChange={handleBasicChange}
                       style={{ accentColor:"#3b82f6", width:15, height:15 }} />
-                    <a.icon style={{ color: basicInfo[a.key]?"#3b82f6":"#9ca3af", fontSize:13 }} />
-                    <span style={{ fontSize:12, fontWeight:500, color: basicInfo[a.key]?"#1e40af":"#374151" }}>{a.name}</span>
+                    <a.icon style={{ color: basicInfo[a.key] ? "#3b82f6" : "#9ca3af", fontSize:13 }} />
+                    <span style={{ fontSize:12, fontWeight:500, color: basicInfo[a.key] ? "#1e40af" : "#374151" }}>{a.name}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             <div style={{ display:"flex", justifyContent:"flex-end" }}>
-              <button onClick={()=>{if(validateStep1())setStep(2);}} style={btnPrimary}>
+              <button onClick={()=>{ if(validateStep1()) setStep(2); }} style={btnPrimary}>
                 Next: Design Seat Layout →
               </button>
             </div>
@@ -878,26 +1046,21 @@ export default function AddTheaterPage() {
             <div style={{ marginBottom:16 }}>
               <h2 style={{ fontSize:20, fontWeight:800, color:"#1a1a2e", marginBottom:4 }}>Seat Layout Designer</h2>
               <p style={{ fontSize:13, color:"#6b7280" }}>
-                Paint zones onto the grid by clicking or dragging. Use the sidebar to configure rows, columns, and zone colors.
-                Both ground floor and balcony levels are supported.
+                The existing seat layout has been restored. You can repaint zones, adjust the grid, or leave it as-is and proceed.
               </p>
             </div>
 
-            {/* Legend hint bar */}
             <div style={{ display:"flex", gap:12, alignItems:"center", flexWrap:"wrap", marginBottom:14, padding:"10px 16px", background:"#fff", borderRadius:10, border:"1px solid #e5e7eb", fontSize:12, color:"#6b7280" }}>
               <span style={{ fontWeight:600, color:"#374151" }}>Quick guide:</span>
-              <span>1️⃣ Set rows & cols</span>
-              <span>→</span>
-              <span>2️⃣ Click Generate</span>
-              <span>→</span>
-              <span>3️⃣ Select a zone</span>
-              <span>→</span>
-              <span>4️⃣ Paint seats by clicking/dragging</span>
-              <span>→</span>
+              <span>1️⃣ Set rows & cols</span><span>→</span>
+              <span>2️⃣ Click Generate</span><span>→</span>
+              <span>3️⃣ Select a zone</span><span>→</span>
+              <span>4️⃣ Paint seats</span><span>→</span>
               <span>5️⃣ Repeat for Balcony if needed</span>
             </div>
 
-            <TheaterLayoutBuilder onLayoutChange={setLayoutData} />
+            {/* Pass initialData so the builder hydrates from existing theater data */}
+            <TheaterLayoutBuilder onLayoutChange={setLayoutData} initialData={initialLayoutData} />
 
             <div style={{ display:"flex", justifyContent:"space-between", gap:12, marginTop:16 }}>
               <button onClick={()=>setStep(1)} style={btnSecondary}>← Back</button>
@@ -911,17 +1074,16 @@ export default function AddTheaterPage() {
           <div style={card}>
             <h2 style={{ fontSize:20, fontWeight:800, color:"#1a1a2e", marginBottom:20 }}>Review & Submit</h2>
 
-            {/* Theater details */}
             <div style={{ background:"#f9fafb", borderRadius:10, padding:16, marginBottom:16 }}>
               <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:".07em", marginBottom:12 }}>Theater Details</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 {[
-                  ["Name", basicInfo.name||"—"],
-                  ["Location", basicInfo.location||"—"],
-                  ["City", basicInfo.city||"—"],
-                  ["State", basicInfo.state||"—"],
-                  ["Pincode", basicInfo.pincode||"—"],
-                  ["Contact", basicInfo.contactNumber||"—"],
+                  ["Name",     basicInfo.name          || "—"],
+                  ["Location", basicInfo.location       || "—"],
+                  ["City",     basicInfo.city           || "—"],
+                  ["State",    basicInfo.state          || "—"],
+                  ["Pincode",  basicInfo.pincode        || "—"],
+                  ["Contact",  basicInfo.contactNumber  || "—"],
                 ].map(([l,v])=>(
                   <div key={l} style={{ fontSize:13 }}>
                     <span style={{ color:"#9ca3af" }}>{l}: </span>
@@ -938,15 +1100,14 @@ export default function AddTheaterPage() {
               </div>
             </div>
 
-            {/* Layout summary */}
             <div style={{ background:"#f9fafb", borderRadius:10, padding:16, marginBottom:16 }}>
               <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:".07em", marginBottom:12 }}>Layout Summary</div>
               {layoutData ? (
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
                   {[
-                    { label:"Ground Seats", value:rs.groundSeats, color:"#2563eb" },
-                    { label:"Balcony Seats", value:rs.balconySeats, color:"#7c3aed" },
-                    { label:"Total Zones", value:rs.zones, color:"#059669" },
+                    { label:"Ground Seats", value:rs.groundSeats,  color:"#2563eb" },
+                    { label:"Balcony Seats",value:rs.balconySeats, color:"#7c3aed" },
+                    { label:"Total Zones",  value:rs.zones,        color:"#059669" },
                   ].map(s=>(
                     <div key={s.label} style={{ textAlign:"center", padding:"12px 8px", background:"#fff", borderRadius:8, border:"1px solid #e5e7eb" }}>
                       <div style={{ fontSize:24, fontWeight:800, color:s.color }}>{s.value}</div>
@@ -959,15 +1120,14 @@ export default function AddTheaterPage() {
                   ⚠️ No layout configured. Go back to Step 2 to design your seat layout.
                 </div>
               )}
-              {layoutData?.zones?.length>0 && (
+              {layoutData?.zones?.length > 0 && (
                 <div style={{ marginTop:12 }}>
                   <div style={{ fontSize:11, color:"#9ca3af", marginBottom:6 }}>Zone breakdown:</div>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                     {layoutData.zones.map(z=>(
                       <span key={z.id} style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:600, background:z.color+"18", color:z.color, border:`1px solid ${z.color}44` }}>
                         <span style={{ width:8, height:8, borderRadius:"50%", background:z.color, display:"inline-block" }} />
-                        {z.name}
-                        {z.noSeat && " (no seat)"}
+                        {z.name}{z.noSeat ? " (no seat)" : ""}
                       </span>
                     ))}
                   </div>
@@ -978,12 +1138,10 @@ export default function AddTheaterPage() {
             <div style={{ display:"flex", justifyContent:"space-between", gap:12, paddingTop:16, borderTop:"1px solid #e5e7eb" }}>
               <button onClick={()=>setStep(2)} style={btnSecondary}>← Back to Layout</button>
               <button onClick={handleSubmit} disabled={mutation.isPending}
-                style={{ ...btnPrimary, display:"flex", alignItems:"center", gap:8, opacity:mutation.isPending?.8:1 }}>
-                {mutation.isPending ? (
-                  <><div style={{ width:16, height:16, border:"2px solid rgba(255,255,255,.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 1s linear infinite" }} /> Creating…</>
-                ) : (
-                  <><FaCheckCircle /> Create Theater</>
-                )}
+                style={{ ...btnPrimary, display:"flex", alignItems:"center", gap:8, opacity: mutation.isPending ? 0.8 : 1 }}>
+                {mutation.isPending
+                  ? <><div style={{ width:16, height:16, border:"2px solid rgba(255,255,255,.4)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 1s linear infinite" }} />Updating…</>
+                  : <><FaCheckCircle />Update Theater</>}
               </button>
             </div>
           </div>
@@ -994,3 +1152,5 @@ export default function AddTheaterPage() {
     </div>
   );
 }
+
+
