@@ -263,7 +263,8 @@ const ViewSeatsModal = ({ isOpen, onClose, show, theaterData }) => {
             <div key={zone.id} className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: zone.color }} />
               <span className="text-foreground/70">{zone.name}</span>
-              <span className="text-foreground/40">₹{zone.basePrice * zone.priceMultiplier}</span>
+              {/* <span className="text-foreground/40">₹{zone.basePrice * zone.priceMultiplier}</span> */}
+              <span className="text-foreground/40">₹{Math.round(zone.basePrice * zone.priceMultiplier)}</span>
             </div>
           ))}
         </div>
@@ -310,14 +311,59 @@ const ShowCard = ({ show, onViewSeats, onStatusToggle, onDelete, theaterData }) 
   const statusConfig = getStatus(show.status);
   const StatusIcon = statusConfig.icon;
   
-  const getPriceRange = () => {
-    const prices = show.seatCategories?.map(c => c.pricePerSeat) || [];
-    if (prices.length === 0) return 'N/A';
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    return min === max ? `₹${min}` : `₹${min} - ₹${max}`;
-  };
+  // const getPriceRange = () => {
+  //   const prices = show.seatCategories?.map(c => c.pricePerSeat) || [];
+  //   if (prices.length === 0) return 'N/A';
+  //   const min = Math.min(...prices);
+  //   const max = Math.max(...prices);
+  //   return min === max ? `₹${min}` : `₹${min} - ₹${max}`;
+  // };
   
+  // REPLACE the existing getPriceRange and categories map with this:
+
+// const getPriceRange = () => {
+//   const seen = new Map();
+//   show.seatCategories?.forEach(c => {
+//     if (!seen.has(c.category)) seen.set(c.category, c.pricePerSeat);
+//   });
+//   const prices = [...seen.values()];
+//   if (prices.length === 0) return 'N/A';
+//   const min = Math.min(...prices);
+//   const max = Math.max(...prices);
+//   return min === max ? `₹${min}` : `₹${min} - ₹${max}`;
+// };
+
+// REPLACE existing getPriceRange:
+const getPriceRange = () => {
+  // Try to get prices from actual theater zones first
+  if (theaterData?.screens) {
+    const prices = theaterData.screens
+      .flatMap(s => s.zones || [])
+      .filter(z => z.totalSeats > 0)
+      .map(z => Math.round(z.basePrice * z.priceMultiplier));
+    if (prices.length > 0) {
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+      return min === max ? `₹${min}` : `₹${min} - ₹${max}`;
+    }
+  }
+  // Fallback to seatCategories
+  const prices = show.seatCategories?.map(c => c.pricePerSeat) || [];
+  if (prices.length === 0) return 'N/A';
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  return min === max ? `₹${min}` : `₹${min} - ₹${max}`;
+};
+
+// And replace the seatCategories map:
+const uniqueCategories = useMemo(() => {
+  const seen = new Map();
+  show.seatCategories?.forEach(c => {
+    if (!seen.has(c.category)) seen.set(c.category, c.pricePerSeat);
+  });
+  return [...seen.entries()].map(([category, pricePerSeat]) => ({ category, pricePerSeat }));
+}, [show.seatCategories]);
+
   return (
     <div className="rounded-xl overflow-hidden bg-card border transition-all duration-300 hover:shadow-xl hover:-translate-y-1" style={{ borderColor: "var(--card-border)" }}>
       <div className="flex flex-col md:flex-row">
@@ -396,10 +442,44 @@ const ShowCard = ({ show, onViewSeats, onStatusToggle, onDelete, theaterData }) 
               <span className="text-foreground/60">{show.availableSeats} / {show.totalSeats} seats</span>
             </div>
           </div>
+
+          {/* Show Timings (Flat list, no grid) */}
+          <div className="mb-4">
+            <h3 className="text-xs font-bold text-foreground/50 mb-2 uppercase tracking-wide">
+              ⏰ SHOW TIMINGS
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {show.timings?.map((timing, index) => (
+                <div 
+                  key={timing.id || index}
+                  className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-background border hover:shadow-sm transition-shadow"
+                  style={{ borderColor: "var(--card-border)" }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <FaCalendar className="text-blue-400" size={10} />
+                    <span className="text-xs text-foreground/60 font-medium">
+                      {new Date(timing.showDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <FaClock className="text-orange-400" size={10} />
+                    <span className="text-xs text-foreground font-bold">
+                      {timing.startTime} - {timing.endTime}
+                    </span>
+                  </div>
+                </div>
+              )) || (
+                <div className="col-span-full text-center py-3 text-xs text-foreground/40">
+                  No timings available for this show
+                </div>
+              )}
+            </div>
+          </div>
           
           {/* Seat Categories */}
-          <div className="flex flex-wrap gap-2 mb-3">
-            {show.seatCategories?.map((cat, index) => {
+          {/* <div className="flex flex-wrap gap-2 mb-3">
+        
+            {uniqueCategories.map((cat, index) => {
               const colorMap = {
                 NORMAL: '#3b82f6',
                 EXECUTIVE: '#10b981',
@@ -409,7 +489,8 @@ const ShowCard = ({ show, onViewSeats, onStatusToggle, onDelete, theaterData }) 
               const zoneColor = colorMap[cat.category] || '#3b82f6';
               return (
                 <div 
-                  key={`${cat.category}_${index}`}
+                
+                  key={cat.category}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
                   style={{ backgroundColor: `${zoneColor}20`, color: zoneColor, border: `1px solid ${zoneColor}50` }}
                 >
@@ -419,15 +500,52 @@ const ShowCard = ({ show, onViewSeats, onStatusToggle, onDelete, theaterData }) 
             })}
             <div className="text-lg font-bold text-green-500 ml-auto">{getPriceRange()}</div>
           </div>
-          
+           */}
+
+           {/* Zones from Theater Data */}
+<div className="flex flex-wrap gap-2 mb-3">
+  {theaterData?.screens
+    ?.flatMap(screen => screen.zones || [])
+    .filter((zone, idx, arr) => 
+      // deduplicate by zone name
+      arr.findIndex(z => z.name === zone.name) === idx && zone.totalSeats > 0
+    )
+    .map(zone => (
+      <div
+        key={zone.id}
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+        style={{ 
+          backgroundColor: `${zone.color}20`, 
+          color: zone.color, 
+          border: `1px solid ${zone.color}50` 
+        }}
+      >
+        <span 
+          className="w-2 h-2 rounded-sm inline-block" 
+          style={{ backgroundColor: zone.color }} 
+        />
+        {zone.name}: ₹{Math.round(zone.basePrice * zone.priceMultiplier)}
+      </div>
+    ))
+  }
+  {/* Fallback if theaterData not loaded yet */}
+  {!theaterData && show.seatCategories?.slice(0,1).map(cat => (
+    <div key={cat.category} className="text-[10px] text-foreground/40 italic">
+      Loading zones...
+    </div>
+  ))}
+  <div className="text-lg font-bold text-green-500 ml-auto">{getPriceRange()}</div>
+</div>
+
+
           {/* Action Buttons */}
           <div className="flex gap-2">
-            <button 
+            {/* <button 
               onClick={() => onViewSeats(show)} 
               className="flex-1 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all hover:scale-105"
             >
               <FaTicketAlt size={12} /> View 2D Seats
-            </button>
+            </button> */}
             <button 
               onClick={() => onStatusToggle(show)} 
               className="p-2 rounded-lg border transition-all hover:scale-105" 

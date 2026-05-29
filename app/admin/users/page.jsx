@@ -520,14 +520,14 @@ export default function Users() {
               </div>
             </div>
 
-            <button
+            {/* <button
               type="button"
               onClick={() => setIsAddOpen(true)}
               className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border"
               style={{ borderColor: "var(--card-border)" }}
             >
               <FaPlus className="text-[11px]" /> Add User
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
