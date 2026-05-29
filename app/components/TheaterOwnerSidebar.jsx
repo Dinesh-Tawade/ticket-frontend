@@ -43,7 +43,7 @@ export default function TheaterOwnerSidebar() {
       { name: "My Theater", path: "/theater-owner/theater", icon: FaBuilding },
       { name: "Shows", path: "/theater-owner/shows", icon: FaFilm },
       { name: "Bookings", path: "/theater-owner/bookings", icon: FaCalendarAlt },
-      { name: "Ticket Scan", path: "/theater-owner/ticket-scan", icon: GiTheaterCurtains },
+      // { name: "Ticket Scan", path: "/theater-owner/ticket-scan", icon: GiTheaterCurtains },
       { name: "Settings", path: "/theater-owner/settings", icon: FaBars },
     ],
     []
