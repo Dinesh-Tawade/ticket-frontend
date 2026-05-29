@@ -45,11 +45,155 @@ const AMENITIES = [
  * Each zone gets its color from zone.color; booked seats are dimmed,
  * available seats are interactive, selected seats glow.
  */
+// const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], aisleRows = [], selected, onToggle }) => {
+//   const [hoveredKey, setHoveredKey] = useState(null);
+
+//   const getRowLabel = (r) => String.fromCharCode(65 + r);
+//   const getZone     = (id) => zones.find((z) => z.id === id);
+
+//   return (
+//     <div style={{ overflowX: "auto" }}>
+//       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center", minWidth: "max-content" }}>
+
+//         {/* Column numbers header */}
+//         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+//           <div style={{ width: 22, flexShrink: 0 }} />
+//           {Array.from({ length: cols }, (_, c) => (
+//             <span key={c} style={{ display: "contents" }}>
+//               {aisleCols.find((a) => a.idx === c - 1) && (
+//                 <div style={{ width: 14, flexShrink: 0 }} />
+//               )}
+//               <div style={{
+//                 width: 22, textAlign: "center", fontSize: 9,
+//                 color: "#6b7280", fontWeight: 600, flexShrink: 0,
+//               }}>
+//                 {c + 1}
+//               </div>
+//             </span>
+//           ))}
+//         </div>
+
+//         {/* Seat rows */}
+//         {Array.from({ length: rows }, (_, r) => {
+//           const hasRowAisle = aisleRows.find((a) => a.idx === r - 1);
+//           return (
+//             <span key={r} style={{ display: "contents" }}>
+//               {hasRowAisle && (
+//                 <div style={{ height: 12, flexShrink: 0, alignSelf: "stretch" }} />
+//               )}
+//               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+//                 {/* Row label */}
+//                 <div style={{
+//                   width: 22, textAlign: "center", fontSize: 10,
+//                   fontWeight: 700, color: "#9ca3af", flexShrink: 0,
+//                 }}>
+//                   {getRowLabel(r)}
+//                 </div>
+
+//                 {Array.from({ length: cols }, (_, c) => {
+//                   const k        = `${r}-${c}`;
+//                   const fullKey  = `${levelKey}::${k}`;
+//                   const sd       = seats[k];
+//                   const zone     = sd?.zone ? getZone(sd.zone) : null;
+//                   const isAisle  = !sd || sd.aisle;
+//                   const isBlocked = sd?.blocked;
+//                   const isBooked = sd?.booked || sd?.isBooked === true || sd?.isAvailable === false;
+//                   const isSel    = selected.has(fullKey);
+//                   const col      = zone ? zone.color : "#4a9edd";
+//                   const colAisle = aisleCols.find((a) => a.idx === c - 1);
+
+//                   let seatStyle = {
+//                     width: 22, height: 22, flexShrink: 0,
+//                     borderRadius: "5px 5px 3px 3px",
+//                     cursor: "default",
+//                     fontSize: 0,
+//                     border: "none",
+//                     outline: "none",
+//                     transition: "transform .1s",
+//                     position: "relative",
+//                   };
+
+//                   if (isAisle) {
+//                     seatStyle = { ...seatStyle, background: "transparent", visibility: "hidden" };
+//                   } else if (isBlocked) {
+//                     seatStyle = { ...seatStyle, background: "#1f2028", border: "1.5px solid #2a2a38", opacity: 0.5 };
+//                   } else if (isBooked) {
+//                     seatStyle = {
+//                       ...seatStyle,
+//                       background: col + "30",
+//                       border: `1.5px solid ${col}45`,
+//                       opacity: 0.4,
+//                     };
+//                   } else if (isSel) {
+//                     seatStyle = {
+//                       ...seatStyle,
+//                       background: col,
+//                       border: `2px solid #fff`,
+//                       cursor: "pointer",
+//                       transform: "scale(1.1)",
+//                     };
+//                   } else {
+//                     seatStyle = {
+//                       ...seatStyle,
+//                       background: col + "28",
+//                       border: `1.5px solid ${col}70`,
+//                       cursor: "pointer",
+//                     };
+//                   }
+
+//                   return (
+//                     <span key={c} style={{ display: "contents" }}>
+//                       {colAisle && <div style={{ width: 14, flexShrink: 0 }} />}
+//                       <button
+//                         style={seatStyle}
+//                         disabled={isAisle || isBlocked || isBooked}
+//                         onClick={() => !isAisle && !isBlocked && !isBooked && onToggle(fullKey, zone, r, c, levelKey)}
+//                         onMouseEnter={() => !isAisle && !isBlocked && setHoveredKey(fullKey)}
+//                         onMouseLeave={() => setHoveredKey(null)}
+//                         title={!isAisle && zone ? `${getRowLabel(r)}${c + 1} · ${zone.name} · ₹${Math.round(zone.basePrice * (zone.priceMultiplier || 1))}` : ""}
+//                       />
+//                     </span>
+//                   );
+//                 })}
+//               </div>
+//             </span>
+//           );
+//         })}
+//       </div>
+//     </div>
+//   );
+// };
+
+
 const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], aisleRows = [], selected, onToggle }) => {
   const [hoveredKey, setHoveredKey] = useState(null);
 
   const getRowLabel = (r) => String.fromCharCode(65 + r);
   const getZone     = (id) => zones.find((z) => z.id === id);
+
+  // Build row segments — groups consecutive no-seat zone cells into label blocks
+  const buildRowSegments = (r) => {
+    const segs = [];
+    let c = 0;
+    while (c < cols) {
+      const k  = `${r}-${c}`;
+      const sd = seats[k];
+      const zone = sd?.zone ? getZone(sd.zone) : null;
+      if (zone?.noSeat) {
+        let span = 1;
+        while (
+          c + span < cols &&
+          seats[`${r}-${c + span}`]?.zone === zone.id
+        ) span++;
+        segs.push({ type: "noSeatBlock", zone, startC: c, colSpan: span });
+        c += span;
+      } else {
+        segs.push({ type: "seat", c });
+        c++;
+      }
+    }
+    return segs;
+  };
 
   return (
     <div style={{ overflowX: "auto" }}>
@@ -76,12 +220,15 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
         {/* Seat rows */}
         {Array.from({ length: rows }, (_, r) => {
           const hasRowAisle = aisleRows.find((a) => a.idx === r - 1);
+          const segs        = buildRowSegments(r);
+
           return (
             <span key={r} style={{ display: "contents" }}>
               {hasRowAisle && (
                 <div style={{ height: 12, flexShrink: 0, alignSelf: "stretch" }} />
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+
                 {/* Row label */}
                 <div style={{
                   width: 22, textAlign: "center", fontSize: 10,
@@ -90,7 +237,48 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
                   {getRowLabel(r)}
                 </div>
 
-                {Array.from({ length: cols }, (_, c) => {
+                {segs.map((seg, si) => {
+
+                  /* ── No-seat label block ── */
+                  if (seg.type === "noSeatBlock") {
+                    const colAisle = aisleCols.find((a) => a.idx === seg.startC - 1);
+                    // Width = sum of seat widths + gaps between them
+                    const blockWidth = seg.colSpan * 22 + (seg.colSpan - 1) * 4;
+                    return (
+                      <span key={si} style={{ display: "contents" }}>
+                        {colAisle && <div style={{ width: 14, flexShrink: 0 }} />}
+                        <div style={{
+                          width:        blockWidth,
+                          height:       22,
+                          flexShrink:   0,
+                          borderRadius: 5,
+                          background:   seg.zone.color + "22",
+                          border:       `1.5px solid ${seg.zone.color}`,
+                          display:      "flex",
+                          alignItems:   "center",
+                          justifyContent: "center",
+                          overflow:     "hidden",
+                        }}>
+                          {seg.zone.label && (
+                            <span style={{
+                              fontSize:     9,
+                              fontWeight:   700,
+                              color:        seg.zone.color,
+                              whiteSpace:   "nowrap",
+                              overflow:     "hidden",
+                              textOverflow: "ellipsis",
+                              padding:      "0 4px",
+                            }}>
+                              {seg.zone.label}
+                            </span>
+                          )}
+                        </div>
+                      </span>
+                    );
+                  }
+
+                  /* ── Normal seat ── */
+                  const c        = seg.c;
                   const k        = `${r}-${c}`;
                   const fullKey  = `${levelKey}::${k}`;
                   const sd       = seats[k];
@@ -103,14 +291,16 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
                   const colAisle = aisleCols.find((a) => a.idx === c - 1);
 
                   let seatStyle = {
-                    width: 22, height: 22, flexShrink: 0,
+                    width:        22,
+                    height:       22,
+                    flexShrink:   0,
                     borderRadius: "5px 5px 3px 3px",
-                    cursor: "default",
-                    fontSize: 0,
-                    border: "none",
-                    outline: "none",
-                    transition: "transform .1s",
-                    position: "relative",
+                    cursor:       "default",
+                    fontSize:     0,
+                    border:       "none",
+                    outline:      "none",
+                    transition:   "transform .1s",
+                    position:     "relative",
                   };
 
                   if (isAisle) {
@@ -118,31 +308,15 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
                   } else if (isBlocked) {
                     seatStyle = { ...seatStyle, background: "#1f2028", border: "1.5px solid #2a2a38", opacity: 0.5 };
                   } else if (isBooked) {
-                    seatStyle = {
-                      ...seatStyle,
-                      background: col + "30",
-                      border: `1.5px solid ${col}45`,
-                      opacity: 0.4,
-                    };
+                    seatStyle = { ...seatStyle, background: col + "30", border: `1.5px solid ${col}45`, opacity: 0.4 };
                   } else if (isSel) {
-                    seatStyle = {
-                      ...seatStyle,
-                      background: col,
-                      border: `2px solid #fff`,
-                      cursor: "pointer",
-                      transform: "scale(1.1)",
-                    };
+                    seatStyle = { ...seatStyle, background: col, border: `2px solid #fff`, cursor: "pointer", transform: "scale(1.1)" };
                   } else {
-                    seatStyle = {
-                      ...seatStyle,
-                      background: col + "28",
-                      border: `1.5px solid ${col}70`,
-                      cursor: "pointer",
-                    };
+                    seatStyle = { ...seatStyle, background: col + "28", border: `1.5px solid ${col}70`, cursor: "pointer" };
                   }
 
                   return (
-                    <span key={c} style={{ display: "contents" }}>
+                    <span key={si} style={{ display: "contents" }}>
                       {colAisle && <div style={{ width: 14, flexShrink: 0 }} />}
                       <button
                         style={seatStyle}
@@ -155,15 +329,16 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
                     </span>
                   );
                 })}
+
               </div>
             </span>
           );
         })}
+
       </div>
     </div>
   );
 };
-
 
 /**
  * Full cinema booking modal — screen bar, ground + balcony floors,
@@ -173,20 +348,37 @@ const CinemaBookingPreview = ({ theater, onClose }) => {
   const [selected, setSelected] = useState(new Set());
 
   // Flatten all zones from all screens
+  // const allZones = useMemo(() => {
+  //   if (!theater?.screens) return [];
+  //   const seen = new Set();
+  //   const result = [];
+  //   theater.screens.forEach((screen) => {
+  //     (screen.zones || []).forEach((z) => {
+  //       if (!seen.has(z.id)) { seen.add(z.id); result.push(z); }
+  //     });
+  //   });
+  //   return result;
+  // }, [theater]);
+
   const allZones = useMemo(() => {
     if (!theater?.screens) return [];
     const seen = new Set();
     const result = [];
     theater.screens.forEach((screen) => {
       (screen.zones || []).forEach((z) => {
-        if (!seen.has(z.id)) { seen.add(z.id); result.push(z); }
+        const baseId = z.id?.replace(/_ground$|_balcony$/, "") || z.id;
+        if (!seen.has(baseId)) {
+          seen.add(baseId);
+          result.push({ ...z, id: baseId });
+        }
       });
     });
     return result;
   }, [theater]);
 
   // Build level data from screens
-  const buildLevelData = useCallback((levelName) => {
+
+ const buildLevelData = useCallback((levelName) => {
     if (!theater?.screens) return null;
     const screen = theater.screens.find((s) =>
       levelName === "balcony"
@@ -195,16 +387,18 @@ const CinemaBookingPreview = ({ theater, onClose }) => {
     );
     if (!screen || !screen.zones?.length) return null;
 
-    // Build a flat seat map from all zones' rows
+    const meta = theater.layoutMeta || {};
+    const isBalcony = levelName === "balcony";
+
     const seats = {};
-    (screen.zones || []).forEach((zone) => {
-      (zone.rows || []).forEach((row) => {
+    (screen.zones || []).forEach((z) => {
+      const baseId = z.id?.replace(/_ground$|_balcony$/, "") || z.id;
+      (z.rows || []).forEach((row) => {
         (row.seats || []).forEach((seat) => {
           const r = (seat.rowNumber || 1) - 1;
           const c = (seat.columnNumber || 1) - 1;
           seats[`${r}-${c}`] = {
-            zone:        zone.id,
-            booked:      !seat.isAvailable || seat.isBooked,
+            zone:        baseId,
             isAvailable: seat.isAvailable,
             isBooked:    seat.isBooked,
           };
@@ -212,11 +406,9 @@ const CinemaBookingPreview = ({ theater, onClose }) => {
       });
     });
 
-    const rows = screen.totalRows    || Math.max(...Object.keys(seats).map((k) => parseInt(k) + 1), 0);
-    const cols = screen.totalColumns || Math.max(...Object.keys(seats).map((k) => parseInt(k.split("-")[1]) + 1), 0);
+    const rows = screen.totalRows    || (isBalcony ? meta.balconyRows : meta.groundRows) || 0;
+    const cols = screen.totalColumns || (isBalcony ? meta.balconyCols : meta.groundCols) || 0;
 
-    const meta = theater.layoutMeta || {};
-    const isBalcony = levelName === "balcony";
     return {
       rows,
       cols,
@@ -225,6 +417,102 @@ const CinemaBookingPreview = ({ theater, onClose }) => {
       aisleRows:  (isBalcony ? meta.balconyAisleRows : meta.aisleRows)  || [],
     };
   }, [theater]);
+
+  // const buildLevelData = useCallback((levelName) => {
+  //   if (!theater?.screens) return null;
+  //   const screen = theater.screens.find((s) =>
+  //     levelName === "balcony"
+  //       ? s.position === "top" || s.name?.toLowerCase().includes("balcony")
+  //       : s.position !== "top" && !s.name?.toLowerCase().includes("balcony")
+  //   );
+  //   if (!screen || !screen.zones?.length) return null;
+
+  //   // Build a flat seat map from all zones' rows
+  //   const seats = {};
+  //   (screen.zones || []).forEach((zone) => {
+  //     (zone.rows || []).forEach((row) => {
+  //       (row.seats || []).forEach((seat) => {
+  //         const r = (seat.rowNumber || 1) - 1;
+  //         const c = (seat.columnNumber || 1) - 1;
+  //         seats[`${r}-${c}`] = {
+  //           zone:        zone.id,
+  //           booked:      !seat.isAvailable || seat.isBooked,
+  //           isAvailable: seat.isAvailable,
+  //           isBooked:    seat.isBooked,
+  //         };
+  //       });
+  //     });
+  //   });
+
+  //   const rows = screen.totalRows    || Math.max(...Object.keys(seats).map((k) => parseInt(k) + 1), 0);
+  //   const cols = screen.totalColumns || Math.max(...Object.keys(seats).map((k) => parseInt(k.split("-")[1]) + 1), 0);
+
+  //   const meta = theater.layoutMeta || {};
+  //   const isBalcony = levelName === "balcony";
+  //   return {
+  //     rows,
+  //     cols,
+  //     seats,
+  //     aisleCols: (isBalcony ? meta.balconyAisleCols : meta.aisleCols)  || [],
+  //     aisleRows:  (isBalcony ? meta.balconyAisleRows : meta.aisleRows)  || [],
+  //   };
+  // }, [theater]);
+
+//   const buildLevelData = useCallback((levelName) => {
+//   if (!theater?.screens) return null;
+//   const screen = theater.screens.find((s) =>
+//     levelName === "balcony"
+//       ? s.position === "top" || s.name?.toLowerCase().includes("balcony")
+//       : s.position !== "top" && !s.name?.toLowerCase().includes("balcony")
+//   );
+//   if (!screen || !screen.zones?.length) return null;
+
+//   const meta = theater.layoutMeta || {};
+//   const isBalcony = levelName === "balcony";
+
+//   const rows = screen.totalRows    || (isBalcony ? meta.balconyRows : meta.groundRows) || 0;
+//   const cols = screen.totalColumns || (isBalcony ? meta.balconyCols : meta.groundCols) || 0;
+
+//   const seats = {};
+
+//   (screen.zones || []).forEach((z) => {
+//     if (z.noSeat) {
+//       // ── No-seat zone: paint every cell in the grid with this zone id
+//       // so buildRowSegments can detect and render the label block.
+//       // We use ALL rows/cols of the screen since we have no per-row data.
+//       for (let r = 0; r < rows; r++) {
+//         for (let c = 0; c < cols; c++) {
+//           // Only fill cells not already claimed by a real zone
+//           const k = `${r}-${c}`;
+//           if (!seats[k]) {
+//             seats[k] = { zone: z.id, noSeat: true };
+//           }
+//         }
+//       }
+//     } else {
+//       // ── Normal zone: map from saved seat positions
+//       (z.rows || []).forEach((row) => {
+//         (row.seats || []).forEach((seat) => {
+//           const r = (seat.rowNumber || 1) - 1;
+//           const c = (seat.columnNumber || 1) - 1;
+//           seats[`${r}-${c}`] = {
+//             zone:        z.id,
+//             isAvailable: seat.isAvailable,
+//             isBooked:    seat.isBooked,
+//           };
+//         });
+//       });
+//     }
+//   });
+
+//   return {
+//     rows,
+//     cols,
+//     seats,
+//     aisleCols: (isBalcony ? meta.balconyAisleCols : meta.aisleCols)  || [],
+//     aisleRows:  (isBalcony ? meta.balconyAisleRows : meta.aisleRows)  || [],
+//   };
+// }, [theater]);
 
   const groundData  = buildLevelData("ground");
   const balconyData = buildLevelData("balcony");
@@ -294,7 +582,7 @@ const CinemaBookingPreview = ({ theater, onClose }) => {
           {/* Legend */}
           {[
             { color: "#4a9edd28", border: "#4a9edd70", label: "Available" },
-            { color: "#e2c97e",   border: "#fff",      label: "Selected"  },
+            // { color: "#e2c97e",   border: "#fff",      label: "Selected"  },
             { color: "#1f2028",   border: "#2a2a38",   label: "Taken"     },
           ].map((l) => (
             <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af" }}>
@@ -480,7 +768,7 @@ const CinemaBookingPreview = ({ theater, onClose }) => {
           >
             Clear
           </button>
-          <button
+          {/* <button
             disabled={selectionInfo.count === 0}
             style={{
               padding: "10px 28px", borderRadius: 8,
@@ -499,7 +787,7 @@ const CinemaBookingPreview = ({ theater, onClose }) => {
             {selectionInfo.count > 0
               ? `Book ${selectionInfo.count} Seat${selectionInfo.count > 1 ? "s" : ""} · ₹${selectionInfo.total.toLocaleString()}`
               : "Select Seats"}
-          </button>
+          </button> */}
         </div>
       </div>
     </div>
