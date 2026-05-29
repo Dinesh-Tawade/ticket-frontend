@@ -15,7 +15,7 @@ import {
   FaChevronDown, FaChevronUp, FaPlus, FaTrash, FaCopy
 } from 'react-icons/fa';
 import { MdTheaters, MdScreenShare, MdLocationOn, MdEventSeat } from 'react-icons/md';
-import { GiFilmProjector } from 'react-icons/gi';
+import { GiFilmProjector, GiTheaterCurtains } from 'react-icons/gi';
 
 // Constants
 const GENRES = ['ACTION', 'COMEDY', 'DRAMA', 'HORROR', 'ROMANCE', 'THRILLER', 'SCI-FI', 'ANIMATION', 'DOCUMENTARY'];
@@ -206,6 +206,267 @@ const SeatLayoutPreview = ({ zones, screenPosition }) => {
   );
 };
 
+// ==================== CINEMA SEAT FLOOR (from theaters/page) ====================
+const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], aisleRows = [], selected, onToggle }) => {
+  const getRowLabel = (r) => String.fromCharCode(65 + r);
+  const getZone     = (id) => zones.find((z) => z.id === id);
+
+  const buildRowSegments = (r) => {
+    const segs = [];
+    let c = 0;
+    while (c < cols) {
+      const k  = `${r}-${c}`;
+      const sd = seats[k];
+      const zone = sd?.zone ? getZone(sd.zone) : null;
+      if (zone?.noSeat) {
+        let span = 1;
+        while (c + span < cols && seats[`${r}-${c + span}`]?.zone === zone.id) span++;
+        segs.push({ type: 'noSeatBlock', zone, startC: c, colSpan: span });
+        c += span;
+      } else {
+        segs.push({ type: 'seat', c });
+        c++;
+      }
+    }
+    return segs;
+  };
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', minWidth: 'max-content' }}>
+        {/* Column numbers */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ width: 22, flexShrink: 0 }} />
+          {Array.from({ length: cols }, (_, c) => (
+            <span key={c} style={{ display: 'contents' }}>
+              {aisleCols.find((a) => a.idx === c - 1) && <div style={{ width: 14, flexShrink: 0 }} />}
+              <div style={{ width: 22, textAlign: 'center', fontSize: 9, color: '#6b7280', fontWeight: 600, flexShrink: 0 }}>{c + 1}</div>
+            </span>
+          ))}
+        </div>
+        {/* Seat rows */}
+        {Array.from({ length: rows }, (_, r) => {
+          const hasRowAisle = aisleRows.find((a) => a.idx === r - 1);
+          const segs        = buildRowSegments(r);
+          return (
+            <span key={r} style={{ display: 'contents' }}>
+              {hasRowAisle && <div style={{ height: 12, flexShrink: 0, alignSelf: 'stretch' }} />}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: 22, textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#9ca3af', flexShrink: 0 }}>{getRowLabel(r)}</div>
+                {segs.map((seg, si) => {
+                  if (seg.type === 'noSeatBlock') {
+                    const colAisle   = aisleCols.find((a) => a.idx === seg.startC - 1);
+                    const blockWidth = seg.colSpan * 22 + (seg.colSpan - 1) * 4;
+                    return (
+                      <span key={si} style={{ display: 'contents' }}>
+                        {colAisle && <div style={{ width: 14, flexShrink: 0 }} />}
+                        <div style={{ width: blockWidth, height: 22, flexShrink: 0, borderRadius: 5, background: seg.zone.color + '22', border: `1.5px solid ${seg.zone.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          {seg.zone.label && <span style={{ fontSize: 9, fontWeight: 700, color: seg.zone.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0 4px' }}>{seg.zone.label}</span>}
+                        </div>
+                      </span>
+                    );
+                  }
+                  const c        = seg.c;
+                  const k        = `${r}-${c}`;
+                  const fullKey  = `${levelKey}::${k}`;
+                  const sd       = seats[k];
+                  const zone     = sd?.zone ? getZone(sd.zone) : null;
+                  const isAisle  = !sd || sd.aisle;
+                  const isBlocked = sd?.blocked;
+                  const isBooked = sd?.booked || sd?.isBooked === true || sd?.isAvailable === false;
+                  const isSel    = selected.has(fullKey);
+                  const col      = zone ? zone.color : '#4a9edd';
+                  const colAisle = aisleCols.find((a) => a.idx === c - 1);
+                  let seatStyle = { width: 22, height: 22, flexShrink: 0, borderRadius: '5px 5px 3px 3px', cursor: 'default', fontSize: 0, border: 'none', outline: 'none', transition: 'transform .1s', position: 'relative' };
+                  if (isAisle)        seatStyle = { ...seatStyle, background: 'transparent', visibility: 'hidden' };
+                  else if (isBlocked) seatStyle = { ...seatStyle, background: '#1f2028', border: '1.5px solid #2a2a38', opacity: 0.5 };
+                  else if (isBooked)  seatStyle = { ...seatStyle, background: col + '30', border: `1.5px solid ${col}45`, opacity: 0.4 };
+                  else if (isSel)     seatStyle = { ...seatStyle, background: col, border: '2px solid #fff', cursor: 'pointer', transform: 'scale(1.1)' };
+                  else                seatStyle = { ...seatStyle, background: col + '28', border: `1.5px solid ${col}70`, cursor: 'pointer' };
+                  return (
+                    <span key={si} style={{ display: 'contents' }}>
+                      {colAisle && <div style={{ width: 14, flexShrink: 0 }} />}
+                      <button
+                        style={seatStyle}
+                        disabled={isAisle || isBlocked || isBooked}
+                        onClick={() => !isAisle && !isBlocked && !isBooked && onToggle(fullKey, zone, r, c, levelKey)}
+                        title={!isAisle && zone ? `${getRowLabel(r)}${c + 1} · ${zone.name} · ₹${Math.round((zone.basePrice || 0) * (zone.priceMultiplier || 1))}` : ''}
+                      />
+                    </span>
+                  );
+                })}
+              </div>
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ==================== CINEMA BOOKING PREVIEW (from theaters/page) ====================
+const CinemaBookingPreview = ({ theater, onClose }) => {
+  const [selected, setSelected] = useState(new Set());
+
+  const allZones = useMemo(() => {
+    if (!theater?.screens) return [];
+    const seen = new Set();
+    const result = [];
+    theater.screens.forEach((screen) => {
+      (screen.zones || []).forEach((z) => {
+        const baseId = z.id?.replace(/_ground$|_balcony$/, '') || z.id;
+        if (!seen.has(baseId)) { seen.add(baseId); result.push({ ...z, id: baseId }); }
+      });
+    });
+    return result;
+  }, [theater]);
+
+  const buildLevelData = useCallback((levelName) => {
+    if (!theater?.screens) return null;
+    const screen = theater.screens.find((s) =>
+      levelName === 'balcony'
+        ? s.position === 'top' || s.name?.toLowerCase().includes('balcony')
+        : s.position !== 'top' && !s.name?.toLowerCase().includes('balcony')
+    );
+    if (!screen || !screen.zones?.length) return null;
+    const meta      = theater.layoutMeta || {};
+    const isBalcony = levelName === 'balcony';
+    const seats     = {};
+    (screen.zones || []).forEach((z) => {
+      const baseId = z.id?.replace(/_ground$|_balcony$/, '') || z.id;
+      (z.rows || []).forEach((row) => {
+        (row.seats || []).forEach((seat) => {
+          const r = (seat.rowNumber || 1) - 1;
+          const c = (seat.columnNumber || 1) - 1;
+          seats[`${r}-${c}`] = { zone: baseId, isAvailable: seat.isAvailable, isBooked: seat.isBooked };
+        });
+      });
+    });
+    const rows = screen.totalRows    || (isBalcony ? meta.balconyRows : meta.groundRows) || 0;
+    const cols = screen.totalColumns || (isBalcony ? meta.balconyCols : meta.groundCols) || 0;
+    return {
+      rows, cols, seats,
+      aisleCols: (isBalcony ? meta.balconyAisleCols : meta.aisleCols)  || [],
+      aisleRows: (isBalcony ? meta.balconyAisleRows : meta.aisleRows)  || [],
+    };
+  }, [theater]);
+
+  const groundData  = buildLevelData('ground');
+  const balconyData = buildLevelData('balcony');
+
+  const toggleSeat = useCallback((fullKey) => {
+    setSelected((prev) => { const next = new Set(prev); next.has(fullKey) ? next.delete(fullKey) : next.add(fullKey); return next; });
+  }, []);
+
+  const selectionInfo = useMemo(() => {
+    let total = 0;
+    const labels = [];
+    selected.forEach((fk) => {
+      const [level, k] = fk.split('::');
+      const ld = level === 'balcony' ? balconyData : groundData;
+      if (!ld) return;
+      const sd = ld.seats[k];
+      const z  = sd?.zone ? allZones.find((z) => z.id === sd.zone) : null;
+      total += z ? Math.round(z.basePrice * (z.priceMultiplier || 1)) : 150;
+      const [r, c] = k.split('-').map(Number);
+      labels.push(`${String.fromCharCode(65 + r)}${c + 1}`);
+    });
+    return { total, labels, count: selected.size };
+  }, [selected, groundData, balconyData, allZones]);
+
+  const hasLayout = groundData || balconyData;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+      {/* Header */}
+      <div style={{ background: '#0f0f16', borderBottom: '1px solid #1f1f2e', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg,#1a1a2e,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <GiTheaterCurtains style={{ color: '#fff', fontSize: 18 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{theater?.name}</div>
+            <div style={{ fontSize: 12, color: '#9ca3af' }}>
+              {theater?.location}, {theater?.city}&nbsp;·&nbsp;
+              {theater?.screens?.length || 0} screen(s)&nbsp;·&nbsp;
+              {theater?.totalSeats || 0} seats
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {[{ color: '#4a9edd28', border: '#4a9edd70', label: 'Available' }, { color: '#1f2028', border: '#2a2a38', label: 'Taken' }].map((l) => (
+            <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af' }}>
+              <div style={{ width: 14, height: 14, borderRadius: 3, background: l.color, border: `1.5px solid ${l.border}` }} />
+              {l.label}
+            </div>
+          ))}
+          <button onClick={onClose} style={{ marginLeft: 8, width: 34, height: 34, borderRadius: 8, background: '#1f1f2e', border: '1px solid #2a2a38', color: '#9ca3af', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        </div>
+      </div>
+      {/* Scrollable seat area */}
+      <div style={{ flex: 1, overflowY: 'auto', background: '#0f0f16', padding: '0 24px 20px' }}>
+        <div style={{ textAlign: 'center', padding: '18px 0 10px' }}>
+          <div style={{ height: 3, maxWidth: 500, margin: '0 auto 6px', background: 'linear-gradient(90deg,transparent,#e2c97e,transparent)', borderRadius: 2 }} />
+          <div style={{ fontSize: 10, color: '#e2c97e', letterSpacing: '3px', fontWeight: 700 }}>SCREEN — ALL EYES THIS WAY</div>
+        </div>
+        {!hasLayout ? (
+          <div style={{ textAlign: 'center', paddingTop: 80, color: '#6b7280' }}>
+            <MdEventSeat style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }} />
+            <div style={{ fontSize: 14, fontWeight: 600 }}>No seat layout configured</div>
+            <div style={{ fontSize: 12, marginTop: 6 }}>This theater has no seat data stored yet.</div>
+          </div>
+        ) : (
+          <>
+            {groundData && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.1em', padding: '3px 14px', background: '#1a1a24', borderRadius: 20, border: '1px solid #2a2a38' }}>Ground Floor</span>
+                </div>
+                <CinemaSeatFloor levelKey="ground" zones={allZones} seats={groundData.seats} rows={groundData.rows} cols={groundData.cols} aisleCols={groundData.aisleCols} aisleRows={groundData.aisleRows} selected={selected} onToggle={toggleSeat} />
+              </div>
+            )}
+            {balconyData && (
+              <>
+                <div style={{ maxWidth: 500, margin: '0 auto 16px', borderTop: '1px dashed #2a2a38', position: 'relative', textAlign: 'center' }}>
+                  <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.1em', padding: '3px 14px', background: '#0f0f16', borderRadius: 20, border: '1px solid #2a2a38' }}>Balcony</span>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <CinemaSeatFloor levelKey="balcony" zones={allZones} seats={balconyData.seats} rows={balconyData.rows} cols={balconyData.cols} aisleCols={balconyData.aisleCols} aisleRows={balconyData.aisleRows} selected={selected} onToggle={toggleSeat} />
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 24 }}>
+              {allZones.map((z) => (
+                <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: z.color + '18', border: `1px solid ${z.color}44`, color: z.color }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: z.color, display: 'inline-block' }} />
+                  {z.name}&nbsp;<strong style={{ color: '#fff' }}>₹{Math.round((z.basePrice || 0) * (z.priceMultiplier || 1))}</strong>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      {/* Bottom panel */}
+      <div style={{ background: '#0f0f16', borderTop: '1px solid #1f1f2e', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.08em' }}>Selected Seats</div>
+          <div style={{ fontSize: 13, color: '#e5e7eb' }}>
+            {selectionInfo.count === 0 ? (
+              <span style={{ color: '#4b5563' }}>Click seats above to select</span>
+            ) : (
+              <><span style={{ color: '#e2c97e', fontWeight: 700 }}>{selectionInfo.labels.slice(0, 6).join(', ')}{selectionInfo.labels.length > 6 ? ` +${selectionInfo.labels.length - 6} more` : ''}</span>&nbsp;·&nbsp;<span style={{ color: '#fff', fontWeight: 700 }}>₹{selectionInfo.total.toLocaleString()}</span></>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setSelected(new Set())} disabled={selectionInfo.count === 0} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #2a2a38', background: '#1a1a24', color: '#9ca3af', cursor: selectionInfo.count === 0 ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: selectionInfo.count === 0 ? 0.5 : 1 }}>Clear</button>
+          <button onClick={onClose} style={{ padding: '10px 28px', borderRadius: 8, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>Close Preview</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ==================== SHOW TIMING COMPONENT ====================
 const ShowTiming = ({ timing, index, onUpdate, onRemove, canRemove, onCopy }) => {
   return (
@@ -319,6 +580,7 @@ export default function CreateShow() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState('basic');
+  const [showPreview, setShowPreview] = useState(false);
   const [selectedTheater, setSelectedTheater] = useState(null);
   const [selectedScreen, setSelectedScreen] = useState(null);
   const [posterPreview, setPosterPreview] = useState('');
@@ -486,7 +748,7 @@ export default function CreateShow() {
   const validateForm = useCallback(() => {
     const validations = [
       { condition: !formData.theaterId, message: 'Please select a theater' },
-      { condition: !formData.screenId, message: 'Please select a screen' },
+      // { condition: !formData.screenId, message: 'Please select a screen' },
       { condition: !formData.movie.name, message: 'Please enter movie name' },
       { condition: !formData.movie.duration, message: 'Please enter movie duration' },
       { condition: !formData.movie.rating, message: 'Please enter movie rating' }
@@ -539,7 +801,8 @@ export default function CreateShow() {
     const submitData = {
       theaterId: formData.theaterId,
       screenId: formData.screenId,
-      screenNumber: parseInt(formData.screenNumber),
+      // screenNumber: parseInt(formData.screenNumber),
+      screenNumber: parseInt(formData.screenNumber) || 1,
       movie: {
         name: formData.movie.name,
         poster: formData.movie.poster,
@@ -584,12 +847,26 @@ export default function CreateShow() {
     };
   }, [formData.seatCategories]);
 
+  // Add after the existing useEffect that sets selectedTheater:
+useEffect(() => {
+  if (selectedTheater?.screens?.length > 0 && !formData.screenId) {
+    handleScreenChange(selectedTheater.screens[0]);
+  }
+}, [selectedTheater]);
+
   const handleNext = useCallback(() => {
+
+
+
     if (activeTab === 'basic') {
-      if (!formData.theaterId || !formData.screenId) {
-        toast.error('Please select theater and screen');
-        return;
-      }
+      // if (!formData.theaterId || !formData.screenId) {
+      //   toast.error('Please select theater and screen');
+      //   return;
+      // }
+      if (!formData.theaterId) {
+  toast.error('Please select a theater');
+  return;
+}
       // ✅ Check if at least one timing has data
       const hasValidTiming = showTimings.some(t => t.showDate && t.startTime && t.endTime);
       if (!hasValidTiming) {
@@ -736,6 +1013,8 @@ export default function CreateShow() {
                   </div>
 
                   {/* Screen Selection */}
+                  
+             
                   {selectedTheater && (
                     <div>
                       <label className="text-[11px] font-bold uppercase tracking-wider mb-2 block flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
@@ -753,19 +1032,25 @@ export default function CreateShow() {
                             {selectedTheater.screens?.map(screen => (
                               <div
                                 key={screen._id}
-                                onClick={() => handleScreenChange(screen)}
-                                className={`cursor-pointer rounded-xl p-3 text-center transition-all duration-300 hover:scale-105 ${
-                                  formData.screenId === screen._id
-                                    ? 'ring-2 ring-purple-500 bg-gradient-to-br from-purple-500/10 to-transparent'
-                                    : 'bg-card border hover:border-purple-500/50'
-                                }`}
-                                style={formData.screenId !== screen._id ? { background: "var(--card)", borderColor: "var(--card-border)" } : {}}
+                                // onClick={() => handleScreenChange(screen)}
+                                // className={`cursor-pointer rounded-xl p-3 text-center transition-all duration-300 hover:scale-105 ${
+                                //   formData.screenId === screen._id
+                                //     ? 'ring-2 ring-purple-500 bg-gradient-to-br from-purple-500/10 to-transparent'
+                                //     : 'bg-card border hover:border-purple-500/50'
+                                // }`}
+                                className="rounded-xl p-3 text-center bg-card border"
+                                // style={formData.screenId !== screen._id ? { background: "var(--card)", borderColor: "var(--card-border)" } : {}}
+                                style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
                               >
-                                <div className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 ${
-                                  formData.screenId === screen._id ? 'bg-purple-500' : 'bg-background border'
-                                }`}
-                                  style={formData.screenId !== screen._id ? { background: "var(--background)", borderColor: "var(--card-border)" } : {}}>
-                                  <MdScreenShare className={`text-lg ${formData.screenId === screen._id ? 'text-white' : 'text-purple-500'}`} />
+                                <div
+                                //  className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 ${
+                                //   formData.screenId === screen._id ? 'bg-purple-500' : 'bg-background border'
+                                // }`}
+                                //   style={formData.screenId !== screen._id ? { background: "var(--background)", borderColor: "var(--card-border)" } : {}}>
+                                className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 bg-background border"
+                                style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+                                  {/* <MdScreenShare className={`text-lg ${formData.screenId === screen._id ? 'text-white' : 'text-purple-500'}`} /> */}
+                                  <MdScreenShare className="text-lg text-purple-500" />
                                 </div>
                                 <div className="font-extrabold text-base" style={{ color: "var(--foreground)" }}>
                                   {screen.name || `Screen ${screen.screenNumber}`}
@@ -773,34 +1058,42 @@ export default function CreateShow() {
                                 <div className="text-[9px] mt-0.5" style={{ color: "var(--foreground)", opacity: 0.4 }}>
                                   {screen.zones?.length || 0} zones • {screen.totalSeatsInScreen || 0} seats
                                 </div>
-                                {formData.screenId === screen._id && (
+                                {/* {formData.screenId === screen._id && (
                                   <FaCheckCircle className="text-green-500 text-xs mx-auto mt-2 animate-in zoom-in" />
-                                )}
+                                )} */}
                               </div>
                             ))}
                           </div>
 
-                          {/* 2D Seat Layout Preview */}
-                          {selectedScreen && formData.screenId === selectedScreen._id && screenZones.length > 0 && (
-                            <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: "var(--card-border)" }}>
-                              <div className="bg-foreground/5 px-4 py-2 border-b" style={{ borderColor: "var(--card-border)" }}>
-                                <div className="flex items-center gap-2">
-                                  <FaEye className="text-blue-500 text-xs" />
-                                  <span className="text-xs font-semibold text-foreground/70">2D Seat Layout Preview</span>
-                                </div>
-                              </div>
-                              <div className="p-3">
-                                <SeatLayoutPreview zones={screenZones} screenPosition={screenPosition} />
-                              </div>
+                          {/* Cinema-style preview button */}
+                          {/* {selectedScreen && formData.screenId === selectedScreen._id && selectedTheater && ( */}
+                            <div className="mt-4">
+                              <button
+                                type="button"
+                                onClick={() => setShowPreview(true)}
+                                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                                style={{
+                                  background: 'linear-gradient(135deg,#1a1a2e,#1e3a5f)',
+                                  border: '1.5px solid #3b82f6',
+                                  color: '#93c5fd',
+                                  boxShadow: '0 4px 20px rgba(59,130,246,.2)',
+                                }}
+                              >
+                                <FaEye style={{ fontSize: 14 }} />
+                                Preview Seat Layout (Cinema View)
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: 'rgba(59,130,246,.2)', color: '#60a5fa', border: '1px solid rgba(59,130,246,.3)' }}>
+                                  {selectedTheater.totalSeats || 0} seats
+                                </span>
+                              </button>
                             </div>
-                          )}
+                          {/* )} */}
                         </>
                       )}
                     </div>
                   )}
 
                   {/* ✅ MULTIPLE SHOW TIMINGS SECTION */}
-                  {selectedScreen && (
+                  {/* {selectedScreen && ( */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <label className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
@@ -836,10 +1129,10 @@ export default function CreateShow() {
                         </p>
                       </div>
                     </div>
-                  )}
+                  {/* )} */}
 
                   {/* Paid/Free Show Toggle */}
-                  <div className="rounded-xl p-4 transition-all duration-300 bg-background/30 border" style={{ borderColor: "var(--card-border)" }}>
+                  {/* <div className="rounded-xl p-4 transition-all duration-300 bg-background/30 border" style={{ borderColor: "var(--card-border)" }}>
                     <div className="flex items-center justify-between flex-wrap gap-3">
                       <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 cursor-pointer group">
@@ -882,7 +1175,7 @@ export default function CreateShow() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}
@@ -1187,6 +1480,14 @@ export default function CreateShow() {
             </div>
           </div>
         </form>
+
+        {/* Cinema Booking Preview Modal */}
+        {showPreview && selectedTheater && (
+          <CinemaBookingPreview
+            theater={selectedTheater}
+            onClose={() => setShowPreview(false)}
+          />
+        )}
       </div>
     </div>
   );

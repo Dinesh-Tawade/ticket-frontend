@@ -422,8 +422,6 @@
 // export default Page;
 
 
-
-
 "use client";
 import React, {
   useState,
@@ -439,7 +437,6 @@ import {
   getTheaterByIdAdmin,
   getUserById,
   updateUserStatus,
-  updateUser,
 } from "../../services/adminCommunication";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast, { Toaster } from "react-hot-toast";
@@ -622,7 +619,7 @@ function StepIndicator({ current }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CINEMA SEAT PICKER
 // ─────────────────────────────────────────────────────────────────────────────
-function CinemaSeatPicker({ theater, selectedSeats, onSeatsChange, takenSeatNumbers = new Set() }) {
+function CinemaSeatPicker({ theater, selectedSeats, onSeatsChange }) {
   const [activeScreen, setActiveScreen] = useState(null);
 
   const groundScreen = theater?.screens?.find(
@@ -989,7 +986,6 @@ function CinemaSeatPicker({ theater, selectedSeats, onSeatsChange, takenSeatNumb
                       const isBooked = sd?.isBooked;
                       const isSel = isSelected(r, c);
                       const color = sd?.zoneColor || "#4a9edd";
-                      const isTaken = !isEmpty && !isBooked && takenSeatNumbers.has(sd?.seatNumber || `${String.fromCharCode(65 + r)}${c + 1}`);
 
                       let bg, border, cursor, transform;
                       if (isEmpty) {
@@ -1000,11 +996,6 @@ function CinemaSeatPicker({ theater, selectedSeats, onSeatsChange, takenSeatNumb
                       } else if (isBooked) {
                         bg = "#1f2028";
                         border = "#2a2a38";
-                        cursor = "not-allowed";
-                        transform = "none";
-                      } else if (isTaken) {
-                        bg = "#f59e0b40";
-                        border = "#f59e0b";
                         cursor = "not-allowed";
                         transform = "none";
                       } else if (isSel) {
@@ -1026,10 +1017,10 @@ function CinemaSeatPicker({ theater, selectedSeats, onSeatsChange, takenSeatNumb
                           )}
                           <button
                             onClick={() => toggleSeat(r, c)}
-                            disabled={isEmpty || isBooked || isTaken}
+                            disabled={isEmpty || isBooked}
                             title={
                               sd
-                                ? isTaken ? `${getRowLabel(r)}${c + 1} · Assigned to another owner` : `${getRowLabel(r)}${c + 1} · ${sd.zoneName}`
+                                ? `${getRowLabel(r)}${c + 1} · ${sd.zoneName}`
                                 : ""
                             }
                             style={{
@@ -1048,8 +1039,6 @@ function CinemaSeatPicker({ theater, selectedSeats, onSeatsChange, takenSeatNumb
                                 ? 0
                                 : isBooked
                                 ? 0.35
-                                : isTaken
-                                ? 0.9
                                 : 1,
                             }}
                           />
@@ -2185,8 +2174,7 @@ function CreateOwnerModal({ onClose, onCreated }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ASSIGN SEATS MODAL  (for existing owner)
 // ─────────────────────────────────────────────────────────────────────────────
-function AssignSeatsModal({ owner, owners = [], onClose, onSaved }) {
-  const queryClient = useQueryClient();
+function AssignSeatsModal({ owner, onClose }) {
   const [selectedTheaterId, setSelectedTheaterId] = useState("");
   const [selectedTheater, setSelectedTheater] = useState(null);
   const [selectedSeats, setSelectedSeats] = useState(new Map());
@@ -2203,120 +2191,14 @@ function AssignSeatsModal({ owner, owners = [], onClose, onSaved }) {
     enabled: !!selectedTheaterId,
   });
 
-  // When theater detail loads, pre-populate with owner's existing seats for this theater
   useEffect(() => {
-    if (!theaterDetailData?.data) return;
-    const theater = theaterDetailData.data;
-    setSelectedTheater(theater);
-
-    // Build seatNumber → {r, c, screenId, zoneId, zoneName, zoneColor, seatNumber} map
-    const seatNumberMap = {};
-    (theater.screens || []).forEach((screen) => {
-      (screen.zones || []).forEach((zone) => {
-        (zone.rows || []).forEach((row) => {
-          (row.seats || []).forEach((seat) => {
-            const r = (seat.rowNumber || 1) - 1;
-            const c = (seat.columnNumber || 1) - 1;
-            const sn = seat.seatNumber || `${String.fromCharCode(65 + r)}${c + 1}`;
-            seatNumberMap[sn] = {
-              r, c,
-              screenId: screen._id,
-              zoneId: zone.id,
-              zoneName: zone.name,
-              zoneColor: zone.color || "#3b82f6",
-              seatId: seat.seatId,
-              seatNumber: sn,
-              isBooked: seat.isBooked || !seat.isAvailable,
-            };
-          });
-        });
-      });
-    });
-
-    // Pre-populate selectedSeats from owner's existing accessibleSeats for this theater
-    const ownerSeats = (owner.accessibleSeats || []).filter(
-      (a) => a.theaterId === selectedTheaterId
-    );
-    const preSelected = new Map();
-    ownerSeats.forEach((access) => {
-      (access.seatNumbers || []).forEach((sn) => {
-        const sd = seatNumberMap[sn];
-        if (sd && !sd.isBooked) {
-          const key = `${sd.screenId}::${sd.r}-${sd.c}`;
-          preSelected.set(key, sd);
-        }
-      });
-    });
-    setSelectedSeats(preSelected);
+    if (theaterDetailData?.data) setSelectedTheater(theaterDetailData.data);
   }, [theaterDetailData]);
 
   useEffect(() => {
     setSelectedSeats(new Map());
     setSelectedTheater(null);
   }, [selectedTheaterId]);
-
-  // Compute seatNumbers taken by OTHER owners for the selected theater
-  const takenSeatNumbers = useMemo(() => {
-    const taken = new Set();
-    owners.forEach((o) => {
-      if (o._id === owner._id) return; // skip self
-      (o.accessibleSeats || []).forEach((a) => {
-        if (a.theaterId === selectedTheaterId) {
-          (a.seatNumbers || []).forEach((sn) => taken.add(sn));
-        }
-      });
-    });
-    return taken;
-  }, [owners, owner._id, selectedTheaterId]);
-
-  // Save mutation
-  const { mutate: saveSeats, isPending: isSaving } = useMutation({
-    mutationFn: () => {
-      // Build grouped accessibleSeats from selectedSeats
-      const grouped = new Map();
-      selectedSeats.forEach((sd) => {
-        const key = `${sd.screenId}::${sd.zoneId}`;
-        if (!grouped.has(key))
-          grouped.set(key, {
-            screenId: sd.screenId,
-            zoneId: sd.zoneId,
-            zoneName: sd.zoneName,
-            seatNumbers: [],
-          });
-        grouped.get(key).seatNumbers.push(
-          sd.seatNumber || `${String.fromCharCode(65 + sd.r)}${sd.c + 1}`
-        );
-      });
-
-      // Keep existing accessibleSeats for other theaters, replace for selected theater
-      const otherTheaterSeats = (owner.accessibleSeats || []).filter(
-        (a) => a.theaterId !== selectedTheaterId
-      );
-      const newAccessibleSeats = [
-        ...otherTheaterSeats,
-        ...Array.from(grouped.values()).map((g) => ({
-          theaterId: selectedTheaterId,
-          screenId: g.screenId,
-          zoneId: g.zoneId,
-          zoneName: g.zoneName,
-          seatNumbers: g.seatNumbers,
-          isActive: true,
-        })),
-      ];
-
-      return updateUser(owner._id, { accessibleSeats: newAccessibleSeats });
-    },
-    onSuccess: () => {
-      toast.success(`Seat access updated for ${owner.name}!`);
-      queryClient.invalidateQueries({ queryKey: ["adminTheaterOwners"] });
-      onSaved?.();
-      onClose();
-    },
-    onError: (err) =>
-      toast.error(
-        err?.response?.data?.message || err.message || "Failed to save seat assignment"
-      ),
-  });
 
   const seatSummary = useMemo(() => {
     const byZone = new Map();
@@ -2524,7 +2406,6 @@ function AssignSeatsModal({ owner, owners = [], onClose, onSaved }) {
                   theater={selectedTheater}
                   selectedSeats={selectedSeats}
                   onSeatsChange={setSelectedSeats}
-                  takenSeatNumbers={takenSeatNumbers}
                 />
               </div>
             )}
@@ -2735,66 +2616,34 @@ function AssignSeatsModal({ owner, owners = [], onClose, onSaved }) {
               </div>
             )}
 
-            {/* Taken by others info */}
-            {takenSeatNumbers.size > 0 && (
-              <div
+            {selectedSeats.size > 0 && (
+              <button
+                onClick={() => {
+                  toast.success(
+                    `${selectedSeats.size} seats assigned to ${owner?.name}!`
+                  );
+                  onClose();
+                }}
                 style={{
-                  marginTop: 12,
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                  background: "rgba(245,158,11,.08)",
-                  border: "1px solid rgba(245,158,11,.25)",
-                  fontSize: 11,
-                  color: "#d97706",
-                  fontWeight: 600,
+                  width: "100%",
+                  marginTop: 14,
+                  padding: "11px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
                 }}
               >
-                🟡 {takenSeatNumbers.size} seat{takenSeatNumbers.size !== 1 ? "s" : ""} already assigned to other owners
-              </div>
+                <MdEventSeat /> Save Seat Assignment
+              </button>
             )}
-
-            <button
-              onClick={() => saveSeats()}
-              disabled={isSaving}
-              style={{
-                width: "100%",
-                marginTop: 14,
-                padding: "11px",
-                borderRadius: 10,
-                border: "none",
-                background: isSaving
-                  ? "#6d28d9"
-                  : "linear-gradient(135deg,#7c3aed,#4f46e5)",
-                color: "#fff",
-                cursor: isSaving ? "not-allowed" : "pointer",
-                fontWeight: 700,
-                fontSize: 13,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                opacity: isSaving ? 0.8 : 1,
-                transition: "all .15s",
-              }}
-            >
-              {isSaving ? (
-                <>
-                  <div
-                    style={{
-                      width: 14,
-                      height: 14,
-                      border: "2px solid rgba(255,255,255,.4)",
-                      borderTopColor: "#fff",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
-                    }}
-                  />
-                  Saving…
-                </>
-              ) : (
-                <><MdEventSeat /> Save Seat Assignment ({selectedSeats.size} seats)</>
-              )}
-            </button>
           </div>
         </div>
       </div>
@@ -4159,11 +4008,7 @@ export default function TheaterOwnersPage() {
       {assignOwner && (
         <AssignSeatsModal
           owner={assignOwner}
-          owners={owners}
           onClose={() => setAssignOwner(null)}
-          onSaved={() => {
-            queryClient.invalidateQueries({ queryKey: ["adminTheaterOwners"] });
-          }}
         />
       )}
 
