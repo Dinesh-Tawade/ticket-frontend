@@ -410,7 +410,7 @@
 //               disabled={isLoading}
 //               className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 disabled:bg-gray-400 cursor-pointer"
 //             >
-//               {isLoading ? 'Creating...' : 'Create Theater Owner with Seat Access'}
+//               {isLoading ? 'Creating...' : 'Create  Admin with Seat Access'}
 //             </button>
 //           </div>
 //         </form>
@@ -1130,7 +1130,7 @@ function CinemaSeatPicker({ theater, selectedSeats, onSeatsChange, takenSeatNumb
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CREATE THEATER OWNER WIZARD (modal)
+// Create  Admin WIZARD (modal)
 // ─────────────────────────────────────────────────────────────────────────────
 const OWNER_FIELDS = [
   {
@@ -1414,7 +1414,7 @@ function CreateOwnerModal({ onClose, onCreated }) {
                   color: "var(--foreground)",
                 }}
               >
-                Create Theater Owner
+                Create  Admin
               </div>
               <div
                 style={{
@@ -3536,7 +3536,7 @@ export default function TheaterOwnersPage() {
                 margin: 0,
               }}
             >
-              Theater Owners
+              Admin
             </h1>
             <p
               style={{
@@ -3571,7 +3571,7 @@ export default function TheaterOwnersPage() {
           onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
           onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
         >
-          <FaPlus style={{ fontSize: 12 }} /> Create Theater Owner
+          <FaPlus style={{ fontSize: 12 }} /> Create Admin
         </button>
       </div>
 
@@ -3748,7 +3748,7 @@ export default function TheaterOwnersPage() {
             <span
               style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 600 }}
             >
-              Loading theater owners…
+              Loading Admin…
             </span>
           </div>
         ) : error ? (
@@ -3784,12 +3784,12 @@ export default function TheaterOwnersPage() {
                 marginBottom: 6,
               }}
             >
-              {search ? "No owners match your search" : "No theater owners yet"}
+              {search ? "No owners match your search" : "No Admin yet"}
             </div>
             <div
               style={{ fontSize: 12, color: "var(--foreground)", opacity: 0.6 }}
             >
-              {!search && 'Click \u201cCreate Theater Owner\u201d to add your first one.'}
+              {!search && 'Click \u201cCreate  Admin\u201d to add your first one.'}
             </div>
           </div>
         ) : (
