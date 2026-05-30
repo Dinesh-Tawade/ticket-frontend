@@ -1,3 +1,4 @@
+// Update your TheaterOwnerSidebar.js - Add this to notify layout about collapse state
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -23,12 +24,35 @@ export default function TheaterOwnerSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // ✅ Responsive
+  // Load saved collapse state
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    if (savedState !== null) {
+      setIsCollapsed(JSON.parse(savedState));
+    }
+  }, []);
+
+  // Save collapse state and notify layout
+  const handleCollapseToggle = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+    
+    // Dispatch event to notify layout
+    window.dispatchEvent(new CustomEvent('sidebarToggle', { 
+      detail: { collapsed: newState } 
+    }));
+  };
+
+  // Responsive
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) setIsCollapsed(true);
+      if (mobile) {
+        setIsCollapsed(true);
+        setIsMobileMenuOpen(false);
+      }
     };
 
     handleResize();
@@ -36,15 +60,19 @@ export default function TheaterOwnerSidebar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ Menu items 
+  // Close mobile menu on route change
+  useEffect(() => {
+    if (isMobile) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [pathname, isMobile]);
+
+  // Menu items 
   const menuItems = useMemo(
     () => [
       { name: "Dashboard", path: "/theater-owner/dashboard", icon: MdDashboard },
-      // { name: "My Theater", path: "/theater-owner/theater", icon: FaBuilding },
       { name: "Shows", path: "/theater-owner/shows", icon: FaFilm },
       { name: "Booked Tickets", path: "/theater-owner/bookings", icon: FaCalendarAlt },
-      // { name: "Ticket Scan", path: "/theater-owner/ticket-scan", icon: GiTheaterCurtains },
-      { name: "Settings", path: "/theater-owner/settings", icon: FaBars },
     ],
     []
   );
@@ -54,14 +82,13 @@ export default function TheaterOwnerSidebar() {
     if (isMobile) setIsMobileMenuOpen(false);
   };
 
-  // ✅ Logout handler
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("sidebarCollapsed");
     router.push("/login");
   };
 
-  // ✅ Sidebar Item Component
   const SidebarItem = ({ item }) => {
     const Icon = item.icon;
     const isActive = pathname === item.path;
@@ -79,7 +106,6 @@ export default function TheaterOwnerSidebar() {
             }
           `}
         >
-          {/* Left Indicator */}
           <span
             className={`
               absolute left-0 top-0 h-full w-1 bg-blue-500
@@ -88,7 +114,6 @@ export default function TheaterOwnerSidebar() {
             `}
           />
 
-          {/* Icon */}
           <Icon
             className={`
               text-lg transition-all duration-300 flex-shrink-0
@@ -100,7 +125,6 @@ export default function TheaterOwnerSidebar() {
             `}
           />
 
-          {/* Text */}
           {!isCollapsed && (
             <span
               className={`
@@ -116,10 +140,8 @@ export default function TheaterOwnerSidebar() {
     );
   };
 
-  // ✅ Sidebar Content - FIXED: No overflow-y-auto on entire sidebar
   const SidebarContent = () => (
     <div className="h-full flex flex-col">
-      {/* Header - Fixed at top */}
       <div className="flex-shrink-0 p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           {!isCollapsed ? (
@@ -144,18 +166,10 @@ export default function TheaterOwnerSidebar() {
               <GiTheaterCurtains className="text-white text-xl" />
             </div>
           )}
-
-          {isMobile && (
-            <FaTimes
-              className="text-gray-400 cursor-pointer text-lg hover:text-white transition-colors flex-shrink-0"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-          )}
         </div>
       </div>
 
-      {/* Menu - NO SCROLLBAR, just normal flow */}
-      <div className="flex-1 p-3">
+      <div className="flex-1 p-3 overflow-y-auto">
         <ul className="space-y-1">
           {menuItems.map((item) => (
             <SidebarItem key={item.name} item={item} />
@@ -163,7 +177,6 @@ export default function TheaterOwnerSidebar() {
         </ul>
       </div>
 
-      {/* Logout Button - Fixed at bottom */}
       <div className="flex-shrink-0 p-3 border-t border-gray-700">
         <div
           onClick={handleLogout}
@@ -183,7 +196,6 @@ export default function TheaterOwnerSidebar() {
     </div>
   );
 
-  // Mobile Sidebar Content
   const MobileSidebarContent = () => (
     <div className="h-full flex flex-col bg-[#0f172a]">
       <div className="flex-shrink-0 p-4 border-b border-gray-700">
@@ -208,7 +220,7 @@ export default function TheaterOwnerSidebar() {
         </div>
       </div>
 
-      <div className="flex-1 p-3">
+      <div className="flex-1 p-3 overflow-y-auto">
         <ul className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -252,26 +264,27 @@ export default function TheaterOwnerSidebar() {
   return (
     <>
       {/* Mobile Menu Button */}
-      {isMobile && (
+      {isMobile && !isMobileMenuOpen && (
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="fixed top-4 left-4 z-30 p-2.5 bg-[#0f172a] rounded-lg shadow-lg"
+          className="fixed top-4 left-4 z-30 p-2.5 bg-[#0f172a] rounded-lg shadow-lg hover:bg-gray-800 transition-colors"
+          aria-label="Open menu"
         >
           <FaBars className="text-white text-lg" />
         </button>
       )}
 
-      {/* Desktop Sidebar - FIXED: No overflow properties */}
+      {/* Desktop Sidebar */}
       {!isMobile && (
         <>
           <aside
             className="fixed left-0 top-0 h-screen bg-[#0f172a] transition-all duration-300 shadow-xl z-20"
             style={{ width: isCollapsed ? "72px" : "240px" }}
           >
-            {/* Collapse Button */}
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              onClick={handleCollapseToggle}
               className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-30"
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isCollapsed ? (
                 <FaChevronRight className="text-white text-xs" />
@@ -283,26 +296,52 @@ export default function TheaterOwnerSidebar() {
             <SidebarContent />
           </aside>
 
-          {/* Spacer div to push main content - CRITICAL */}
-          <div
-            style={{ width: isCollapsed ? "72px" : "240px", flexShrink: 0 }}
-            className="transition-all duration-300"
-          />
+          {/* Spacer div for layout */}
+          <div style={{ display: 'none' }} />
         </>
       )}
 
       {/* Mobile Drawer */}
-      {isMobileMenuOpen && (
+      {isMobile && isMobileMenuOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 z-40"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fadeIn"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50 shadow-2xl">
+          
+          <div className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50 shadow-2xl animate-slideIn">
             <MobileSidebarContent />
           </div>
         </>
       )}
+
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(-100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        .animate-slideIn {
+          animation: slideIn 0.3s ease-out;
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 }

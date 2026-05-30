@@ -150,15 +150,12 @@ export default function Navbar() {
 
         {/* Brand */}
         <a href="/" className="flex items-center gap-3 no-underline">
-          <div className="relative w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-[#6c5ce7] to-[#a855f7] flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
-            <svg className="relative z-10" width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
-              <circle cx="8" cy="8" r="2" fill="white" />
-            </svg>
+          <div className="relative w-[34px] h-[34px]  flex items-center justify-center overflow-hidden">
+            <div className="" />
+         
           </div>
           <div>
-            <p
+            {/* <p
               className="text-[15px] font-bold tracking-tight leading-none transition-colors duration-200"
               style={{ color: "var(--foreground)" }}
             >
@@ -169,7 +166,7 @@ export default function Navbar() {
               style={{ color: "var(--blue)", opacity: 0.7 }}
             >
               System console
-            </p>
+            </p> */}
           </div>
         </a>
 
