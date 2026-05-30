@@ -31,17 +31,31 @@ import {
 import { MdLocalMovies, MdEventSeat } from 'react-icons/md';
 import { GiTheater, GiTheaterCurtains } from 'react-icons/gi';
 
-// ==================== SINGLE TICKET STUB (from bookings page) ====================
+// ==================== SINGLE TICKET STUB (UPDATED WITH PROPER QR FORMAT) ====================
 const SingleTicket = React.forwardRef(({ booking, seat, showDate, theater, show }, ref) => {
   const category = seat?.category || booking?.seats?.[0]?.category || "NORMAL";
   const seatLabel = `${seat?.rowName || "—"}${seat?.seatNumber || "—"}`;
   
   // Get show time from the show object or booking
-  const showTime = show?.startTime || booking?.showTime || new Date().toLocaleTimeString();
+  const showTime = show?.startTime || booking?.showTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const movieName = show?.movie?.name || booking?.movieName || "Movie";
   const theaterName = theater?.name || booking?.theaterId?.name || "PVR Cinemas";
   const theaterAddress = theater?.address || booking?.theaterId?.address || "Premium Cinema Hall";
   const screenName = show?.screenNumber ? `Screen ${show.screenNumber}` : (booking?.screen || "Screen 1");
+  
+  // Format date properly
+  const formattedDate = new Date(showDate).toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  // Generate proper QR code data in format: BKG{bookingId}|{rowName}|{seatNumber}|{seatLabel}
+  const bookingId = booking?.bookingId || "BKG" + Date.now();
+  const rowName = seat?.rowName || "—";
+  const seatNumber = seat?.seatNumber || "—";
+  const qrData = `${bookingId}|${rowName}|${seatNumber}|${seatLabel}`;
 
   return (
     <div className="st-ticket" ref={ref}>
@@ -53,21 +67,21 @@ const SingleTicket = React.forwardRef(({ booking, seat, showDate, theater, show 
         <div className="st-row">
           <span className="st-ico">📅</span>
           <div>
-            <div className="st-lbl">Date</div>
-            <div className="st-val">{showDate}</div>
+            <div className="st-lbl">DATE</div>
+            <div className="st-val">{formattedDate}</div>
           </div>
         </div>
         <div className="st-row">
           <span className="st-ico">🕐</span>
           <div>
-            <div className="st-lbl">Time</div>
+            <div className="st-lbl">TIME</div>
             <div className="st-val">{showTime}</div>
           </div>
         </div>
         <div className="st-row">
           <span className="st-ico">🏛️</span>
           <div>
-            <div className="st-lbl">Theater</div>
+            <div className="st-lbl">THEATER</div>
             <div className="st-val">{theaterName}</div>
             {theaterAddress && <div className="st-sub">{theaterAddress}</div>}
           </div>
@@ -75,7 +89,7 @@ const SingleTicket = React.forwardRef(({ booking, seat, showDate, theater, show 
         <div className="st-row">
           <span className="st-ico">🎬</span>
           <div>
-            <div className="st-lbl">Screen</div>
+            <div className="st-lbl">SCREEN</div>
             <div className="st-val">{screenName}</div>
           </div>
         </div>
@@ -91,7 +105,7 @@ const SingleTicket = React.forwardRef(({ booking, seat, showDate, theater, show 
           </div>
           <div className="st-box-wrap">
             <div className="st-box-lbl">PRICE</div>
-            <div className="st-price">₹{seat?.price ?? booking?.totalAmount}</div>
+            <div className="st-price">₹{seat?.price ?? booking?.totalAmount ?? 150}</div>
           </div>
         </div>
       </div>
@@ -105,11 +119,11 @@ const SingleTicket = React.forwardRef(({ booking, seat, showDate, theater, show 
 
       {/* RIGHT */}
       <div className="st-right">
-        <div className="st-bkid">{booking?.bookingId || "BKID"}</div>
+        <div className="st-bkid">{bookingId}</div>
         <div className="st-qr-wrap">
           <div className="st-qr">
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${booking?.bookingId || ''}|${seat?.rowName || ''}|${seat?.seatNumber || ''}|${seatLabel}`)}&bgcolor=ffffff&color=000000`}
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}&bgcolor=ffffff&color=000000&ecc=H`}
               alt="QR Code"
               className="w-full h-full"
               style={{ width: '100%', height: '100%' }}
@@ -124,7 +138,7 @@ const SingleTicket = React.forwardRef(({ booking, seat, showDate, theater, show 
 });
 SingleTicket.displayName = "SingleTicket";
 
-// ==================== TICKET MODAL (from bookings page) ====================
+// ==================== TICKET MODAL (UPDATED) ====================
 const TicketModal = ({ booking, show, theater, onClose, onRedirect }) => {
   const router = useRouter();
   const seats = booking?.seats?.length ? booking.seats : [{}];
@@ -153,6 +167,7 @@ const TicketModal = ({ booking, show, theater, onClose, onRedirect }) => {
       link.click();
     } catch { window.print(); }
   };
+  
 
   const handleDownloadAll = async () => {
     try {
@@ -242,10 +257,11 @@ const TicketModal = ({ booking, show, theater, onClose, onRedirect }) => {
   );
 };
 
-// ==================== CINEMA SEAT FLOOR COMPONENT ====================
+// ==================== CINEMA SEAT FLOOR COMPONENT (UPDATED WITH CLEAR BOOKED SEAT VISIBILITY) ====================
 const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], aisleRows = [], selected, onToggle, accessibleSeatSet }) => {
   const getRowLabel = (r) => String.fromCharCode(65 + r);
   const getZone = (id) => zones.find((z) => z.id === id);
+  const [hoveredSeat, setHoveredSeat] = useState(null);
 
   const buildRowSegments = (r) => {
     const segs = [];
@@ -287,6 +303,7 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
         {Array.from({ length: rows }, (_, r) => {
           const hasRowAisle = aisleRows.find((a) => a.idx === r - 1);
           const segs = buildRowSegments(r);
+          const rowLabel = getRowLabel(r);
 
           return (
             <span key={r} style={{ display: "contents" }}>
@@ -294,7 +311,7 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
 
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <div style={{ width: 22, textAlign: "center", fontSize: 10, fontWeight: 700, color: "#9ca3af", flexShrink: 0 }}>
-                  {getRowLabel(r)}
+                  {rowLabel}
                 </div>
 
                 {segs.map((seg, si) => {
@@ -349,14 +366,14 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
                   const isSel = selected.has(fullKey);
                   const col = zone ? zone.color : "#4a9edd";
                   const colAisle = aisleCols.find((a) => a.idx === c - 1);
-                  const seatNumber = `${getRowLabel(r)}${c + 1}`;
+                  const seatNumber = `${rowLabel}${c + 1}`;
                   const isAccessible = accessibleSeatSet?.has(seatNumber) || false;
 
                   let seatStyle = {
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     flexShrink: 0,
-                    borderRadius: "5px 5px 3px 3px",
+                    borderRadius: "6px 6px 4px 4px",
                     cursor: "default",
                     fontSize: 0,
                     border: "none",
@@ -370,14 +387,23 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
                   } else if (isBlocked) {
                     seatStyle = { ...seatStyle, background: "#1f2028", border: "1.5px solid #2a2a38", opacity: 0.5 };
                   } else if (isBooked) {
-                    seatStyle = { ...seatStyle, background: col + "30", border: `1.5px solid ${col}45`, opacity: 0.4 };
+                    seatStyle = { 
+                      ...seatStyle, 
+                      background: "#dc2626", 
+                      border: "2px solid #b91c1c", 
+                      opacity: 0.85,
+                      cursor: "not-allowed"
+                    };
                   } else if (!isAccessible) {
                     seatStyle = { ...seatStyle, background: "#2a2a38", border: "1.5px solid #3a3a48", opacity: 0.35 };
                   } else if (isSel) {
-                    seatStyle = { ...seatStyle, background: col, border: `2px solid #fff`, cursor: "pointer", transform: "scale(1.1)" };
+                    seatStyle = { ...seatStyle, background: col, border: `2px solid #fff`, cursor: "pointer", transform: "scale(1.05)" };
                   } else {
                     seatStyle = { ...seatStyle, background: col + "28", border: `1.5px solid ${col}70`, cursor: "pointer" };
                   }
+
+                  const seatTooltip = !isAisle && zone ? `${rowLabel}${c + 1} · ${zone.name} · ₹${Math.round(zone.basePrice * (zone.priceMultiplier || 1))}` : "";
+                  const isSeatBooked = isBooked && !isAisle && !isBlocked;
 
                   return (
                     <span key={si} style={{ display: "contents" }}>
@@ -386,8 +412,26 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
                         style={seatStyle}
                         disabled={isAisle || isBlocked || isBooked || !isAccessible}
                         onClick={() => !isAisle && !isBlocked && !isBooked && isAccessible && onToggle(fullKey, zone)}
-                        title={!isAisle && zone ? `${getRowLabel(r)}${c + 1} · ${zone.name} · ₹${Math.round(zone.basePrice * (zone.priceMultiplier || 1))}` : ""}
-                      />
+                        onMouseEnter={() => setHoveredSeat(seatNumber)}
+                        onMouseLeave={() => setHoveredSeat(null)}
+                        title={seatTooltip}
+                        className="relative group"
+                      >
+                        {isSeatBooked && (
+                          <>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-white opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </div>
+                            {hoveredSeat === seatNumber && (
+                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-red-700 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap z-20 shadow-lg pointer-events-none">
+                                BOOKED
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </button>
                     </span>
                   );
                 })}
@@ -621,11 +665,11 @@ const CinemaBookingPreview = ({ theater, show, timing, accessibleSeats = [], onC
           {[
             { color: "#22c55e28", border: "#22c55e", label: "Your Seats" },
             { color: "#4a9edd28", border: "#4a9edd70", label: "Available" },
-            { color: "#1f2028", border: "#2a2a38", label: "Taken" },
+            { color: "#dc2626", border: "#b91c1c", label: "Booked" },
             { color: "#2a2a38", border: "#3a3a48", label: "No Access" },
           ].map((l) => (
             <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af" }}>
-              <div style={{ width: 14, height: 14, borderRadius: 3, background: l.color, border: `1.5px solid ${l.border}` }} />
+              <div style={{ width: 16, height: 16, borderRadius: 4, background: l.color, border: `1.5px solid ${l.border}` }} />
               {l.label}
             </div>
           ))}
@@ -822,7 +866,7 @@ const CinemaBookingPreview = ({ theater, show, timing, accessibleSeats = [], onC
           <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: ".08em" }}>Selected Seats</div>
           <div style={{ fontSize: 13, color: "#e5e7eb" }}>
             {selectionInfo.count === 0 ? (
-              <span style={{ color: "#4b5563" }}>Click on green seats above to select</span>
+              <span style={{ color: "#4b5563" }}>Click on green/blue seats above to select</span>
             ) : (
               <>
                 <span style={{ color: "#e2c97e", fontWeight: 700 }}>
@@ -976,7 +1020,7 @@ const ShowCard = ({ show, onBookTicket, accessibleCount = 0 }) => {
   );
 };
 
-// ==================== STYLES (from bookings page) ====================
+// ==================== STYLES ====================
 const MODAL_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
@@ -1039,7 +1083,7 @@ const MODAL_STYLES = `
   }
   .tm-btn-ghost:hover{color:rgba(255,255,255,.7);}
 
-  /* ── Single Ticket ── */
+  /* ── Single Ticket Styles inside Modal ── */
   .st-ticket{
     display:flex;background:#fff;border-radius:16px;
     overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.55);
@@ -1098,6 +1142,7 @@ const MODAL_STYLES = `
   }
   .st-qr-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
   .st-qr{width:88px;height:88px;background:#fff;border-radius:8px;border:1px solid rgba(0,0,0,.07);display:flex;align-items:center;justify-content:center;padding:7px;}
+  .st-qr img{width:100%;height:100%;object-fit:contain;}
   .st-scan{font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;}
   .st-circle{
     width:46px;height:46px;border-radius:50%;
@@ -1113,6 +1158,7 @@ const MODAL_STYLES = `
     .st-ticket{flex-direction:column;}
     .st-right{width:100%;flex-direction:row;justify-content:space-around;border-left:none;border-top:1px dashed rgba(0,0,0,.1);padding:14px;}
     .st-bkid{writing-mode:horizontal-tb;transform:none;position:static;}
+    .st-qr{width:70px;height:70px;}
   }
 `;
 

@@ -27,12 +27,23 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
   const [hoveredSeat, setHoveredSeat] = useState(null);
   const [theaterZones, setTheaterZones] = useState([]);
   const [screenPosition, setScreenPosition] = useState("top");
+  const [isMobile, setIsMobile] = useState(false);
 
   // Check if user is authenticated
   const isAuthenticated = () => {
     const token = localStorage.getItem("authToken") || localStorage.getItem("token");
     return !!token;
   };
+
+  // Responsive detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     fetchSeats();
@@ -255,12 +266,12 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
 
   if (bookingComplete) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-8 max-w-md text-center">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full text-center">
           <div className="text-6xl mb-4">🎉</div>
-          <h2 className="text-2xl font-bold mb-4">Booking Confirmed!</h2>
+          <h2 className="text-xl md:text-2xl font-bold mb-4">Booking Confirmed!</h2>
           <p className="text-gray-600 mb-4">Your tickets have been generated.</p>
-          <p className="text-sm text-gray-500 mb-6">Booking ID: {bookingData?.bookingId}</p>
+          <p className="text-sm text-gray-500 mb-6 break-all">Booking ID: {bookingData?.bookingId}</p>
           <div className="space-y-3">
             <button onClick={viewMyBookings} className="w-full bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700">
               View My Bookings
@@ -305,14 +316,12 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
     });
   });
 
-  // Sort seats in each row
   Object.keys(allRows).forEach(row => {
     allRows[row].sort((a, b) => parseInt(a.number) - parseInt(b.number));
   });
 
   const sortedRows = Object.keys(allRows).sort();
 
-  // Group zones by position for layout (if theaterZones available)
   const zonesByPosition = {
     top: theaterZones.filter(z => z.position === 'top'),
     left: theaterZones.filter(z => z.position === 'left'),
@@ -321,16 +330,19 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
     bottom: theaterZones.filter(z => z.position === 'bottom'),
   };
 
-  // Render seats for a zone
   const renderZoneSeats = (zoneRows) => {
+    const seatSize = isMobile ? "w-8 h-8" : "w-9 h-9";
+    const iconSize = isMobile ? "text-[10px]" : "text-xs";
+    const numberSize = isMobile ? "text-[6px]" : "text-[7px]";
+    
     return zoneRows.map((rowName) => {
       const seats = allRows[rowName] || [];
       if (seats.length === 0) return null;
       
       return (
-        <div key={rowName} className="flex justify-center items-center gap-2 mb-2">
-          <div className="w-8 text-right">
-            <span className="text-xs font-bold" style={{ color: "var(--foreground)", opacity: 0.5 }}>{rowName}</span>
+        <div key={rowName} className="flex justify-center items-center gap-1 md:gap-2 mb-2">
+          <div className="w-6 md:w-8 text-right">
+            <span className="text-[10px] md:text-xs font-bold" style={{ color: "var(--foreground)", opacity: 0.5 }}>{rowName}</span>
           </div>
           <div className="flex flex-wrap justify-center gap-1">
             {seats.map((seat) => {
@@ -345,24 +357,28 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
                   onClick={() => handleSeatSelect(seat.category, rowName, { seatNumber: seat.number, isBooked: seat.isBooked, price: seat.price })}
                   disabled={isBooked}
                   className={`
-                    relative group w-9 h-9 rounded-lg flex flex-col items-center justify-center transition-all duration-200
+                    relative group ${seatSize} rounded-lg flex flex-col items-center justify-center transition-all duration-200
                     ${isBooked 
-                      ? 'bg-red-500/20 border border-red-500 cursor-not-allowed opacity-60' 
+                      ? 'bg-zinc-900 border-2 border-red-700/80 cursor-not-allowed opacity-75' 
                       : isSelected
                         ? 'bg-green-500 text-white shadow-md scale-105 border-2 border-green-400'
                         : 'hover:scale-105 hover:shadow-md cursor-pointer'
                     }
                   `}
                   style={{
-                    backgroundColor: isBooked ? undefined : (isSelected ? undefined : `${seat.color}20`),
-                    borderColor: isBooked ? undefined : (isSelected ? undefined : seat.color),
-                    color: isSelected ? 'white' : seat.color
+                    backgroundColor: isBooked 
+                      ? '#1f2937' 
+                      : isSelected 
+                        ? undefined 
+                        : `${seat.color}20`,
+                    borderColor: isBooked ? '#b91c1c' : isSelected ? undefined : seat.color,
+                    color: isBooked ? '#6b7280' : isSelected ? 'white' : seat.color
                   }}
                   onMouseEnter={() => setHoveredSeat(seatLabel)}
                   onMouseLeave={() => setHoveredSeat(null)}
                 >
-                  <Icon className="text-xs" />
-                  <span className="text-[7px] font-mono font-bold mt-0.5">{seat.number}</span>
+                  <Icon className={iconSize} />
+                  <span className={`${numberSize} font-mono font-bold mt-0.5`}>{seat.number}</span>
                   
                   {hoveredSeat === seatLabel && !isBooked && (
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap z-10 shadow-lg pointer-events-none">
@@ -378,7 +394,6 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
     });
   };
 
-  // Get rows for each position
   const getRowsForPosition = (position) => {
     const zoneRows = [];
     const zonesAtPosition = zonesByPosition[position] || [];
@@ -393,50 +408,55 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--background)" }}>
-      <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen pb-24 md:pb-0" style={{ background: "var(--background)" }}>
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-6">
         <div className="max-w-6xl mx-auto">
           {/* Movie Info Header */}
-          <div className="rounded-xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-            <div className="flex justify-between items-center flex-wrap gap-3">
-              <div>
-                <h1 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
+          <div className="rounded-xl p-3 md:p-4 mb-4 md:mb-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+              <div className="w-full md:w-auto">
+                <h1 className="text-base md:text-xl font-bold truncate" style={{ color: "var(--foreground)" }}>
                   {showDetails?.movie?.name || showDetails?.movieName}
                 </h1>
-                <p className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                <p className="text-xs md:text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                   {showDetails?.theaterId?.name} | {new Date(showDetails?.showDate).toLocaleDateString()} | {showDetails?.startTime}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Selected Seats</p>
-                <p className="text-2xl font-bold text-yellow-500">{selectedSeats.length}</p>
-                <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Total: ₹{calculateTotal()}</p>
+              <div className="flex justify-between items-center w-full md:w-auto md:justify-end gap-4">
+                <div>
+                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Selected Seats</p>
+                  <p className="text-xl md:text-2xl font-bold text-yellow-500">{selectedSeats.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Total</p>
+                  <p className="text-base md:text-lg font-bold text-green-500">₹{calculateTotal()}</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Screen */}
-          <div className="text-center mb-6">
-            <div className="inline-block px-6 py-1.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold shadow-lg">
+          <div className="text-center mb-4 md:mb-6">
+            <div className="inline-block px-4 md:px-6 py-1 md:py-1.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] md:text-xs font-bold shadow-lg">
               🎬 S C R E E N
             </div>
-            <p className="text-[9px] text-foreground/40 mt-1">← AUDIENCE VIEW →</p>
+            <p className="text-[8px] md:text-[9px] text-foreground/40 mt-1">← AUDIENCE VIEW →</p>
           </div>
 
           {/* 2D Seats Layout with Positions */}
           <div className="rounded-xl overflow-x-auto" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-            <div className="p-4">
+            <div className="p-2 md:p-4">
               {/* Top Zones (Balcony) */}
               {zonesByPosition.top.length > 0 && (
                 <div className="mb-4">
-                  <div className="text-center text-[9px] font-bold text-foreground/50 mb-2">⬆️ BALCONY</div>
-                  <div className="flex flex-wrap justify-center gap-4">
+                  <div className="text-center text-[8px] md:text-[9px] font-bold text-foreground/50 mb-2">⬆️ BALCONY</div>
+                  <div className="flex flex-wrap justify-center gap-2 md:gap-4">
                     {zonesByPosition.top.map(zone => {
                       const zoneRows = getRowsForPosition('top');
                       return (
-                        <div key={zone.id} className="bg-card rounded-lg p-2" style={{ border: `1px solid ${zone.color}30` }}>
-                          <div className="text-center mb-2">
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${zone.color}20`, color: zone.color }}>
+                        <div key={zone.id} className="bg-card rounded-lg p-1 md:p-2" style={{ border: `1px solid ${zone.color}30` }}>
+                          <div className="text-center mb-1 md:mb-2">
+                            <span className="text-[8px] md:text-[9px] font-bold px-1 md:px-2 py-0.5 rounded-full" style={{ background: `${zone.color}20`, color: zone.color }}>
                               {zone.name}
                             </span>
                           </div>
@@ -449,17 +469,16 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
               )}
 
               {/* Left + Center + Right */}
-              <div className="flex flex-wrap justify-center gap-4">
-                {/* Left Zones */}
+              <div className="flex flex-wrap justify-center gap-2 md:gap-4">
                 {zonesByPosition.left.length > 0 && (
                   <div className="flex-shrink-0">
-                    <div className="text-center text-[9px] font-bold text-foreground/50 mb-2">⬅️ LEFT</div>
+                    <div className="text-center text-[8px] md:text-[9px] font-bold text-foreground/50 mb-2">⬅️ LEFT</div>
                     {zonesByPosition.left.map(zone => {
                       const zoneRows = getRowsForPosition('left');
                       return (
-                        <div key={zone.id} className="bg-card rounded-lg p-2 mb-2" style={{ border: `1px solid ${zone.color}30` }}>
-                          <div className="text-center mb-2">
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${zone.color}20`, color: zone.color }}>
+                        <div key={zone.id} className="bg-card rounded-lg p-1 md:p-2 mb-2" style={{ border: `1px solid ${zone.color}30` }}>
+                          <div className="text-center mb-1 md:mb-2">
+                            <span className="text-[8px] md:text-[9px] font-bold px-1 md:px-1.5 py-0.5 rounded" style={{ background: `${zone.color}20`, color: zone.color }}>
                               {zone.name}
                             </span>
                           </div>
@@ -470,16 +489,15 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
                   </div>
                 )}
 
-                {/* Center Zones */}
                 {zonesByPosition.center.length > 0 && (
                   <div className="flex-shrink-0">
-                    <div className="text-center text-[9px] font-bold text-foreground/50 mb-2">🎯 CENTER</div>
+                    <div className="text-center text-[8px] md:text-[9px] font-bold text-foreground/50 mb-2">🎯 CENTER</div>
                     {zonesByPosition.center.map(zone => {
                       const zoneRows = getRowsForPosition('center');
                       return (
-                        <div key={zone.id} className="bg-card rounded-lg p-2 mb-2 shadow-md" style={{ border: `2px solid ${zone.color}40` }}>
-                          <div className="text-center mb-2">
-                            <span className="text-[10px] font-bold px-3 py-0.5 rounded-full" style={{ background: `${zone.color}25`, color: zone.color }}>
+                        <div key={zone.id} className="bg-card rounded-lg p-1 md:p-2 mb-2 shadow-md" style={{ border: `2px solid ${zone.color}40` }}>
+                          <div className="text-center mb-1 md:mb-2">
+                            <span className="text-[9px] md:text-[10px] font-bold px-2 md:px-3 py-0.5 rounded-full" style={{ background: `${zone.color}25`, color: zone.color }}>
                               {zone.name}
                             </span>
                           </div>
@@ -490,16 +508,15 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
                   </div>
                 )}
 
-                {/* Right Zones */}
                 {zonesByPosition.right.length > 0 && (
                   <div className="flex-shrink-0">
-                    <div className="text-center text-[9px] font-bold text-foreground/50 mb-2">RIGHT ➡️</div>
+                    <div className="text-center text-[8px] md:text-[9px] font-bold text-foreground/50 mb-2">RIGHT ➡️</div>
                     {zonesByPosition.right.map(zone => {
                       const zoneRows = getRowsForPosition('right');
                       return (
-                        <div key={zone.id} className="bg-card rounded-lg p-2 mb-2" style={{ border: `1px solid ${zone.color}30` }}>
-                          <div className="text-center mb-2">
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${zone.color}20`, color: zone.color }}>
+                        <div key={zone.id} className="bg-card rounded-lg p-1 md:p-2 mb-2" style={{ border: `1px solid ${zone.color}30` }}>
+                          <div className="text-center mb-1 md:mb-2">
+                            <span className="text-[8px] md:text-[9px] font-bold px-1 md:px-1.5 py-0.5 rounded" style={{ background: `${zone.color}20`, color: zone.color }}>
                               {zone.name}
                             </span>
                           </div>
@@ -514,14 +531,14 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
               {/* Bottom Zones */}
               {zonesByPosition.bottom.length > 0 && (
                 <div className="mt-4">
-                  <div className="text-center text-[9px] font-bold text-foreground/50 mb-2">⬇️ FRONT</div>
-                  <div className="flex flex-wrap justify-center gap-4">
+                  <div className="text-center text-[8px] md:text-[9px] font-bold text-foreground/50 mb-2">⬇️ FRONT</div>
+                  <div className="flex flex-wrap justify-center gap-2 md:gap-4">
                     {zonesByPosition.bottom.map(zone => {
                       const zoneRows = getRowsForPosition('bottom');
                       return (
-                        <div key={zone.id} className="bg-card rounded-lg p-2" style={{ border: `1px solid ${zone.color}30` }}>
-                          <div className="text-center mb-2">
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${zone.color}20`, color: zone.color }}>
+                        <div key={zone.id} className="bg-card rounded-lg p-1 md:p-2" style={{ border: `1px solid ${zone.color}30` }}>
+                          <div className="text-center mb-1 md:mb-2">
+                            <span className="text-[8px] md:text-[9px] font-bold px-1 md:px-2 py-0.5 rounded-full" style={{ background: `${zone.color}20`, color: zone.color }}>
                               {zone.name}
                             </span>
                           </div>
@@ -533,17 +550,20 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
                 </div>
               )}
 
-              {/* If no zones, show simple layout */}
+              {/* Fallback Simple Layout */}
               {theaterZones.length === 0 && (
                 <div>
                   {sortedRows.map((rowName) => {
                     const seats = allRows[rowName] || [];
                     if (seats.length === 0) return null;
+                    const seatSize = isMobile ? "w-8 h-8" : "w-9 h-9";
+                    const iconSize = isMobile ? "text-[10px]" : "text-xs";
+                    const numberSize = isMobile ? "text-[6px]" : "text-[7px]";
                     
                     return (
-                      <div key={rowName} className="flex justify-center items-center gap-2 mb-2">
-                        <div className="w-8 text-right">
-                          <span className="text-xs font-bold" style={{ color: "var(--foreground)", opacity: 0.5 }}>{rowName}</span>
+                      <div key={rowName} className="flex justify-center items-center gap-1 md:gap-2 mb-2">
+                        <div className="w-6 md:w-8 text-right">
+                          <span className="text-[10px] md:text-xs font-bold" style={{ color: "var(--foreground)", opacity: 0.5 }}>{rowName}</span>
                         </div>
                         <div className="flex flex-wrap justify-center gap-1">
                           {seats.map((seat) => {
@@ -558,24 +578,24 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
                                 onClick={() => handleSeatSelect(seat.category, rowName, { seatNumber: seat.number, isBooked: seat.isBooked, price: seat.price })}
                                 disabled={isBooked}
                                 className={`
-                                  relative group w-9 h-9 rounded-lg flex flex-col items-center justify-center transition-all duration-200
+                                  relative group ${seatSize} rounded-lg flex flex-col items-center justify-center transition-all duration-200
                                   ${isBooked 
-                                    ? 'bg-red-500/20 border border-red-500 cursor-not-allowed opacity-60' 
+                                    ? 'bg-zinc-900 border-2 border-red-700/80 cursor-not-allowed opacity-75' 
                                     : isSelected
                                       ? 'bg-green-500 text-white shadow-md scale-105 border-2 border-green-400'
                                       : 'hover:scale-105 hover:shadow-md cursor-pointer'
                                   }
                                 `}
                                 style={{
-                                  backgroundColor: isBooked ? undefined : (isSelected ? undefined : `${seat.color}20`),
-                                  borderColor: isBooked ? undefined : (isSelected ? undefined : seat.color),
-                                  color: isSelected ? 'white' : seat.color
+                                  backgroundColor: isBooked ? '#1f2937' : isSelected ? undefined : `${seat.color}20`,
+                                  borderColor: isBooked ? '#b91c1c' : isSelected ? undefined : seat.color,
+                                  color: isBooked ? '#6b7280' : isSelected ? 'white' : seat.color
                                 }}
                                 onMouseEnter={() => setHoveredSeat(seatLabel)}
                                 onMouseLeave={() => setHoveredSeat(null)}
                               >
-                                <Icon className="text-xs" />
-                                <span className="text-[7px] font-mono font-bold mt-0.5">{seat.number}</span>
+                                <Icon className={iconSize} />
+                                <span className={`${numberSize} font-mono font-bold mt-0.5`}>{seat.number}</span>
                                 
                                 {hoveredSeat === seatLabel && !isBooked && (
                                   <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap z-10 shadow-lg pointer-events-none">
@@ -595,56 +615,58 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap gap-3 justify-center mt-5">
+          <div className="flex flex-wrap gap-2 md:gap-3 justify-center mt-4 md:mt-5">
             {theaterZones.slice(0, 4).map(zone => (
-              <div key={zone.id} className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: zone.color }} />
-                <span className="text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>{zone.name}</span>
-                <span className="text-[10px]" style={{ color: "var(--foreground)", opacity: 0.5 }}>₹{zone.basePrice * zone.priceMultiplier}</span>
+              <div key={zone.id} className="flex items-center gap-1 md:gap-1.5">
+                <div className="w-2 h-2 md:w-3 md:h-3 rounded-sm" style={{ backgroundColor: zone.color }} />
+                <span className="text-[9px] md:text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>{zone.name}</span>
+                <span className="text-[9px] md:text-[10px]" style={{ color: "var(--foreground)", opacity: 0.5 }}>₹{zone.basePrice * zone.priceMultiplier}</span>
               </div>
             ))}
             {theaterZones.length === 0 && (
               <>
                 {Object.entries(SEAT_TYPES).map(([key, config]) => (
-                  <div key={key} className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded" style={{ backgroundColor: `${config.color}40`, border: `1px solid ${config.color}` }} />
-                    <config.icon className="text-[10px]" style={{ color: config.color }} />
-                    <span className="text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>{config.label}</span>
+                  <div key={key} className="flex items-center gap-1 md:gap-1.5">
+                    <div className="w-2 h-2 md:w-3 md:h-3 rounded" style={{ backgroundColor: `${config.color}40`, border: `1px solid ${config.color}` }} />
+                    <config.icon className="text-[9px] md:text-[10px]" style={{ color: config.color }} />
+                    <span className="text-[9px] md:text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>{config.label}</span>
                   </div>
                 ))}
               </>
             )}
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-green-500 border border-green-400" />
-              <span className="text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>Selected</span>
+            <div className="flex items-center gap-1 md:gap-1.5">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded bg-green-500 border border-green-400" />
+              <span className="text-[9px] md:text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>Selected</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-red-500/30 border border-red-500" />
-              <span className="text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>Booked</span>
+            <div className="flex items-center gap-1 md:gap-1.5">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded bg-zinc-900 border border-red-700" />
+              <span className="text-[9px] md:text-[10px]" style={{ color: "var(--foreground)", opacity: 0.7 }}>Booked</span>
             </div>
           </div>
 
-          {/* Booking Footer */}
+          {/* Booking Footer - Mobile Friendly */}
           <div className="fixed bottom-0 left-0 right-0 z-10 border-t shadow-lg" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-            <div className="container mx-auto px-4 py-3">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <FaChair className="text-yellow-500 text-sm" />
-                    <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-                      {selectedSeats.length} Seat{selectedSeats.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="h-5 w-px" style={{ background: "var(--card-border)" }} />
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>Total:</span>
-                    <span className="text-lg font-bold text-green-500">₹{calculateTotal()}</span>
+            <div className="container mx-auto px-3 md:px-4 py-2 md:py-3">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-3">
+                <div className="flex items-center justify-between w-full md:w-auto gap-3">
+                  <div className="flex items-center gap-1.5 md:gap-3">
+                    <div className="flex items-center gap-1 md:gap-1.5">
+                      <FaChair className="text-yellow-500 text-xs md:text-sm" />
+                      <span className="text-sm md:text-base font-semibold" style={{ color: "var(--foreground)" }}>
+                        {selectedSeats.length} Seat{selectedSeats.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="h-4 md:h-5 w-px" style={{ background: "var(--card-border)" }} />
+                    <div className="flex items-center gap-1 md:gap-1.5">
+                      <span className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>Total:</span>
+                      <span className="text-base md:text-lg font-bold text-green-500">₹{calculateTotal()}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto">
                   <button
                     onClick={onBack}
-                    className="px-4 py-1.5 rounded-lg font-semibold text-sm transition-all border"
+                    className="flex-1 md:flex-none px-3 md:px-4 py-1.5 rounded-lg font-semibold text-sm transition-all border"
                     style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   >
                     Back
@@ -652,7 +674,7 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
                   <button
                     onClick={handleBooking}
                     disabled={loading || selectedSeats.length === 0}
-                    className="px-6 py-1.5 rounded-lg font-bold text-sm transition-all bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 md:flex-none px-4 md:px-6 py-1.5 rounded-lg font-bold text-sm transition-all bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <><FaSpinner className="animate-spin inline mr-1 text-xs" /> Processing...</>
@@ -664,9 +686,6 @@ const SeatSelection = ({ showId, showDetails, onBack, onNeedLogin }) => {
               </div>
             </div>
           </div>
-
-          {/* Padding for fixed footer */}
-          <div className="h-20" />
         </div>
       </div>
     </div>

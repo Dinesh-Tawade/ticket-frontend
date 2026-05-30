@@ -47,7 +47,7 @@ export default function VendorSidebar() {
       { name: "Dashboard", path: "/vendor/dashboard", icon: MdDashboard },
       { name: "My Store", path: "/vendor/store", icon: FaStore },
       { name: "Products", path: "/vendor/products", icon: FaBox },
-      { name: "Categories", path: "/vendor/categories", icon: FaTags },
+      // { name: "Categories", path: "/vendor/categories", icon: FaTags },
       { name: "Orders", path: "/vendor/orders", icon: FaShoppingCart },
       { name: "Sales Report", path: "/vendor/sales", icon: FaChartLine },
       { name: "Payments", path: "/vendor/payments", icon: FaCreditCard },
