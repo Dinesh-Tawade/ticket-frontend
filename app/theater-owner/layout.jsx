@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../components/TheaterOwnerSidebar";
 import Navbar from "../components/Navbar";
+import { getMe } from "../services/adminCommunication";
 
 export default function TheaterOwnerLayout({ children }) {
   const router = useRouter();
@@ -19,6 +20,17 @@ export default function TheaterOwnerLayout({ children }) {
     } else if (user.role !== "THEATER_OWNER") {
       router.push("/");
     } else {
+      getMe()
+        .then((res) => {
+          const profile = res.data || res;
+          if (profile?.accessibleSeats) {
+            localStorage.setItem(
+              "user",
+              JSON.stringify({ ...user, accessibleSeats: profile.accessibleSeats })
+            );
+          }
+        })
+        .catch(() => {});
       setAuthenticated(true);
       setChecking(false);
     }

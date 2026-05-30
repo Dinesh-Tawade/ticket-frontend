@@ -1,731 +1,785 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast, Toaster } from 'react-hot-toast';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
+import { useSelector } from "react-redux";
+// import Foods from "../food/Foods";
+import { getMyBookings, cancelBooking } from "@/app/services/publicCommunication";
 import {
-  getMyTheaterBookings,
-  getTheaterBookings,
-  getMyTheaters,
-  verifyTicket,
-  markTicketAsUsed,
-} from "../../services/adminCommunication";
-import {
+  FaTicketAlt, FaCalendarAlt, FaClock, FaChair,
+  FaMapMarkerAlt, FaTimes, FaCheckCircle, FaHourglassHalf,
+  FaBan, FaDownload, FaFilm, FaChevronLeft, FaChevronRight,
   FaSpinner,
-  FaEye,
-  FaSearch,
-  FaTimes,
-  FaCalendarAlt,
-  FaClock,
-  FaFilm,
-  FaTicketAlt,
-  FaRupeeSign,
-  FaUser,
-  FaEnvelope,
-  FaPhone,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaHourglassHalf,
-  FaQrcode,
-  FaDownload,
-  FaPrint,
-  FaFilter,
-  FaArrowLeft,
-  FaArrowRight,
-  FaStar,
-  FaTheaterMasks,
-  FaUsers,
-  FaMoneyBillWave,
-  FaSync,
-} from 'react-icons/fa';
-import { MdEventSeat, MdQrCodeScanner } from 'react-icons/md';
-import { GiTheater } from 'react-icons/gi';
-import { SiMyshows } from 'react-icons/si';
+} from "react-icons/fa";
+import Header from "@/app/components/public/Header";
+import Footer from "@/app/components/public/Footer";
+import AuthModal from "@/app/components/public/AuthModal";
 
-// ==================== STAT CARD COMPONENT ====================
-const StatCard = ({ label, value, icon: Icon, color, subtitle }) => {
-  const colorMap = {
-    purple: "from-purple-500 to-indigo-600",
-    blue: "from-blue-500 to-cyan-600",
-    green: "from-green-500 to-emerald-600",
-    orange: "from-orange-500 to-red-600",
-    yellow: "from-yellow-500 to-amber-600",
-    pink: "from-pink-500 to-rose-600",
-    red: "from-red-500 to-rose-600",
-  };
+/* ────────────────────────────────────────────────────────────────
+   SINGLE TICKET STUB (one per seat)
+──────────────────────────────────────────────────────────────── */
+const SingleTicket = React.forwardRef(({ booking, seat, showDate }, ref) => {
+  const category = seat?.category || booking.seats?.[0]?.category || "EXECUTIVE";
+  const seatLabel = `${seat?.rowName || "—"}${seat?.seatNumber || "—"}`;
   
-  const gradientClass = colorMap[color] || colorMap.purple;
-  
+  // Get the first seat's price or total amount
+  const seatPrice = seat?.price || 
+    (booking.seats?.length === 1 ? booking.totalAmount : 
+     (booking.seats?.find(s => s.seatNumber === seat?.seatNumber)?.price || seat?.price || 0));
+
   return (
-    <div className="relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl group"
-      style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-      <div className="absolute top-0 right-0 w-20 h-20 -mr-6 -mt-6 rounded-full bg-gradient-to-br opacity-10 group-hover:opacity-20 transition-opacity"
-        style={{ background: `linear-gradient(135deg, ${gradientClass.split(' ')[1]} 0%, ${gradientClass.split(' ')[3]} 100%)` }} />
-      <div className="relative p-4">
-        <div className="flex items-center justify-between">
+    <div className="st-ticket" ref={ref}>
+      {/* LEFT */}
+      <div className="st-left">
+        <div className="st-movie">{booking.movieName}</div>
+        <span className="st-cat">{category}</span>
+        <div className="st-sep" />
+        <div className="st-row">
+          <span className="st-ico">📅</span>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-              {label}
-            </p>
-            <p className="text-2xl font-bold mt-1" style={{ color: "var(--foreground)" }}>
-              {typeof value === 'number' ? value.toLocaleString() : value}
-            </p>
-            {subtitle && (
-              <p className="text-xs mt-1" style={{ color: "var(--foreground)", opacity: 0.5 }}>{subtitle}</p>
+            <div className="st-lbl">Date</div>
+            <div className="st-val">{showDate}</div>
+          </div>
+        </div>
+        <div className="st-row">
+          <span className="st-ico">🕐</span>
+          <div>
+            <div className="st-lbl">Time</div>
+            <div className="st-val">{booking.showTime}</div>
+          </div>
+        </div>
+        <div className="st-row">
+          <span className="st-ico">🏛️</span>
+          <div>
+            <div className="st-lbl">Theater</div>
+            <div className="st-val">{booking.theaterId?.name || "Anant Vijay Auditorium"}</div>
+            {booking.theaterId?.address && <div className="st-sub">{booking.theaterId.address}</div>}
+          </div>
+        </div>
+        <div className="st-row">
+          <span className="st-ico">🎬</span>
+          <div>
+            <div className="st-lbl">Screen</div>
+            <div className="st-val">{booking.screen || "Screen 1"}</div>
+          </div>
+        </div>
+        <div className="st-sep" />
+        <div className="st-footer">
+          <div className="st-box-wrap">
+            <div className="st-box-lbl">ROW</div>
+            <div className="st-box">{seat?.rowName || "—"}</div>
+          </div>
+          <div className="st-box-wrap">
+            <div className="st-box-lbl">SEAT</div>
+            <div className="st-box">{seat?.seatNumber || "—"}</div>
+          </div>
+          <div className="st-box-wrap">
+            <div className="st-box-lbl">PRICE</div>
+            <div className="st-price">₹{seatPrice || booking.totalAmount}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* PERF */}
+      <div className="st-perf">
+        <div className="st-perf-dot st-perf-dot--t" />
+        <div className="st-perf-line" />
+        <div className="st-perf-dot st-perf-dot--b" />
+      </div>
+
+      {/* RIGHT */}
+      <div className="st-right">
+        <div className="st-bkid">{booking.bookingId}</div>
+        <div className="st-qr-wrap">
+          <div className="st-qr">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${booking.bookingId}|${seat?.rowName || ''}|${seat?.seatNumber || ''}|${seatLabel}`)}&bgcolor=ffffff&color=000000`}
+              alt="QR Code"
+              className="w-full h-full"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
+          <div className="st-scan">SCAN TO VERIFY</div>
+        </div>
+        <div className="st-circle">{seatLabel}</div>
+      </div>
+    </div>
+  );
+});
+SingleTicket.displayName = "SingleTicket";
+
+/* ────────────────────────────────────────────────────────────────
+   TICKET MODAL — carousel, one ticket per seat
+──────────────────────────────────────────────────────────────── */
+const TicketModal = ({ booking, onClose }) => {
+  const seats = booking.seats?.length ? booking.seats : [{}];
+  const [idx, setIdx] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const ticketRef = useRef(null);
+
+  const showDate = new Date(booking.showDate).toLocaleDateString("en-IN", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
+  });
+
+  const capture = async () => {
+    const html2canvas = (await import("html2canvas")).default;
+    return html2canvas(ticketRef.current, {
+      scale: 3, 
+      backgroundColor: "#ffffff", 
+      useCORS: true, 
+      logging: false,
+    });
+  };
+
+  const handleDownload = async () => {
+    if (!ticketRef.current || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const canvas = await capture();
+      const link = document.createElement("a");
+      link.download = `ticket-${booking.bookingId}-seat${idx + 1}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      toast.success("Ticket downloaded!");
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error("Failed to download ticket");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      for (let i = 0; i < seats.length; i++) {
+        setIdx(i);
+        await new Promise(r => setTimeout(r, 500));
+        if (!ticketRef.current) continue;
+        const canvas = await capture();
+        const link = document.createElement("a");
+        link.download = `ticket-${booking.bookingId}-seat${i + 1}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        await new Promise(r => setTimeout(r, 300));
+      }
+      toast.success(`Downloaded ${seats.length} tickets!`);
+    } catch (error) {
+      console.error("Download all failed:", error);
+      toast.error("Failed to download all tickets");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <div className="tm-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="tm-wrap">
+        {/* Header */}
+        <div className="tm-header">
+          <div className="tm-header-l">
+            <h2 className="tm-title">Your Ticket</h2>
+            {seats.length > 1 && (
+              <span className="tm-counter">{idx + 1} / {seats.length} seats</span>
             )}
           </div>
-          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center shadow-lg`}>
-            <Icon className="text-white text-lg" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ==================== BOOKING CARD COMPONENT ====================
-const BookingCard = ({ booking, onView, onCheckIn, isCheckInMode }) => {
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
-
-  const getStatusConfig = (status) => {
-    switch(status) {
-      case 'CONFIRMED': 
-        return { color: 'bg-green-500', text: 'Confirmed', icon: <FaCheckCircle size={10} /> };
-      case 'PENDING': 
-        return { color: 'bg-yellow-500', text: 'Pending', icon: <FaHourglassHalf size={10} /> };
-      case 'CANCELLED': 
-        return { color: 'bg-red-500', text: 'Cancelled', icon: <FaTimesCircle size={10} /> };
-      case 'EXPIRED': 
-        return { color: 'bg-gray-500', text: 'Expired', icon: <FaTimesCircle size={10} /> };
-      default: 
-        return { color: 'bg-gray-500', text: status, icon: null };
-    }
-  };
-
-  const statusConfig = getStatusConfig(booking.bookingStatus);
-  const isCheckedIn = booking.isCheckedIn || false;
-  const checkedInCount = booking.checkedInSeatsCount || 0;
-  const totalSeats = booking.totalSeats || booking.seats?.length || 0;
-
-  return (
-    <div className={`group rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl cursor-pointer ${
-      isCheckInMode ? 'border-2 border-purple-500/50' : ''
-    }`}
-      style={{ background: "var(--card)", border: "1px solid var(--card-border)", boxShadow: "var(--card-shadow)" }}
-      onClick={() => onView(booking)}>
-      
-      {/* Header */}
-      <div className="p-4 border-b" style={{ borderColor: "var(--card-border)" }}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <FaTicketAlt className="text-purple-500 text-sm" />
-            <span className="text-xs font-mono" style={{ color: "var(--foreground)", opacity: 0.7 }}>
-              {booking.bookingId}
-            </span>
-          </div>
-          <div className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${statusConfig.color} text-white`}>
-            {statusConfig.icon}
-            {statusConfig.text}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
-          <FaUser className="text-purple-400 text-xs" />
-          <span className="font-medium">{booking.userId?.name || 'Guest'}</span>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4 space-y-3">
-        {/* Show Info */}
-        <div className="space-y-1.5">
-          <h4 className="font-semibold text-sm line-clamp-1" style={{ color: "var(--foreground)" }}>
-            {booking.movieName || booking.showId?.movie?.name}
-          </h4>
-          <div className="flex items-center gap-3 text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-            <div className="flex items-center gap-1">
-              <FaCalendarAlt size={10} />
-              <span>{formatDate(booking.showDate)}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <FaClock size={10} />
-              <span>{booking.showTime}</span>
-            </div>
-          </div>
+          <button className="tm-x" onClick={onClose}><FaTimes size={15} /></button>
         </div>
 
-        {/* Seat Info */}
-        <div className="flex flex-wrap gap-1">
-          {booking.seats?.slice(0, 4).map((seat, idx) => (
-            <span key={idx} className="px-2 py-0.5 rounded-md text-xs font-mono"
-              style={{ background: "var(--background)", color: "var(--foreground)" }}>
-              {seat.rowName}{seat.seatNumber}
-            </span>
-          ))}
-          {booking.seats?.length > 4 && (
-            <span className="px-2 py-0.5 rounded-md text-xs" style={{ background: "var(--background)", color: "var(--foreground)", opacity: 0.6 }}>
-              +{booking.seats.length - 4}
-            </span>
-          )}
-        </div>
-
-        {/* Price & Check-in Status */}
-        <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--card-border)" }}>
-          <div className="flex items-center gap-1">
-            <FaRupeeSign className="text-green-500 text-xs" />
-            <span className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{booking.totalAmount}</span>
-          </div>
-          {isCheckInMode ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); onCheckIn(booking); }}
-              disabled={isCheckedIn}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all disabled:opacity-50"
-              style={{ background: isCheckedIn ? '#22c55e20' : '#a855f7', color: isCheckedIn ? '#22c55e' : 'white' }}
+        {/* Carousel */}
+        <div className="tm-carousel">
+          {seats.length > 1 && (
+            <button 
+              className="tm-nav" 
+              onClick={() => setIdx(i => Math.max(0, i - 1))} 
+              disabled={idx === 0}
             >
-              {isCheckedIn ? (
-                <>✅ Checked In</>
-              ) : checkedInCount > 0 ? (
-                <>🔄 {checkedInCount}/{totalSeats} Checked</>
-              ) : (
-                <>🎟️ Check In</>
-              )}
+              <FaChevronLeft size={13} />
             </button>
-          ) : (
-            <div className="flex items-center gap-1 text-xs" style={{ color: isCheckedIn ? '#22c55e' : '#f59e0b' }}>
-              {isCheckedIn ? (
-                <>✅ All {totalSeats} seats checked in</>
-              ) : checkedInCount > 0 ? (
-                <>🔄 {checkedInCount}/{totalSeats} seats checked in</>
-              ) : (
-                <>⏳ Not checked in</>
-              )}
-            </div>
+          )}
+          <SingleTicket 
+            ref={ticketRef} 
+            booking={booking} 
+            seat={seats[idx]} 
+            showDate={showDate} 
+          />
+          {seats.length > 1 && (
+            <button 
+              className="tm-nav" 
+              onClick={() => setIdx(i => Math.min(seats.length - 1, i + 1))} 
+              disabled={idx === seats.length - 1}
+            >
+              <FaChevronRight size={13} />
+            </button>
           )}
         </div>
-      </div>
-    </div>
-  );
-};
 
-// ==================== BOOKING DETAILS MODAL ====================
-const BookingDetailsModal = ({ isOpen, onClose, booking, onCheckIn }) => {
-  const [qrData, setQrData] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState(null);
-
-  if (!isOpen || !booking) return null;
-
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
-
-  const totalSeats = booking.totalSeats || booking.seats?.length || 0;
-  const checkedInCount = booking.checkedInSeatsCount || 0;
-  const isFullyCheckedIn = checkedInCount === totalSeats;
-
-  const handleSeatCheckIn = async (seat) => {
-    if (seat.isSeatCheckedIn) {
-      toast.error('Seat already checked in');
-      return;
-    }
-    toast.success(`Seat ${seat.rowName}${seat.seatNumber} checked in successfully`);
-  };
-
-  const getPaymentStatusConfig = (status) => {
-    switch(status) {
-      case 'PAID': return { color: 'text-green-500', bg: 'bg-green-500/10', text: 'Paid' };
-      case 'PENDING': return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', text: 'Pending' };
-      case 'FREE': return { color: 'text-blue-500', bg: 'bg-blue-500/10', text: 'Free' };
-      case 'FAILED': return { color: 'text-red-500', bg: 'bg-red-500/10', text: 'Failed' };
-      default: return { color: 'text-gray-500', bg: 'bg-gray-500/10', text: status };
-    }
-  };
-
-  const paymentConfig = getPaymentStatusConfig(booking.paymentStatus);
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" style={{ background: "var(--card)" }} onClick={(e) => e.stopPropagation()}>
-        
-        {/* Header */}
-        <div className="sticky top-0 p-5 border-b flex justify-between items-center" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div>
-            <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Booking Details</h2>
-            <p className="text-xs font-mono mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>{booking.bookingId}</p>
+        {/* Seat dots */}
+        {seats.length > 1 && (
+          <div className="tm-dots">
+            {seats.map((_, i) => (
+              <button 
+                key={i} 
+                className={`tm-dot ${i === idx ? "tm-dot--on" : ""}`} 
+                onClick={() => setIdx(i)} 
+              />
+            ))}
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <FaTimes />
+        )}
+
+        {/* Actions */}
+        <div className="tm-actions">
+          <button className="tm-btn-primary" onClick={handleDownload} disabled={isDownloading}>
+            {isDownloading ? <FaSpinner className="spin" size={13} /> : <FaDownload size={13} />}
+            {isDownloading ? "Downloading..." : "Download This Ticket"}
+          </button>
+          {seats.length > 1 && (
+            <button className="tm-btn-secondary" onClick={handleDownloadAll} disabled={isDownloading}>
+              <FaDownload size={13} /> All {seats.length} Tickets
+            </button>
+          )}
+          <button className="tm-btn-ghost" onClick={onClose}>
+            <FaTimes size={13} /> Close
           </button>
         </div>
+      </div>
+      <style>{MODAL_STYLES}</style>
+    </div>
+  );
+};
 
-        <div className="p-6 space-y-6">
-          {/* Customer Info */}
-          <div className="rounded-xl p-5" style={{ background: "var(--background)" }}>
-            <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
-              <FaUser className="text-purple-500" /> Customer Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-3">
-                <FaUser className="text-purple-400" />
-                <div>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Name</p>
-                  <p className="font-medium" style={{ color: "var(--foreground)" }}>{booking.userId?.name || 'Guest'}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaEnvelope className="text-purple-400" />
-                <div>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Email</p>
-                  <p className="text-sm" style={{ color: "var(--foreground)" }}>{booking.userId?.email || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaPhone className="text-purple-400" />
-                <div>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Phone</p>
-                  <p className="text-sm" style={{ color: "var(--foreground)" }}>{booking.userId?.phone || 'N/A'}</p>
-                </div>
-              </div>
+/* ────────────────────────────────────────────────────────────────
+   MAIN PAGE
+──────────────────────────────────────────────────────────────── */
+const MyBookingsPage = () => {
+  const { isAuthenticated, token } = useSelector((state) => state.auth);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState("ALL");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
+  
+  const storedToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const hasBookingAccess = Boolean(isAuthenticated || token || storedToken);
+
+  const fetchBookings = useCallback(async () => {
+    if (!hasBookingAccess) return;
+    try {
+      setLoading(true);
+      const res = await getMyBookings();
+      if (res.success && res.data) {
+        setBookings(res.data);
+      } else if (res.bookings) {
+        setBookings(res.bookings);
+      } else {
+        setBookings([]);
+      }
+    } catch (e) { 
+      console.error('Failed to fetch bookings:', e);
+      setBookings([]);
+    } finally { 
+      setLoading(false);
+    }
+  }, [hasBookingAccess]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  const handleCancel = async (bookingId) => {
+    if (!confirm("Are you sure you want to cancel this booking?")) return;
+    setCancellingId(bookingId);
+    try {
+      const res = await cancelBooking(bookingId);
+      if (res.success) { 
+        toast.success("Booking cancelled successfully!");
+        fetchBookings(); 
+      } else {
+        toast.error(res.message || "Failed to cancel booking");
+      }
+    } catch (error) {
+      console.error("Cancel failed:", error);
+      toast.error("Failed to cancel booking");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const STATUS = {
+    CONFIRMED: { icon: <FaCheckCircle size={10} />, cls: "s-confirmed", label: "Confirmed" },
+    PENDING:   { icon: <FaHourglassHalf size={10} />, cls: "s-pending",   label: "Pending"   },
+    CANCELLED: { icon: <FaBan size={10} />,           cls: "s-cancelled", label: "Cancelled" },
+    EXPIRED:   { icon: <FaTimes size={10} />,         cls: "s-expired",   label: "Expired"   },
+    BOOKED:    { icon: <FaCheckCircle size={10} />,   cls: "s-confirmed", label: "Booked"    },
+  };
+  
+  const getStatus = (s) => STATUS[s] || { icon: <FaTimes size={10} />, cls: "s-expired", label: s };
+
+  const FILTERS = ["ALL", "CONFIRMED", "PENDING", "CANCELLED", "EXPIRED", "BOOKED"];
+  const filtered = filter === "ALL" 
+    ? bookings 
+    : bookings.filter(b => b.bookingStatus === filter);
+
+  if (loading) return (
+    <>
+      <style>{PAGE_STYLES}</style>
+      <div className="pg-root">
+        <Header />
+        <div className="pg-loading">
+          <div className="pg-spinner" />
+          <p className="pg-load-txt">Loading your bookings…</p>
+        </div>
+        <Footer />
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      <style>{PAGE_STYLES}</style>
+      <div className="pg-root">
+        <Header />
+        <div className="px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+          {/* Filter Tabs */}
+          <div className="pg-tabs-bar">
+            <div className="pg-tabs">
+              {FILTERS.map(f => {
+                const count = f === "ALL" 
+                  ? bookings.length 
+                  : bookings.filter(b => b.bookingStatus === f).length;
+                return (
+                  <button 
+                    key={f} 
+                    className={`pg-tab ${filter === f ? "pg-tab--on" : ""}`} 
+                    onClick={() => setFilter(f)}
+                  >
+                    {f === "ALL" ? "All" : getStatus(f).label}
+                    <span className="pg-tab-count">{count}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Show Info */}
-          <div className="rounded-xl p-5" style={{ background: "var(--background)" }}>
-            <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
-              <SiMyshows className="text-purple-500" /> Show Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <FaFilm className="text-purple-400" />
-                <div>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Movie</p>
-                  <p className="font-medium" style={{ color: "var(--foreground)" }}>{booking.movieName || booking.showId?.movie?.name}</p>
+          {/* Content */}
+          <main className="pg-main">
+            {!hasBookingAccess ? (
+              <div className="pg-empty">
+                <div className="pg-empty-icon">
+                  <FaTicketAlt />
                 </div>
+                <h3 className="pg-empty-h">Login to view your bookings</h3>
+                <p className="pg-empty-p">
+                  Sign in to see your tickets, download passes, or manage bookings.
+                </p>
+                <button className="pg-btn-primary-link" onClick={() => setShowAuthModal(true)}>
+                  <FaTicketAlt size={13} /> Login
+                </button>
               </div>
-              <div className="flex items-center gap-3">
-                <GiTheater className="text-purple-400" />
-                <div>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Theater</p>
-                  <p className="text-sm" style={{ color: "var(--foreground)" }}>{booking.theaterId?.name || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaCalendarAlt className="text-purple-400" />
-                <div>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Date</p>
-                  <p className="text-sm" style={{ color: "var(--foreground)" }}>{formatDate(booking.showDate)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaClock className="text-purple-400" />
-                <div>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Time</p>
-                  <p className="text-sm" style={{ color: "var(--foreground)" }}>{booking.showTime}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Seats & Payment */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Seats Section */}
-            <div className="rounded-xl p-5" style={{ background: "var(--background)" }}>
-              <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
-                <MdEventSeat className="text-purple-500" /> Booked Seats ({totalSeats})
-              </h3>
-              <div className="space-y-2">
-                {booking.seats?.map((seat, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg" style={{ background: "var(--card)" }}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        seat.category === 'NORMAL' ? 'bg-green-500' :
-                        seat.category === 'EXECUTIVE' ? 'bg-blue-500' :
-                        seat.category === 'PREMIUM' ? 'bg-purple-500' : 'bg-yellow-500'
-                      }`} />
-                      <span className="font-mono font-medium" style={{ color: "var(--foreground)" }}>
-                        {seat.rowName}{seat.seatNumber}
-                      </span>
-                      <span className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>({seat.category})</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium">₹{seat.price}</span>
-                      {!isFullyCheckedIn && !seat.isSeatCheckedIn && (
-                        <button
-                          onClick={() => handleSeatCheckIn(seat)}
-                          className="px-2 py-1 rounded-lg text-xs bg-purple-500 text-white hover:bg-purple-600 transition-colors"
-                        >
-                          Check In
-                        </button>
-                      )}
-                      {seat.isSeatCheckedIn && (
-                        <span className="text-xs text-green-500 flex items-center gap-1">
-                          <FaCheckCircle size={10} /> Checked
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 pt-3 border-t flex justify-between" style={{ borderColor: "var(--card-border)" }}>
-                <span className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>Total Amount</span>
-                <span className="text-xl font-bold text-green-500">₹{booking.totalAmount}</span>
-              </div>
-            </div>
-
-            {/* Payment Section */}
-            <div className="space-y-4">
-              {/* Payment Status */}
-              <div className="rounded-xl p-5" style={{ background: "var(--background)" }}>
-                <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
-                  <FaMoneyBillWave className="text-purple-500" /> Payment Status
-                </h3>
-                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${paymentConfig.bg}`}>
-                  <span className={`text-sm font-medium ${paymentConfig.color}`}>{paymentConfig.text}</span>
-                </div>
-                {booking.paymentId && (
-                  <p className="text-xs mt-3 font-mono" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-                    Transaction ID: {booking.paymentId}
-                  </p>
+            ) : filtered.length === 0 ? (
+              <div className="pg-empty">
+                <div className="pg-empty-icon">🎬</div>
+                <h3 className="pg-empty-h">No bookings found</h3>
+                <p className="pg-empty-p">
+                  {filter !== "ALL" ? `No ${filter.toLowerCase()} bookings.` : "You haven't booked any tickets yet."}
+                </p>
+                {filter === "ALL" && (
+                  <Link href="/public/shows" className="pg-btn-primary-link">
+                    <FaTicketAlt size={13} /> Browse Shows
+                  </Link>
                 )}
               </div>
+            ) : (
+              <div className="pg-grid">
+                {filtered.map((booking, i) => {
+                  const st = getStatus(booking.bookingStatus);
+                  const seats = booking.seats || [];
+                  const seatCount = seats.length;
+                  const canCancel = booking.bookingStatus === "CONFIRMED" || 
+                                    booking.bookingStatus === "PENDING" ||
+                                    booking.bookingStatus === "BOOKED";
+                  const isCancelling = cancellingId === booking.bookingId;
 
-              {/* Check-in Action */}
-              {!isFullyCheckedIn && (
-                <button
-                  onClick={() => onCheckIn(booking)}
-                  className="w-full py-3 rounded-xl font-medium bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                >
-                  <FaCheckCircle /> Check In All Seats
-                </button>
-              )}
-            </div>
-          </div>
+                  return (
+                    <div key={booking._id || booking.bookingId} className="pg-card" style={{ animationDelay: `${i * 70}ms` }}>
+                      <div className="pg-card-accent" />
 
-          {/* Booking Timeline */}
-          <div className="rounded-xl p-5" style={{ background: "var(--background)" }}>
-            <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
-              <FaClock className="text-purple-500" /> Booking Timeline
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <FaTicketAlt className="text-purple-500 text-sm" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Booked</p>
-                  <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{new Date(booking.bookedAt).toLocaleString()}</p>
-                </div>
+                      {/* Head */}
+                      <div className="pg-card-head">
+                        <div className="pg-card-head-l">
+                          <div className="pg-film-icon"><FaFilm size={15} /></div>
+                          <div className="pg-head-text">
+                            <h3 className="pg-movie">{booking.movieName}</h3>
+                            <div className="pg-theater">
+                              <FaMapMarkerAlt size={9} />
+                              <span>{booking.theaterId?.name || "Anant Vijay Auditorium"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <span className={`pg-badge ${st.cls}`}>{st.icon}{st.label}</span>
+                      </div>
+
+                      {/* Info */}
+                      <div className="pg-info">
+                        <div className="pg-info-item">
+                          <div className="pg-info-icon"><FaCalendarAlt size={11} /></div>
+                          <div>
+                            <div className="pg-info-lbl">Date</div>
+                            <div className="pg-info-val">
+                              {new Date(booking.showDate).toLocaleDateString("en-IN", {
+                                weekday: "short", day: "numeric", month: "short", year: "numeric"
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pg-info-item">
+                          <div className="pg-info-icon"><FaClock size={11} /></div>
+                          <div>
+                            <div className="pg-info-lbl">Time</div>
+                            <div className="pg-info-val">{booking.showTime}</div>
+                          </div>
+                        </div>
+
+                        {/* Seats */}
+                        <div className="pg-info-item pg-info-seats-row">
+                          <div className="pg-info-icon"><FaChair size={11} /></div>
+                          <div className="pg-seats-block">
+                            <div className="pg-info-lbl">
+                              Seats <span className="pg-seat-cnt">({seatCount})</span>
+                            </div>
+                            <div className="pg-seats">
+                              {seats.slice(0, 8).map((s, idx) => (
+                                <span key={idx} className="pg-chip">{s.rowName}{s.seatNumber}</span>
+                              ))}
+                              {seatCount > 8 && (
+                                <span className="pg-chip pg-chip--more">+{seatCount - 8}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pg-info-item">
+                          <div className="pg-info-icon pg-info-icon--dark"><FaTicketAlt size={11} /></div>
+                          <div>
+                            <div className="pg-info-lbl">Amount</div>
+                            <div className="pg-info-val pg-amt">₹{booking.totalAmount}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Booking ID */}
+                      <div className="pg-id-row">
+                        <span className="pg-id-lbl">Booking ID</span>
+                        <span className="pg-id-val">{booking.bookingId}</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="pg-actions">
+                        <button 
+                          className="pg-btn-dl" 
+                          onClick={() => setSelected(booking)}
+                        >
+                          <FaDownload size={11} />
+                          View & Download{seatCount > 1 ? ` (${seatCount})` : ""}
+                        </button>
+                        {canCancel && (
+                          <button 
+                            className="pg-btn-cancel" 
+                            onClick={() => handleCancel(booking.bookingId)}
+                            disabled={isCancelling}
+                          >
+                            {isCancelling ? <FaSpinner size={11} className="spin" /> : <FaTimes size={11} />}
+                            {isCancelling ? "Cancelling..." : "Cancel"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {booking.confirmedAt && (
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <FaCheckCircle className="text-green-500 text-sm" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Confirmed</p>
-                    <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{new Date(booking.confirmedAt).toLocaleString()}</p>
-                  </div>
-                </div>
-              )}
-              {booking.checkedInAt && (
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <FaUser className="text-blue-500 text-sm" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Checked In</p>
-                    <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{new Date(booking.checkedInAt).toLocaleString()}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </main>
         </div>
+        {/* <Foods /> */}
+        <Footer />
+
+        {selected && <TicketModal booking={selected} onClose={() => setSelected(null)} />}
+        <AuthModal
+          isOpen={showAuthModal && !hasBookingAccess}
+          onClose={() => setShowAuthModal(false)}
+          initialMode="login"
+        />
       </div>
-    </div>
+    </>
   );
 };
 
-// ==================== FILTER BAR ====================
-const FilterBar = ({ theaters, selectedTheater, onTheaterChange, onStatusFilter, onDateFilter, onSearch, onClearFilters }) => {
-  return (
-    <div className="mb-6">
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Theater Select */}
-        <div className="relative">
-          <select
-            value={selectedTheater}
-            onChange={(e) => onTheaterChange(e.target.value)}
-            className="pl-10 pr-4 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none cursor-pointer"
-            style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
-          >
-            <option value="all">All Theaters</option>
-            {theaters.map((theater) => (
-              <option key={theater._id} value={theater._id}>{theater.name}</option>
-            ))}
-          </select>
-          <GiTheater className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 text-sm" />
-        </div>
+/* ────────────────────────────────────────────────────────────────
+   PAGE STYLES
+──────────────────────────────────────────────────────────────── */
+const PAGE_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 
-        {/* Status Filter */}
-        <div className="relative">
-          <select
-            onChange={(e) => onStatusFilter(e.target.value)}
-            className="pl-10 pr-4 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none cursor-pointer"
-            style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
-          >
-            <option value="all">All Status</option>
-            <option value="CONFIRMED">Confirmed</option>
-            <option value="PENDING">Pending</option>
-            <option value="CANCELLED">Cancelled</option>
-            <option value="EXPIRED">Expired</option>
-          </select>
-          <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 text-sm" />
-        </div>
+  .pg-root { font-family:'DM Sans',sans-serif; min-height:100vh; background:var(--background,#f4f4f4); }
 
-        {/* Date Filter */}
-        <div className="relative">
-          <input
-            type="date"
-            onChange={(e) => onDateFilter(e.target.value)}
-            className="pl-10 pr-4 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
-          />
-          <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 text-sm" />
-        </div>
+  /* Loading */
+  .pg-loading { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px; }
+  .pg-spinner { width:38px;height:38px;border:3px solid rgba(0,0,0,.1);border-top-color:#222;border-radius:50%;animation:spin .8s linear infinite; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pg-load-txt{font-size:13px;color:#999;}
 
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <input
-            type="text"
-            placeholder="Search by booking ID or customer name..."
-            onChange={(e) => onSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-purple-500"
-            style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
-          />
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 text-sm" />
-        </div>
+  /* Tabs bar */
+  .pg-tabs-bar{background:var(--card,#fff);border-bottom:1px solid rgba(0,0,0,.07);padding:0 24px;}
+  .pg-tabs{max-width:1200px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;padding:10px 0;scrollbar-width:none;}
+  .pg-tabs::-webkit-scrollbar{display:none;}
+  .pg-tab{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;border:none;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;background:transparent;color:#777;transition:all .16s ease;}
+  .pg-tab:hover{background:rgba(0,0,0,.05);color:#222;}
+  .pg-tab--on{background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;}
+  .pg-tab--on .pg-tab-count{background:rgba(0,0,0,.15);color:#000;}
+  .pg-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:rgba(0,0,0,.07);color:#777;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;}
 
-        {/* Clear Filters */}
-        <button
-          onClick={onClearFilters}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
-          style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
-        >
-          <FaTimes size={12} /> Clear
-        </button>
-      </div>
-    </div>
-  );
-};
+  /* Main */
+  .pg-main{max-width:1200px;margin:0 auto;padding:28px 24px 80px;}
 
-// ==================== MAIN PAGE ====================
-const BookingsPage = () => {
-  const queryClient = useQueryClient();
-  const [selectedTheater, setSelectedTheater] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [checkInMode, setCheckInMode] = useState(false);
+  /* Empty */
+  .pg-empty{text-align:center;padding:72px 20px;max-width:420px;margin:0 auto;}
+  .pg-empty-icon{font-size:50px;opacity:.18;margin-bottom:16px;}
+  .pg-empty-h{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--foreground,#111);margin:0 0 8px;}
+  .pg-empty-p{font-size:13px;color:#999;line-height:1.6;margin-bottom:22px;}
+  .pg-btn-primary-link{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:700;color:#000;background:linear-gradient(135deg,#d4af37,#b8860b);border:none;cursor:pointer;text-decoration:none;transition:all .22s;box-shadow:0 4px 16px rgba(212,175,55,.3);}
+  .pg-btn-primary-link:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(212,175,55,.45);}
 
-  // Fetch theaters
-  const { data: theatersData } = useQuery({
-    queryKey: ['my-theaters'],
-    queryFn: getMyTheaters,
-  });
-  const theaters = theatersData?.data || [];
+  /* Grid */
+  .pg-grid{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:700px){.pg-grid{grid-template-columns:repeat(2,1fr);}}
+  @media(min-width:1060px){.pg-grid{grid-template-columns:repeat(3,1fr);}}
 
-  // Fetch bookings
-  const { data: bookingsData, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['my-bookings', selectedTheater],
-    queryFn: async () => {
-      if (selectedTheater !== 'all') {
-        return await getTheaterBookings(selectedTheater);
-      }
-      return await getMyTheaterBookings();
-    },
-  });
-
-  let bookings = bookingsData?.data || [];
-  
-  // Apply filters
-  if (statusFilter !== 'all') {
-    bookings = bookings.filter(b => b.bookingStatus === statusFilter);
+  /* Card */
+  .pg-card{
+    position:relative;border-radius:16px;
+    border:1px solid rgba(0,0,0,.07);
+    background:var(--card,#fff);overflow:hidden;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
+    animation:card-up .44s cubic-bezier(.22,1,.36,1) forwards;
+    opacity:0;transform:translateY(14px);
+    transition:transform .26s ease,box-shadow .26s ease;
   }
-  if (dateFilter) {
-    bookings = bookings.filter(b => {
-      const bookingDate = new Date(b.bookedAt).toISOString().split('T')[0];
-      return bookingDate === dateFilter;
-    });
+  @keyframes card-up{to{opacity:1;transform:translateY(0)}}
+  .pg-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.09);}
+
+  /* Slim top accent */
+  .pg-card-accent{height:3px;background:linear-gradient(90deg,#d4af37 0%,#b8860b 100%);}
+
+  /* Card head */
+  .pg-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 14px 11px;border-bottom:1px solid rgba(0,0,0,.05);}
+  .pg-card-head-l{display:flex;align-items:center;gap:10px;min-width:0;}
+  .pg-film-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;flex-shrink:0;}
+  .pg-head-text{min-width:0;}
+  .pg-movie{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--foreground,#111);margin:0 0 3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;}
+  .pg-theater{display:flex;align-items:center;gap:4px;font-size:11px;color:#aaa;}
+
+  /* Badges */
+  .pg-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;}
+  .s-confirmed{background:rgba(34,197,94,.1);color:#16a34a;}
+  .s-pending{background:rgba(245,158,11,.1);color:#c97706;}
+  .s-cancelled{background:rgba(239,68,68,.1);color:#dc2626;}
+  .s-expired{background:rgba(107,114,128,.1);color:#6b7280;}
+
+  /* Info grid */
+  .pg-info{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:12px 14px;}
+  .pg-info-item{display:flex;align-items:flex-start;gap:8px;}
+  .pg-info-seats-row{grid-column:1/-1;}
+  .pg-info-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.05);color:#666;flex-shrink:0;}
+  .pg-info-icon--dark{background:linear-gradient(135deg,#d4af37,#b8860b);color:#000;}
+  .pg-info-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#bbb;margin-bottom:3px;}
+  .pg-info-val{font-size:12px;font-weight:600;color:var(--foreground,#111);}
+  .pg-amt{font-size:14px;font-weight:700;color:#b8860b;}
+  .pg-seat-cnt{color:#ccc;font-size:9px;}
+
+  /* Seats */
+  .pg-seats-block{min-width:0;}
+  .pg-seats{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+  .pg-chip{
+    display:inline-flex;padding:2px 7px;border-radius:5px;
+    background:rgba(212,175,55,.1);color:#8a6800;
+    font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;
+    border:1px solid rgba(212,175,55,.22);
   }
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    bookings = bookings.filter(b => 
-      b.bookingId?.toLowerCase().includes(query) ||
-      b.userId?.name?.toLowerCase().includes(query) ||
-      b.userId?.email?.toLowerCase().includes(query)
-    );
+  .pg-chip--more{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+
+  /* Booking ID */
+  .pg-id-row{display:flex;align-items:center;justify-content:space-between;margin:0 14px 11px;padding:8px 11px;border-radius:8px;background:rgba(0,0,0,.025);border:1px solid rgba(0,0,0,.05);}
+  .pg-id-lbl{font-size:9px;font-weight:500;color:#ccc;}
+  .pg-id-val{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:#888;}
+
+  /* Actions */
+  .pg-actions{display:flex;gap:7px;padding:0 14px 14px;}
+  .pg-btn-dl{
+    flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:10px 12px;border-radius:9px;font-size:12px;font-weight:700;
+    color:#000;background:linear-gradient(135deg,#d4af37,#b8860b);border:none;cursor:pointer;
+    transition:all .2s;white-space:nowrap;box-shadow:0 3px 12px rgba(212,175,55,.25);
+  }
+  .pg-btn-dl:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(212,175,55,.4);}
+  .pg-btn-cancel{
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;
+    padding:10px 12px;border-radius:9px;font-size:12px;font-weight:600;
+    color:#dc2626;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.15);
+    cursor:pointer;transition:all .2s;white-space:nowrap;
+  }
+  .pg-btn-cancel:hover:not(:disabled){background:rgba(239,68,68,.13);transform:translateY(-1px);}
+  .pg-btn-cancel:disabled{opacity:0.6;cursor:not-allowed;}
+
+  /* Spin animation */
+  .spin { animation: spin 0.8s linear infinite; }
+`;
+
+/* ────────────────────────────────────────────────────────────────
+   MODAL + TICKET STYLES
+──────────────────────────────────────────────────────────────── */
+const MODAL_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  .tm-overlay{
+    position:fixed;inset:0;z-index:1000;
+    background:rgba(0,0,0,.78);backdrop-filter:blur(8px);
+    display:flex;align-items:center;justify-content:center;padding:16px;
+    animation:tm-in .2s ease;
+  }
+  @keyframes tm-in{from{opacity:0}to{opacity:1}}
+  .tm-wrap{display:flex;flex-direction:column;gap:14px;max-width:580px;width:100%;animation:tm-up .28s cubic-bezier(.22,1,.36,1);}
+  @keyframes tm-up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+  /* Header */
+  .tm-header{display:flex;align-items:center;justify-content:space-between;}
+  .tm-header-l{display:flex;align-items:center;gap:10px;}
+  .tm-title{font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;color:#fff;margin:0;}
+  .tm-counter{font-size:11px;font-weight:600;color:rgba(255,255,255,.4);background:rgba(255,255,255,.08);padding:3px 9px;border-radius:12px;}
+  .tm-x{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.09);border:none;color:rgba(255,255,255,.6);cursor:pointer;transition:background .16s;}
+  .tm-x:hover{background:rgba(255,255,255,.18);color:#fff;}
+
+  /* Carousel */
+  .tm-carousel{display:flex;align-items:center;gap:8px;}
+  .tm-nav{
+    flex-shrink:0;width:34px;height:34px;border-radius:50%;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
+    color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:all .16s;
+  }
+  .tm-nav:hover:not(:disabled){background:rgba(255,255,255,.2);}
+  .tm-nav:disabled{opacity:.25;cursor:not-allowed;}
+
+  /* Dots */
+  .tm-dots{display:flex;justify-content:center;gap:5px;}
+  .tm-dot{width:7px;height:7px;border-radius:50%;border:none;background:rgba(255,255,255,.22);cursor:pointer;padding:0;transition:all .16s;}
+  .tm-dot--on{background:#fff;width:18px;border-radius:4px;}
+
+  /* Actions */
+  .tm-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .tm-btn-primary{
+    flex:1;min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    padding:11px 14px;border-radius:10px;font-size:13px;font-weight:700;
+    color:#000;background:linear-gradient(135deg,#d4af37,#b8860b);border:none;cursor:pointer;
+    transition:all .2s;font-family:'Poppins',sans-serif;
+    box-shadow:0 3px 14px rgba(212,175,55,.3);
+  }
+  .tm-btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 22px rgba(212,175,55,.45);}
+  .tm-btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
+  .tm-btn-secondary{
+    flex:1;min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    padding:11px 14px;border-radius:10px;font-size:13px;font-weight:700;
+    color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+    cursor:pointer;transition:all .2s;font-family:'Poppins',sans-serif;
+  }
+  .tm-btn-secondary:hover:not(:disabled){background:rgba(255,255,255,.2);transform:translateY(-1px);}
+  .tm-btn-secondary:disabled{opacity:0.6;cursor:not-allowed;}
+  .tm-btn-ghost{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    padding:11px 14px;border-radius:10px;font-size:12px;font-weight:600;
+    color:rgba(255,255,255,.45);background:transparent;border:1px solid rgba(255,255,255,.1);
+    cursor:pointer;transition:all .2s;font-family:'Poppins',sans-serif;
+  }
+  .tm-btn-ghost:hover{color:rgba(255,255,255,.7);}
+
+  /* Single Ticket */
+  .st-ticket{
+    display:flex;background:#fff;border-radius:16px;
+    overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.55);
+    width:100%;font-family:'Poppins',sans-serif;flex:1;
   }
 
-  // Check-in mutation
-  const checkInMutation = useMutation({
-    mutationFn: ({ bookingId }) => markTicketAsUsed(bookingId),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['my-bookings']);
-      toast.success('Check-in successful!', {
-        icon: '✅',
-        style: { background: 'var(--card)', color: 'var(--foreground)' },
-      });
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.message || 'Check-in failed', {
-        icon: '❌',
-        style: { background: 'var(--card)', color: 'var(--foreground)' },
-      });
-    },
-  });
+  .st-left{flex:1.5;padding:22px 18px;display:flex;flex-direction:column;}
+  .st-movie{font-size:19px;font-weight:800;color:#111;letter-spacing:-.02em;text-transform:uppercase;line-height:1.1;margin-bottom:8px;}
+  .st-cat{
+    display:inline-flex;align-items:center;padding:3px 11px;border-radius:20px;
+    background:rgba(220,38,38,.1);color:#dc2626;
+    font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    width:fit-content;margin-bottom:10px;
+  }
+  .st-sep{width:100%;height:1px;background:rgba(0,0,0,.07);margin:8px 0;}
+  .st-row{display:flex;align-items:flex-start;gap:9px;padding:4px 0;}
+  .st-ico{font-size:12px;width:16px;flex-shrink:0;margin-top:1px;}
+  .st-lbl{font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:2px;}
+  .st-val{font-size:12px;font-weight:700;color:#111;line-height:1.3;}
+  .st-sub{font-size:10px;color:#999;margin-top:1px;}
+  .st-footer{display:flex;gap:10px;margin-top:4px;align-items:flex-end;}
+  .st-box-wrap{display:flex;flex-direction:column;gap:4px;}
+  .st-box-lbl{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#bbb;}
+  .st-box{
+    width:44px;height:44px;border-radius:8px;
+    background:#f3f3f3;display:flex;align-items:center;justify-content:center;
+    font-size:18px;font-weight:800;color:#111;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .st-price{font-size:17px;font-weight:800;color:#dc2626;padding-bottom:3px;}
 
-  // Stats calculations
-  const totalBookings = bookings.length;
-  const confirmedBookings = bookings.filter(b => b.bookingStatus === 'CONFIRMED').length;
-  const pendingBookings = bookings.filter(b => b.bookingStatus === 'PENDING').length;
-  const cancelledBookings = bookings.filter(b => b.bookingStatus === 'CANCELLED').length;
-  const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
-  const checkedInCount = bookings.filter(b => b.isCheckedIn).length;
-  const totalTickets = bookings.reduce((sum, b) => sum + (b.totalSeats || b.seats?.length || 0), 0);
-  const checkedInTickets = bookings.reduce((sum, b) => sum + (b.checkedInSeatsCount || 0), 0);
+  /* Perforation */
+  .st-perf{display:flex;flex-direction:column;align-items:center;position:relative;width:14px;flex-shrink:0;}
+  .st-perf-dot{width:17px;height:17px;border-radius:50%;background:rgba(0,0,0,.07);position:absolute;left:50%;transform:translateX(-50%);z-index:2;}
+  .st-perf-dot--t{top:-8px;}
+  .st-perf-dot--b{bottom:-8px;}
+  .st-perf-line{
+    position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:1px;
+    background:repeating-linear-gradient(to bottom,rgba(0,0,0,.12) 0,rgba(0,0,0,.12) 5px,transparent 5px,transparent 10px);
+  }
 
-  const handleView = (booking) => {
-    setSelectedBooking(booking);
-    setIsDetailsModalOpen(true);
-  };
+  /* Right stub */
+  .st-right{
+    width:136px;flex-shrink:0;
+    background:#fafafa;border-left:1px dashed rgba(0,0,0,.1);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:12px;padding:18px 10px;position:relative;
+  }
+  .st-bkid{
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    font-size:7px;font-weight:600;letter-spacing:.1em;
+    color:#ccc;text-transform:uppercase;
+    font-family:'JetBrains Mono',monospace;
+    position:absolute;right:7px;top:50%;
+    transform:rotate(180deg) translateY(50%);
+  }
+  .st-qr-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .st-qr{width:88px;height:88px;background:#fff;border-radius:8px;border:1px solid rgba(0,0,0,.07);display:flex;align-items:center;justify-content:center;padding:7px;}
+  .st-qr img{width:100%;height:100%;object-fit:contain;}
+  .st-scan{font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;}
+  .st-circle{
+    width:46px;height:46px;border-radius:50%;
+    background:#dc2626;color:#fff;
+    font-size:13px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;
+    box-shadow:0 4px 12px rgba(220,38,38,.3);
+    letter-spacing:-.02em;
+  }
 
-  const handleCheckIn = (booking) => {
-    if (booking.isCheckedIn) {
-      toast.error('All seats already checked in');
-      return;
-    }
-    checkInMutation.mutate({ bookingId: booking.bookingId });
-  };
+  @media(max-width:500px){
+    .st-ticket{flex-direction:column;}
+    .st-right{width:100%;flex-direction:row;justify-content:space-around;border-left:none;border-top:1px dashed rgba(0,0,0,.1);padding:14px;}
+    .st-bkid{writing-mode:horizontal-tb;transform:none;position:static;}
+  }
+`;
 
-  const handleClearFilters = () => {
-    setStatusFilter('all');
-    setDateFilter('');
-    setSearchQuery('');
-    setSelectedTheater('all');
-    toast.success('Filters cleared!');
-  };
-
-  return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300" style={{ background: "var(--background)" }}>
-      
-      <Toaster position="top-right" />
-
-      {/* Header Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <StatCard label="Total Bookings" value={totalBookings} icon={FaTicketAlt} color="purple" />
-        <StatCard label="Confirmed" value={confirmedBookings} icon={FaCheckCircle} color="green" />
-        <StatCard label="Pending" value={pendingBookings} icon={FaHourglassHalf} color="yellow" />
-        <StatCard label="Cancelled" value={cancelledBookings} icon={FaTimesCircle} color="red" />
-        <StatCard label="Revenue" value={`₹${totalRevenue.toLocaleString()}`} icon={FaRupeeSign} color="pink" />
-        <StatCard label="Check-ins" value={`${checkedInTickets}/${totalTickets}`} icon={FaUser} color="blue" subtitle={`${checkedInCount} bookings`} />
-      </div>
-
-      {/* Header Actions */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
-            Booking Management
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-            View and manage all customer bookings, check-in tickets
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCheckInMode(!checkInMode)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
-              checkInMode ? 'bg-purple-500 text-white' : ''
-            }`}
-            style={!checkInMode ? { background: "var(--card)", border: "1px solid var(--card-border)", color: "var(--foreground)" } : {}}
-          >
-            <MdQrCodeScanner size={16} /> {checkInMode ? 'Exit Check-in Mode' : 'Check-in Mode'}
-          </button>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 disabled:opacity-50"
-            style={{ background: "var(--card)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
-          >
-            <FaSync className={isFetching ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <FilterBar
-        theaters={theaters}
-        selectedTheater={selectedTheater}
-        onTheaterChange={setSelectedTheater}
-        onStatusFilter={setStatusFilter}
-        onDateFilter={setDateFilter}
-        onSearch={setSearchQuery}
-        onClearFilters={handleClearFilters}
-      />
-
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-16 h-16 rounded-full border-4 border-purple-500/20 border-t-purple-500 animate-spin mb-4" />
-          <p style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading bookings...</p>
-        </div>
-      ) : bookings.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: "var(--card)" }}>
-            <FaTicketAlt className="text-5xl text-purple-500" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2" style={{ color: "var(--foreground)" }}>No Bookings Found</h3>
-          <p className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-            {selectedTheater !== 'all' 
-              ? 'No bookings for this theater yet.' 
-              : 'No bookings available.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {bookings.map((booking) => (
-            <BookingCard
-              key={booking._id}
-              booking={booking}
-              onView={handleView}
-              onCheckIn={handleCheckIn}
-              isCheckInMode={checkInMode}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Modals */}
-      <BookingDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
-        booking={selectedBooking}
-        onCheckIn={handleCheckIn}
-      />
-    </div>
-  );
-};
-
-export default BookingsPage;
+export default MyBookingsPage;
