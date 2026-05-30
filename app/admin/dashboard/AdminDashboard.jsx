@@ -131,7 +131,7 @@ const AdminDashboard = () => {
   // Prepare data for different charts
   const userDistributionData = [
     { name: "Super Admins", value: dashboardStats.superAdmins, color: "#a855f7" },
-    { name: "Theater Owners", value: dashboardStats.theaterOwners, color: "#6366f1" },
+    { name: "Admin", value: dashboardStats.theaterOwners, color: "#6366f1" },
     { name: "Vendors", value: dashboardStats.vendors, color: "#f97316" },
     { name: "Buyers", value: dashboardStats.buyers, color: "#ef4444" },
   ];
@@ -174,7 +174,7 @@ const AdminDashboard = () => {
 
   const radarData = [
     { subject: "Super Admins", A: dashboardStats.superAdmins, fullMark: 100 },
-    { subject: "Theater Owners", A: dashboardStats.theaterOwners, fullMark: 500 },
+    { subject: "Admin", A: dashboardStats.theaterOwners, fullMark: 500 },
     { subject: "Vendors", A: dashboardStats.vendors, fullMark: 1000 },
     { subject: "Buyers", A: dashboardStats.buyers, fullMark: 5000 },
   ];
@@ -231,7 +231,7 @@ const AdminDashboard = () => {
         <StatsCard label="Total Users" value={dashboardStats.totalUsers} icon={FaUsers} color="blue" />
         <StatsCard label="Active Users" value={dashboardStats.activeUsers} icon={FaUserCheck} color="green" />
         <StatsCard label="Super Admins" value={dashboardStats.superAdmins} icon={FaUserShield} color="purple" />
-        <StatsCard label="Theater Owners" value={dashboardStats.theaterOwners} icon={FaTheaterMasks} color="indigo" />
+        <StatsCard label="Admin" value={dashboardStats.theaterOwners} icon={FaTheaterMasks} color="indigo" />
         <StatsCard label="Vendors" value={dashboardStats.vendors} icon={FaStore} color="orange" />
         <StatsCard label="Buyers" value={dashboardStats.buyers} icon={FaUserCircle} color="red" />
       </div>

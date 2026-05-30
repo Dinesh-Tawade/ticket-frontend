@@ -378,27 +378,7 @@ export default function ShowsPage() {
         {/* Filters Section */}
         <div className="mb-8 space-y-4">
           {/* Genre Filters */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <FaTag className="text-yellow-500 text-sm" />
-              <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Genre</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {GENRES.map((genre) => (
-                <button
-                  key={genre}
-                  onClick={() => setSelectedGenre(genre)}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition ${
-                    selectedGenre === genre
-                      ? "bg-yellow-500 text-black font-medium"
-                      : "bg-gray-800/50 text-gray-400 hover:bg-gray-700/50"
-                  }`}
-                >
-                  {genre === "ALL" ? "All Genres" : genre}
-                </button>
-              ))}
-            </div>
-          </div>
+         
 
           {/* Status Filters */}
           <div>
