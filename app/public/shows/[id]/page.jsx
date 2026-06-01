@@ -285,10 +285,10 @@ function ShowDetails() {
             {/* Right col — sticky booking card */}
             <div className="sd-body__right">
               <div className="sd-booking-card">
-                {/* <div className="sd-booking-card__header">
+                <div className="sd-booking-card__header">
                   <FaTicketAlt size={14} />
                   <span>Book Tickets</span>
-                </div> */}
+                </div>
 
                 {/* Occupancy bar */}
                 <div className="sd-occupancy">
@@ -341,14 +341,14 @@ function ShowDetails() {
                   ))}
                 </div>
 
-                {/* <button
+                <button
                   className={`sd-book-cta ${isOpen ? "sd-book-cta--active" : "sd-book-cta--disabled"}`}
                   onClick={handleBookNow}
                   disabled={!isOpen}
                 >
                   <FaTicketAlt size={15} />
                   {isOpen ? "Book Now" : "Booking Closed"}
-                </button> */}
+                </button>
 
                 {isOpen && (
                   <p className="sd-urgency">

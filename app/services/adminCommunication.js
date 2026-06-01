@@ -741,3 +741,174 @@ export const cancelTicketBooking = async (bookingId) => {
   const res = await axios.put(`${BE_URL}/public/booking/cancel/${bookingId}`, {}, getAuthHeader());
   return res.data;
 };
+
+
+// ==================== BOOKING SETTINGS APIs ====================
+
+/**
+ * Get current booking settings (Admin only)
+ */
+export const getBookingSettings = async () => {
+  const res = await axios.get(`${BE_URL}/admin/booking-settings`, getAuthHeader());
+  return res.data;
+};
+
+/**
+ * Update global booking settings (Admin only)
+ * @param {Object} settings - Settings object
+ */
+export const updateGlobalSettings = async (settings) => {
+  const res = await axios.put(`${BE_URL}/admin/booking-settings`, settings, getAuthHeader());
+  return res.data;
+};
+
+/**
+ * Add show-specific override (Admin only)
+ * @param {Object} override - { showId, isBookingEnabled, reason, expiresAt }
+ */
+export const addShowOverride = async (override) => {
+  const res = await axios.post(`${BE_URL}/admin/booking-settings/overrides`, override, getAuthHeader());
+  return res.data;
+};
+
+/**
+ * Remove show-specific override (Admin only)
+ * @param {string} showId - Show ID
+ */
+export const removeShowOverride = async (showId) => {
+  const res = await axios.delete(`${BE_URL}/admin/booking-settings/overrides/${showId}`, getAuthHeader());
+  return res.data;
+};
+
+/**
+ * Check booking availability for a specific show (Admin only)
+ * @param {string} showId - Show ID
+ */
+export const checkShowBookingAvailability = async (showId) => {
+  const res = await axios.get(`${BE_URL}/admin/booking-settings/check/${showId}`, getAuthHeader());
+  return res.data;
+};
+
+/**
+ * Get all shows with booking status (Admin only)
+ */
+export const getAllShowsBookingStatus = async () => {
+  const res = await axios.get(`${BE_URL}/admin/booking-settings/all-shows-status`, getAuthHeader());
+  return res.data;
+};
+
+/**
+ * Public function to check booking status for a show (No auth required)
+ * @param {string} showId - Show ID
+ */
+export const getPublicBookingStatus = async (showId) => {
+  const res = await axios.get(`${BE_URL}/public/shows/${showId}/booking-status`);
+  return res.data;
+};
+
+/**
+ * Get show details with dynamic booking status
+ * This UPDATES the existing getPublicShowById to include booking status
+ * @param {string} showId - Show ID
+ * @param {string} timingId - Optional timing ID for multi-timing shows
+ */
+export const getPublicShowWithBookingStatus = async (showId, timingId = null) => {
+  let url = `${BE_URL}/public/shows/${showId}`;
+  if (timingId) {
+    url += `?timingId=${timingId}`;
+  }
+  const res = await axios.get(url);
+  return res.data;
+};
+
+// ==================== REACT QUERY HOOKS FOR BOOKING SETTINGS ====================
+// Add these if you're using React Query, otherwise skip
+
+/**
+ * Hook to get booking settings (for use with React Query)
+ */
+export const useBookingSettings = () => {
+  const { useQuery, useMutation, useQueryClient } = require('@tanstack/react-query');
+  
+  return useQuery({
+    queryKey: ['bookingSettings'],
+    queryFn: getBookingSettings,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+};
+
+/**
+ * Hook to update global settings
+ */
+export const useUpdateGlobalSettings = () => {
+  const { useMutation, useQueryClient } = require('@tanstack/react-query');
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: updateGlobalSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookingSettings'] });
+    },
+  });
+};
+
+/**
+ * Hook to add show override
+ */
+export const useAddShowOverride = () => {
+  const { useMutation, useQueryClient } = require('@tanstack/react-query');
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: addShowOverride,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookingSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['showsBookingStatus'] });
+    },
+  });
+};
+
+/**
+ * Hook to remove show override
+ */
+export const useRemoveShowOverride = () => {
+  const { useMutation, useQueryClient } = require('@tanstack/react-query');
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: removeShowOverride,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookingSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['showsBookingStatus'] });
+    },
+  });
+};
+
+/**
+ * Hook to check show booking availability
+ */
+export const useShowBookingAvailability = (showId, options = {}) => {
+  const { useQuery } = require('@tanstack/react-query');
+  
+  return useQuery({
+    queryKey: ['showBookingStatus', showId],
+    queryFn: () => checkShowBookingAvailability(showId),
+    enabled: !!showId,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    ...options,
+  });
+};
+
+/**
+ * Hook to get all shows booking status
+ */
+export const useAllShowsBookingStatus = () => {
+  const { useQuery } = require('@tanstack/react-query');
+  
+  return useQuery({
+    queryKey: ['showsBookingStatus'],
+    queryFn: getAllShowsBookingStatus,
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+};
