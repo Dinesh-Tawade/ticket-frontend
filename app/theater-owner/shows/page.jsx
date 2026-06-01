@@ -925,6 +925,45 @@ const CinemaBookingPreview = ({ theater, show, timing, accessibleSeats = [], onC
   );
 };
 
+const colorMap = {
+  blue: "#3b82f6",
+  green: "#22c55e",
+  purple: "#a855f7",
+  yellow: "#eab308",
+  indigo: "#6366f1",
+  cyan: "#06b6d4",
+  emerald: "#10b981",
+  orange: "#f97316",
+};
+
+const DashboardStatCard = ({ title, value, icon: Icon, color = "blue", prefix = "" }) => {
+  const themeColor = colorMap[color] || colorMap.blue;
+  const displayValue = `${prefix}${Number(value || 0).toLocaleString()}`;
+
+  return (
+    <div
+      className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
+      style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <div className="relative">
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+          {title}
+        </div>
+        <div className="text-[34px] font-black tracking-tighter leading-none" style={{ color: "var(--foreground)" }}>
+          {displayValue}
+        </div>
+      </div>
+      <div
+        className="relative w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+        style={{ background: `${themeColor}15`, border: `1px solid ${themeColor}30` }}
+      >
+        <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor }} />
+      </div>
+    </div>
+  );
+};
+
 // ==================== SHOW CARD ====================
 const ShowCard = ({ show, onBookTicket, accessibleCount = 0 }) => {
   const formatDate = (date) => {
@@ -941,10 +980,10 @@ const ShowCard = ({ show, onBookTicket, accessibleCount = 0 }) => {
   const startTime = firstTiming.startTime || show.startTime;
 
   return (
-    <div className="group rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+    <div className="group rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
       style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
       
-      <div className="relative h-48 bg-gradient-to-r from-purple-600 to-indigo-600">
+      <div className="relative h-48 bg-gradient-to-br from-blue-500 to-indigo-600">
         {show.movie?.poster ? (
           <img src={show.movie.poster} alt={show.movie.name} className="w-full h-full object-cover" />
         ) : (
@@ -962,8 +1001,8 @@ const ShowCard = ({ show, onBookTicket, accessibleCount = 0 }) => {
         )}
         
         {accessibleCount > 0 && (
-          <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-green-500/80 backdrop-blur-sm">
-            <span className="text-white text-xs font-semibold">🎟️ {accessibleCount} seats accessible</span>
+          <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-green-500/85 backdrop-blur-sm">
+            <span className="text-white text-xs font-semibold">{accessibleCount} seats accessible</span>
           </div>
         )}
       </div>
@@ -974,7 +1013,7 @@ const ShowCard = ({ show, onBookTicket, accessibleCount = 0 }) => {
         </h3>
         
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: "var(--background)", color: "var(--foreground)", opacity: 0.7 }}>
+          <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "var(--background)", color: "var(--foreground)", border: "1px solid var(--card-border)" }}>
             {show.movie?.genre}
           </span>
           <span className="flex items-center gap-1 text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>
@@ -987,30 +1026,30 @@ const ShowCard = ({ show, onBookTicket, accessibleCount = 0 }) => {
 
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)", opacity: 0.7 }}>
-            <FaCalendarAlt className="text-purple-400" />
+            <FaCalendarAlt className="text-blue-500" />
             <span className="text-sm">{formatDate(showDate)}</span>
-            <FaClock className="text-purple-400 ml-2" />
+            <FaClock className="text-blue-500 ml-2" />
             <span className="text-sm">{startTime}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)", opacity: 0.7 }}>
-              <GiTheater className="text-purple-400" />
+              <GiTheater className="text-indigo-500" />
               <span className="text-sm">Screen {show.screenNumber}</span>
             </div>
           </div>
         </div>
 
         <div className="mb-4">
-          <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--background)" }}>
+          <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
             <span className="text-sm opacity-60">Starting from</span>
-            <span className="text-xl font-bold text-green-500">₹{show.basePrice || 150}</span>
+            <span className="text-xl font-bold text-emerald-500">Rs. {show.basePrice || 150}</span>
           </div>
         </div>
 
         <button
           onClick={() => onBookTicket(show)}
           disabled={accessibleCount === 0}
-          className="w-full py-3 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <FaTicketAlt />
           {accessibleCount > 0 ? `Book Tickets (${accessibleCount})` : 'No seats assigned'}
@@ -1165,7 +1204,6 @@ const MODAL_STYLES = `
 // ==================== MAIN PAGE ====================
 const ShowsPage = () => {
   const queryClient = useQueryClient();
-  const router = useRouter();
   const [selectedShow, setSelectedShow] = useState(null);
   const [selectedTiming, setSelectedTiming] = useState(null);
   const [selectedAccessibleSeats, setSelectedAccessibleSeats] = useState([]);
@@ -1221,6 +1259,33 @@ const ShowsPage = () => {
     });
   }, [allShows, userAccessibleSeats]);
 
+  const dashboardStats = useMemo(() => {
+    const assignedSeats = userAccessibleSeats.reduce((total, access) => {
+      if (access.isActive === false) return total;
+      return total + (access.seatNumbers?.length || 0);
+    }, 0);
+
+    const theaterIds = new Set(
+      shows
+        .map((show) => show.theaterId?._id || show.theaterId)
+        .filter(Boolean)
+        .map((id) => id.toString())
+    );
+
+    const languages = new Set(
+      shows
+        .map((show) => show.movie?.language)
+        .filter(Boolean)
+    );
+
+    return {
+      availableShows: shows.length,
+      assignedSeats,
+      activeTheaters: theaterIds.size,
+      languages: languages.size,
+    };
+  }, [shows, userAccessibleSeats]);
+
   const handleBookTicket = async (show) => {
     const theaterId = show.theaterId?._id || show.theaterId;
     const accessible = getAccessibleSeatsForTheater(theaterId);
@@ -1254,52 +1319,129 @@ const ShowsPage = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8" style={{ background: "var(--background)" }}>
-      
-      <Toaster position="top-right" reverseOrder={false} />
+    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            background: "var(--card)",
+            color: "var(--foreground)",
+            border: "1px solid var(--card-border)",
+          },
+        }}
+      />
 
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
-          Book Your Tickets
-        </h1>
-        <p className="text-sm mt-2 opacity-60" style={{ color: "var(--foreground)" }}>
-          Select a movie and choose from your accessible seats
-        </p>
-      </div>
+      <main className="space-y-8">
+        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="px-8 py-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                    <GiTheaterCurtains className="text-white text-xl" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                    Shows
+                  </h1>
+                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                    Select a show and book from the seats assigned to your account.
+                  </p>
+                </div>
+              </div>
 
-      {!profileLoaded || isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <FaSpinner className="animate-spin text-4xl text-purple-500 mb-4" />
-          <p style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading shows...</p>
-        </div>
-      ) : shows.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: "var(--card)" }}>
-            <MdLocalMovies className="text-5xl text-purple-500" />
+              <button
+                onClick={() => refetch()}
+                className="h-10 px-3 rounded-xl transition-all duration-300 hover:scale-105 border flex items-center gap-2 text-sm font-semibold"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              >
+                <FaSpinner className={`text-sm ${isLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
           </div>
-          <h3 className="text-xl font-semibold mb-2" style={{ color: "var(--foreground)" }}>No Shows Available</h3>
-          <p className="text-sm opacity-60" style={{ color: "var(--foreground)" }}>
-            {userAccessibleSeats.length === 0
-              ? 'No seats assigned to your account yet. Ask admin to assign seats.'
-              : 'No shows found for theaters where you have assigned seats.'}
-          </p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {shows.map((show) => {
-            const theaterId = show.theaterId?._id || show.theaterId;
-            const accessible = getAccessibleSeatsForTheater(theaterId);
-            return (
-              <ShowCard
-                key={show._id}
-                show={show}
-                onBookTicket={handleBookTicket}
-                accessibleCount={accessible.length}
-              />
-            );
-          })}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <DashboardStatCard
+            title="Available Shows"
+            value={dashboardStats.availableShows}
+            icon={MdLocalMovies}
+            color="purple"
+          />
+          <DashboardStatCard
+            title="Assigned Seats"
+            value={dashboardStats.assignedSeats}
+            icon={MdEventSeat}
+            color="orange"
+          />
+          <DashboardStatCard
+            title="Active Theaters"
+            value={dashboardStats.activeTheaters}
+            icon={GiTheater}
+            color="blue"
+          />
+          <DashboardStatCard
+            title="Languages"
+            value={dashboardStats.languages}
+            icon={FaLanguage}
+            color="cyan"
+          />
         </div>
-      )}
+
+        <section className="space-y-6">
+          <div
+            className="rounded-xl p-4 flex flex-col gap-1"
+            style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+          >
+            <div>
+              <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
+                Shows Available For You
+              </h2>
+              <p className="mt-1 text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                Only theaters with seats assigned to your profile are shown here.
+              </p>
+            </div>
+          </div>
+
+          {!profileLoaded || isLoading ? (
+            <div className="flex flex-col items-center justify-center rounded-xl py-20" style={{ background: "var(--background)" }}>
+              <FaSpinner className="mb-4 animate-spin text-4xl text-blue-500" />
+              <p style={{ color: "var(--foreground)", opacity: 0.65 }}>Loading shows...</p>
+            </div>
+          ) : shows.length === 0 ? (
+            <div className="rounded-xl py-20 text-center" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500/10">
+                <MdLocalMovies className="text-5xl text-blue-500" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold" style={{ color: "var(--foreground)" }}>No Shows Available</h3>
+              <p className="mx-auto max-w-md text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                {userAccessibleSeats.length === 0
+                  ? 'No seats assigned to your account yet. Ask admin to assign seats.'
+                  : 'No shows found for theaters where you have assigned seats.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {shows.map((show) => {
+                const theaterId = show.theaterId?._id || show.theaterId;
+                const accessible = getAccessibleSeatsForTheater(theaterId);
+                return (
+                  <ShowCard
+                    key={show._id}
+                    show={show}
+                    onBookTicket={handleBookTicket}
+                    accessibleCount={accessible.length}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </main>
 
       {/* Cinema Booking Preview Modal */}
       {showCinemaPreview && previewTheater && (
