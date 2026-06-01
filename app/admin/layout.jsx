@@ -8,6 +8,7 @@ import Navbar from "../components/Navbar";
 export default function AdminLayout({ children }) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -28,11 +29,16 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-col h-screen" style={{ marginLeft: "260px" }}>
+    <div className="flex h-screen overflow-hidden bg-gray-50" style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
+      {/* Sidebar */}
+      <div className="z-40" style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 w-full overflow-hidden will-change-auto" style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
         <Navbar />
-        <main className="flex-1 overflow-y-auto  bg-gray-50">
+        <main className="flex-1 overflow-y-auto w-full will-change-auto" style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
           {children}
         </main>
       </div>

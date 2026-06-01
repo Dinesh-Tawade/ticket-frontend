@@ -140,7 +140,7 @@ export default function Navbar() {
 
   return (
       <nav
-      className="flex-shrink-0 w-full border-b transition-colors duration-200 bg-white dark:bg-gray-900"
+      className="flex-shrink-0 w-full border-b transition-all duration-300"
       style={{
         background: "var(--background)",
         borderColor: "var(--card-border)",
@@ -210,12 +210,20 @@ export default function Navbar() {
                 borderColor: "var(--card-border)",
                 color: "var(--foreground)",
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--blue)";
+                e.currentTarget.style.boxShadow = "0 0 0 2px rgba(59, 130, 246, 0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--card-border)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
             >
               {languageLabels[language] || "EN"}
             </button>
 
             {showLangDropdown && (
-              <div className="absolute right-0 mt-2 w-20 rounded-lg border overflow-hidden z-50"
+              <div className="absolute right-0 mt-2 w-20 rounded-lg border overflow-hidden z-50 shadow-lg"
                 style={{
                   background: "var(--card)",
                   borderColor: "var(--card-border)",
@@ -226,11 +234,17 @@ export default function Navbar() {
                     <button
                       key={code}
                       onClick={() => handleLanguageChange(code)}
-                      className="w-full px-3 py-1.5 text-[12px] text-left transition-colors"
+                      className="w-full px-3 py-1.5 text-[12px] text-left transition-all"
                       style={{
                         color: "var(--foreground)",
                         background: language === code ? "var(--card-border)" : "transparent",
                         fontWeight: language === code ? "bold" : "normal",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (language !== code) e.currentTarget.style.backgroundColor = "rgba(59, 130, 246, 0.08)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (language !== code) e.currentTarget.style.backgroundColor = "transparent";
                       }}
                     >
                       {label}
@@ -244,11 +258,21 @@ export default function Navbar() {
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="w-[34px] h-[34px] flex items-center justify-center rounded-lg border transition-all hover:rotate-[15deg]"
+            className="w-[34px] h-[34px] flex items-center justify-center rounded-lg border transition-all"
             style={{
               background: "var(--card)",
               borderColor: "var(--card-border)",
               color: "var(--foreground)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "rotate(15deg) scale(1.08)";
+              e.currentTarget.style.borderColor = "var(--blue)";
+              e.currentTarget.style.boxShadow = "0 0 0 2px rgba(59, 130, 246, 0.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "rotate(0deg) scale(1)";
+              e.currentTarget.style.borderColor = "var(--card-border)";
+              e.currentTarget.style.boxShadow = "none";
             }}
           >
             {isDark ? (
@@ -278,7 +302,13 @@ export default function Navbar() {
           >
             <button 
               onClick={zoomOut} 
-              className="text-gray-600 dark:text-gray-300 hover:text-blue-600 transition-colors p-1"
+              className="transition-colors p-1"
+              style={{
+                color: "var(--foreground)",
+                opacity: 0.6
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = "0.6"}
               title="Zoom Out (50% to 200%)"
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -292,7 +322,13 @@ export default function Navbar() {
             </span>
             <button 
               onClick={zoomIn} 
-              className="text-gray-600 dark:text-gray-300 hover:text-blue-600 transition-colors p-1"
+              className="transition-colors p-1"
+              style={{
+                color: "var(--foreground)",
+                opacity: 0.6
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = "0.6"}
               title="Zoom In (50% to 200%)"
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -313,27 +349,49 @@ export default function Navbar() {
               document.body.style.transformOrigin = "top left";
               document.body.style.width = "100%";
             }}
-            className="hidden sm:block text-[10px] px-2 h-[34px] rounded-lg border hover:bg-white/10 transition-all cursor-pointer"
+            className="hidden sm:block text-[10px] px-2 h-[34px] rounded-lg border transition-all cursor-pointer font-medium"
             style={{
               background: "var(--card)",
               borderColor: "var(--card-border)",
               color: "var(--foreground)",
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--card-border)";
+              e.currentTarget.style.borderColor = "var(--blue)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--card)";
+              e.currentTarget.style.borderColor = "var(--card-border)";
+            }}
             title="Reset Zoom to 100%"
           >
             Reset
           </button>
-           <button
+          <button
             onClick={() => { handleLogout();
             }}
-            className="hidden sm:block text-[10px] px-2 h-[34px] rounded-lg border bg-red-200 transition-all cursor-pointer"
+            disabled={logoutMutation.isPending}
+            className="hidden sm:block text-[10px] px-2 h-[34px] rounded-lg border transition-all cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
-              borderColor: "var(--card-border)",
-              color: "var(--foreground)",
+              background: "rgba(239, 68, 68, 0.1)",
+              borderColor: "rgba(239, 68, 68, 0.3)",
+              color: "rgb(220, 38, 38)",
             }}
-            title="Reset Zoom to 100%"
+            onMouseEnter={(e) => {
+              if (!logoutMutation.isPending) {
+                e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.2)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.6)";
+                e.currentTarget.style.boxShadow = "0 0 0 2px rgba(239, 68, 68, 0.1)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+              e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+            title="Logout"
           >
-            Logout
+            {logoutMutation.isPending ? "Logging out..." : "Logout"}
           </button>
 
           {/* User Profile with Dropdown */}
@@ -341,10 +399,18 @@ export default function Navbar() {
             <div className="relative" ref={userDropdownRef}>
               <div
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-2.5 h-[34px] pl-1.5 pr-2.5 rounded-[10px] border cursor-pointer transition-all hover:bg-white/5"
+                className="flex items-center gap-2.5 h-[34px] pl-1.5 pr-2.5 rounded-[10px] border cursor-pointer transition-all"
                 style={{
                   background: "var(--card)",
                   borderColor: "var(--card-border)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--blue)";
+                  e.currentTarget.style.boxShadow = "0 0 0 2px rgba(59, 130, 246, 0.08)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--card-border)";
+                  e.currentTarget.style.boxShadow = "none";
                 }}
               >
                 {user.profileImage ? (
@@ -391,12 +457,25 @@ export default function Navbar() {
 
               {/* User Dropdown Menu */}
               {showUserDropdown && (
-                <div className="absolute right-0 mt-2 w-48 rounded-lg border overflow-hidden z-50 shadow-lg"
+                <div className="absolute right-0 mt-2 w-48 rounded-lg border overflow-hidden z-50 shadow-xl"
                   style={{
                     background: "var(--card)",
                     borderColor: "var(--card-border)",
+                    animation: "slideDown 0.2s ease-out",
                   }}
                 >
+                  <style>{`
+                    @keyframes slideDown {
+                      from {
+                        opacity: 0;
+                        transform: translateY(-8px);
+                      }
+                      to {
+                        opacity: 1;
+                        transform: translateY(0);
+                      }
+                    }
+                  `}</style>
                   <div className="py-1">
                     <div className="px-3 py-2 border-b"
                       style={{ borderColor: "var(--card-border)" }}
@@ -411,8 +490,16 @@ export default function Navbar() {
                     
                     <a
                       href="/profile"
-                      className="flex items-center gap-2 px-3 py-2 text-[13px] transition-colors hover:bg-white/5"
+                      className="flex items-center gap-2 px-3 py-2 text-[13px] transition-all"
                       style={{ color: "var(--foreground)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+                        e.currentTarget.style.borderRight = "2px solid var(--blue)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.borderRight = "none";
+                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <circle cx="8" cy="5" r="3" />
@@ -423,8 +510,16 @@ export default function Navbar() {
                     
                     <a
                       href="/settings"
-                      className="flex items-center gap-2 px-3 py-2 text-[13px] transition-colors hover:bg-white/5"
+                      className="flex items-center gap-2 px-3 py-2 text-[13px] transition-all"
                       style={{ color: "var(--foreground)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+                        e.currentTarget.style.borderRight = "2px solid var(--blue)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.borderRight = "none";
+                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <circle cx="8" cy="8" r="2.5" />
@@ -438,7 +533,20 @@ export default function Navbar() {
                     <button
                       onClick={handleLogout}
                       disabled={logoutMutation.isPending}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[13px] transition-colors hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[13px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        color: "rgb(220, 38, 38)",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!logoutMutation.isPending) {
+                          e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.08)";
+                          e.currentTarget.style.borderRight = "2px solid rgb(220, 38, 38)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.borderRight = "none";
+                      }}
                     >
                       {logoutMutation.isPending ? (
                         <>
