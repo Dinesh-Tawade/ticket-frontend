@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getAllShowsAdmin, updateShowStatusAdmin, deleteShowAdmin } from "../../services/adminCommunication";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "react-hot-toast";
+import useTheme from "@/app/hooks/useTheme";
 import { 
   FaCalendar, FaClock, FaTicketAlt, FaFilm, FaStar, FaLanguage, 
   FaChair, FaEdit, FaTrash, FaEye, FaEyeSlash, FaCheckCircle, 
@@ -83,8 +84,8 @@ const SeatLayoutPreview = ({ zones, screenPosition }) => {
   return (
     <div className="bg-background border rounded-xl overflow-hidden" style={{ borderColor: "var(--card-border)" }}>
       {screenPosition === "top" && (
-        <div className="text-center py-2 bg-gradient-to-b from-red-500/10 to-transparent">
-          <div className="inline-block px-4 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] font-bold shadow-lg">
+        <div className="text-center py-2" style={{ background: "linear-gradient(to bottom, rgba(239, 68, 68, 0.1), transparent)" }}>
+          <div className="inline-block px-4 py-1 rounded-full text-white text-[10px] font-bold shadow-lg" style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
             🎬 SCREEN
           </div>
         </div>
@@ -182,8 +183,8 @@ const SeatLayoutPreview = ({ zones, screenPosition }) => {
       </div>
       
       {screenPosition === "bottom" && (
-        <div className="text-center py-2 bg-gradient-to-t from-red-500/10 to-transparent">
-          <div className="inline-block px-4 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] font-bold shadow-lg">
+        <div className="text-center py-2" style={{ background: "linear-gradient(to top, rgba(239, 68, 68, 0.1), transparent)" }}>
+          <div className="inline-block px-4 py-1 rounded-full text-white text-[10px] font-bold shadow-lg" style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
             🎬 SCREEN
           </div>
         </div>
@@ -210,14 +211,14 @@ const ViewSeatsModal = ({ isOpen, onClose, show, theaterData }) => {
   
   return (
     <div 
-      className={`fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-200 ${
+      className={`fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 ${
         isClosing ? 'opacity-0' : 'opacity-100'
       }`}
-      style={{ backgroundColor: "rgba(0,0,0,0.8)" }}
+      style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
       onClick={handleClose}
     >
       <div 
-        className={`rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto transition-all duration-200 ${
+        className={`rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto transition-all duration-300 shadow-2xl ${
           isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
         }`}
         style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
@@ -260,20 +261,37 @@ const ViewSeatsModal = ({ isOpen, onClose, show, theaterData }) => {
         {/* Legend */}
         <div className="border-t p-4 flex flex-wrap gap-4 justify-center" style={{ borderColor: "var(--card-border)" }}>
           {zones.slice(0, 4).map(zone => (
-            <div key={zone.id} className="flex items-center gap-1.5 text-xs">
+            <div key={zone.id} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-all"
+              style={{
+                backgroundColor: `${zone.color}10`,
+                border: `1px solid ${zone.color}30`
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = `${zone.color}20`;
+                e.currentTarget.style.borderColor = `${zone.color}50`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = `${zone.color}10`;
+                e.currentTarget.style.borderColor = `${zone.color}30`;
+              }}
+            >
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: zone.color }} />
-              <span className="text-foreground/70">{zone.name}</span>
-              {/* <span className="text-foreground/40">₹{zone.basePrice * zone.priceMultiplier}</span> */}
+              <span className="text-foreground/70 font-medium">{zone.name}</span>
               <span className="text-foreground/40">₹{Math.round(zone.basePrice * zone.priceMultiplier)}</span>
             </div>
           ))}
         </div>
         
         {/* Footer */}
-        <div className="sticky bottom-0 p-4 border-t bg-card" style={{ borderColor: "var(--card-border)" }}>
+        <div className="sticky bottom-0 p-4 border-t" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
           <button 
             onClick={handleClose} 
-            className="w-full py-2.5 rounded-lg bg-blue-500 text-white font-bold text-sm hover:bg-blue-600 transition-all"
+            className="w-full py-2.5 rounded-lg text-white font-bold text-sm transition-all hover:scale-105"
+            style={{
+              background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.4)"}
+            onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
           >
             Close
           </button>
@@ -285,13 +303,23 @@ const ViewSeatsModal = ({ isOpen, onClose, show, theaterData }) => {
 
 // ==================== STATS CARD ====================
 const StatsCard = ({ label, value, icon: Icon, color }) => (
-  <div className="rounded-xl p-4 bg-card border transition-all hover:scale-105 hover:shadow-lg" style={{ borderColor: "var(--card-border)" }}>
+  <div className="rounded-xl p-4 bg-card border transition-all hover:scale-105 hover:shadow-2xl" 
+    style={{ borderColor: "var(--card-border)" }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.borderColor = color;
+      e.currentTarget.style.boxShadow = `0 0 20px ${color}20`;
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.borderColor = "var(--card-border)";
+      e.currentTarget.style.boxShadow = "none";
+    }}
+  >
     <div className="flex items-center justify-between">
       <div>
         <div className="text-2xl sm:text-3xl font-black" style={{ color }}>{value}</div>
         <div className="text-xs text-foreground/50 mt-1">{label}</div>
       </div>
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform" style={{ backgroundColor: `${color}20` }}>
         <Icon className="text-lg" style={{ color }} />
       </div>
     </div>
@@ -365,10 +393,10 @@ const uniqueCategories = useMemo(() => {
 }, [show.seatCategories]);
 
   return (
-    <div className="rounded-xl overflow-hidden bg-card border transition-all duration-300 hover:shadow-xl hover:-translate-y-1" style={{ borderColor: "var(--card-border)" }}>
+        <div className="rounded-xl overflow-hidden bg-card border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1" style={{ borderColor: "var(--card-border)" }}>
       <div className="flex flex-col md:flex-row">
         {/* Poster Section */}
-        <div className="md:w-48 h-56 md:h-auto relative overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900">
+        <div className="md:w-48 h-56 md:h-auto relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(55, 65, 81, 0.4), rgba(17, 24, 39, 0.6))" }}>
           {show.movie?.poster && !imageError ? (
             <img 
               src={show.movie.poster.startsWith('data:') ? show.movie.poster : `${process.env.NEXT_PUBLIC_API_URL || ''}${show.movie.poster}`}
@@ -382,11 +410,11 @@ const uniqueCategories = useMemo(() => {
             </div>
           )}
           {show.movie?.isTrending && (
-            <div className="absolute top-3 left-3 px-2 py-1 rounded-full bg-red-500/90 backdrop-blur-sm">
+            <div className="absolute top-3 left-3 px-2 py-1 rounded-full backdrop-blur-sm" style={{ background: "linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9))" }}>
               <span className="text-[9px] font-bold text-white">🔥 Trending</span>
             </div>
           )}
-          <div className="absolute bottom-3 left-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm">
+          <div className="absolute bottom-3 left-3 px-2 py-1 rounded-full backdrop-blur-sm" style={{ background: "rgba(0, 0, 0, 0.6)" }}>
             <span className="text-[9px] font-bold text-white">⭐ {show.movie?.rating || 'N/A'}</span>
           </div>
         </div>
@@ -395,8 +423,8 @@ const uniqueCategories = useMemo(() => {
         <div className="flex-1 p-4 sm:p-5">
           <div className="flex flex-wrap justify-between items-start gap-2 mb-3">
             <div>
-              <h3 className="text-lg sm:text-xl font-bold text-foreground">{show.movie?.name}</h3>
-              <div className="flex flex-wrap gap-2 text-xs text-foreground/50 mt-1">
+              <h3 className="text-lg sm:text-xl font-bold" style={{ color: "var(--foreground)" }}>{show.movie?.name}</h3>
+              <div className="flex flex-wrap gap-2 text-xs mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                 <span>{show.movie?.genre}</span>
                 <span>•</span>
                 <span>{show.movie?.duration} min</span>
@@ -409,67 +437,75 @@ const uniqueCategories = useMemo(() => {
             </div>
           </div>
           
-          <p className="text-sm text-foreground/60 mb-3 line-clamp-2">{show.movie?.description || 'No description available'}</p>
+          <p className="text-sm mb-3 line-clamp-2" style={{ color: "var(--foreground)", opacity: 0.7 }}>{show.movie?.description || 'No description available'}</p>
           
           {/* Theater Info */}
-          <div className="flex flex-wrap gap-4 text-xs mb-3">
+          <div className="flex flex-wrap gap-4 text-xs mb-3" style={{ color: "var(--foreground)", opacity: 0.7 }}>
             <div className="flex items-center gap-1.5">
               <MdTheaters className="text-red-400" size={14} />
-              <span className="text-foreground/70">{show.theaterId?.name}</span>
+              <span>{show.theaterId?.name}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <MdLocationOn className="text-blue-400" size={14} />
-              <span className="text-foreground/70">{show.theaterId?.location}</span>
+              <span>{show.theaterId?.location}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <MdScreenShare className="text-purple-400" size={14} />
-              <span className="text-foreground/70">Screen {show.screenNumber}</span>
+              <span>Screen {show.screenNumber}</span>
             </div>
           </div>
           
           {/* Date Time & Availability */}
-          <div className="flex flex-wrap gap-4 text-xs mb-3">
+          <div className="flex flex-wrap gap-4 text-xs mb-3" style={{ color: "var(--foreground)", opacity: 0.7 }}>
             <div className="flex items-center gap-1.5">
               <FaCalendar className="text-blue-400" size={12} />
-              <span className="text-foreground/60">{new Date(show.showDate).toLocaleDateString()}</span>
+              <span>{new Date(show.showDate).toLocaleDateString()}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <FaClock className="text-green-400" size={12} />
-              <span className="text-foreground/60">{show.startTime} - {show.endTime}</span>
+              <span>{show.startTime} - {show.endTime}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <FaChair className="text-green-400" size={12} />
-              <span className="text-foreground/60">{show.availableSeats} / {show.totalSeats} seats</span>
+              <span>{show.availableSeats} / {show.totalSeats} seats</span>
             </div>
           </div>
 
           {/* Show Timings (Flat list, no grid) */}
           <div className="mb-4">
-            <h3 className="text-xs font-bold text-foreground/50 mb-2 uppercase tracking-wide">
+            <h3 className="text-xs font-bold mb-2 uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>
               ⏰ SHOW TIMINGS
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {show.timings?.map((timing, index) => (
                 <div 
                   key={timing.id || index}
-                  className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-background border hover:shadow-sm transition-shadow"
-                  style={{ borderColor: "var(--card-border)" }}
+                  className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border transition-all hover:shadow-md"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#3b82f6";
+                    e.currentTarget.style.backgroundColor = isDark ? "rgba(59, 130, 246, 0.08)" : "rgba(59, 130, 246, 0.03)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--card-border)";
+                    e.currentTarget.style.backgroundColor = "var(--background)";
+                  }}
                 >
                   <div className="flex items-center gap-1.5">
                     <FaCalendar className="text-blue-400" size={10} />
-                    <span className="text-xs text-foreground/60 font-medium">
+                    <span className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.7 }}>
                       {new Date(timing.showDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <FaClock className="text-orange-400" size={10} />
-                    <span className="text-xs text-foreground font-bold">
+                    <span className="text-xs font-bold" style={{ color: "var(--foreground)" }}>
                       {timing.startTime} - {timing.endTime}
                     </span>
                   </div>
                 </div>
               )) || (
-                <div className="col-span-full text-center py-3 text-xs text-foreground/40">
+                <div className="col-span-full text-center py-3 text-xs" style={{ color: "var(--foreground)", opacity: 0.4 }}>
                   No timings available for this show
                 </div>
               )}
@@ -513,11 +549,19 @@ const uniqueCategories = useMemo(() => {
     .map(zone => (
       <div
         key={zone.id}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all hover:scale-105"
         style={{ 
-          backgroundColor: `${zone.color}20`, 
+          backgroundColor: `${zone.color}15`, 
           color: zone.color, 
-          border: `1px solid ${zone.color}50` 
+          border: `1px solid ${zone.color}40` 
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = `${zone.color}25`;
+          e.currentTarget.style.borderColor = `${zone.color}60`;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = `${zone.color}15`;
+          e.currentTarget.style.borderColor = `${zone.color}40`;
         }}
       >
         <span 
@@ -530,11 +574,11 @@ const uniqueCategories = useMemo(() => {
   }
   {/* Fallback if theaterData not loaded yet */}
   {!theaterData && show.seatCategories?.slice(0,1).map(cat => (
-    <div key={cat.category} className="text-[10px] text-foreground/40 italic">
+    <div key={cat.category} className="text-[10px] italic" style={{ color: "var(--foreground)", opacity: 0.4 }}>
       Loading zones...
     </div>
   ))}
-  <div className="text-lg font-bold text-green-500 ml-auto">{getPriceRange()}</div>
+  <div className="text-lg font-bold ml-auto" style={{ color: "#22c55e" }}>{getPriceRange()}</div>
 </div>
 
 
@@ -542,15 +586,24 @@ const uniqueCategories = useMemo(() => {
           <div className="flex gap-2">
             {/* <button 
               onClick={() => onViewSeats(show)} 
-              className="flex-1 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all hover:scale-105"
+              className="flex-1 py-2 rounded-lg text-white text-sm font-bold flex items-center justify-center gap-2 transition-all hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}
             >
               <FaTicketAlt size={12} /> View 2D Seats
             </button> */}
             <button 
               onClick={() => onStatusToggle(show)} 
-              className="p-2 rounded-lg border transition-all hover:scale-105" 
+              className="p-2 rounded-lg border transition-all hover:scale-110" 
               style={{ borderColor: "var(--card-border)" }}
               title={show.status === 'BOOKING_OPEN' ? 'Close Booking' : 'Open Booking'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = show.status === 'BOOKING_OPEN' ? '#eab308' : '#22c55e';
+                e.currentTarget.style.backgroundColor = show.status === 'BOOKING_OPEN' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(34, 197, 94, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--card-border)";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
               {show.status === 'BOOKING_OPEN' ? 
                 <FaEyeSlash className="text-yellow-500" size={14} /> : 
@@ -559,9 +612,17 @@ const uniqueCategories = useMemo(() => {
             </button>
             <button 
               onClick={() => onDelete(show)} 
-              className="p-2 rounded-lg border transition-all hover:scale-105 hover:bg-red-500/10" 
+              className="p-2 rounded-lg border transition-all hover:scale-110" 
               style={{ borderColor: "var(--card-border)" }}
               title="Delete Show"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#ef4444";
+                e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--card-border)";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
               <FaTrash className="text-red-500" size={14} />
             </button>
@@ -576,6 +637,8 @@ const uniqueCategories = useMemo(() => {
 export default function ShowsManagement() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -653,34 +716,40 @@ export default function ShowsManagement() {
   
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center h-screen" style={{ background: "var(--background)" }}>
         <div className="text-center">
-          <FaSpinner className="animate-spin text-4xl text-blue-500 mx-auto mb-3" />
-          <p className="text-foreground/50">Loading shows...</p>
+          <FaSpinner className="animate-spin text-4xl mx-auto mb-3" style={{ color: "#3b82f6" }} />
+          <p style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading shows...</p>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6">
+    <div className="min-h-screen transition-colors duration-300 p-4 sm:p-6" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
       {/* Header */}
-      <div className="rounded-xl p-4 mb-6 bg-card border" style={{ borderColor: "var(--card-border)" }}>
+      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl p-4 mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
         <div className="flex justify-between items-center flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-              <GiFilmProjector className="text-white text-xl" />
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+              <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                <GiFilmProjector className="text-white text-xl" />
+              </div>
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Shows Management</h1>
-              <p className="text-xs text-foreground/50">Manage all movie screenings</p>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>Shows Management</h1>
+              <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Manage all movie screenings and showtimes</p>
             </div>
           </div>
           <button 
             onClick={() => router.push('/admin/shows/create')} 
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold flex items-center gap-2 transition-all hover:scale-105"
+            className="px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 transition-all hover:scale-105"
+            style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}
+            onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.4)"}
+            onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
           >
             <FaPlus size={12} /> Add Show
           </button>
@@ -696,7 +765,7 @@ export default function ShowsManagement() {
       </div>
       
       {/* Filters */}
-      <div className="rounded-xl p-4 mb-6 flex flex-wrap gap-3 items-center bg-card border" style={{ borderColor: "var(--card-border)" }}>
+      <div className="rounded-xl p-4 mb-6 flex flex-wrap gap-3 items-center transition-all duration-300" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
         <div className="flex-1 min-w-[180px] relative">
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-foreground/40" />
           <input 
@@ -704,15 +773,31 @@ export default function ShowsManagement() {
             placeholder="Search by movie or theater..." 
             value={searchTerm} 
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg text-sm bg-background border focus:outline-none focus:ring-2 focus:ring-blue-500"
-            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+            className="w-full pl-9 pr-4 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2"
+            style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)", border: "1px solid var(--card-border)" }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "#3b82f6";
+              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--card-border)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
           />
         </div>
         <select 
           value={statusFilter} 
           onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm bg-background border focus:outline-none focus:ring-2 focus:ring-blue-500"
-          style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+          className="px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all cursor-pointer"
+          style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)", border: "1px solid var(--card-border)" }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "#3b82f6";
+            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "var(--card-border)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
         >
           <option value="ALL">All Status</option>
           <option value="BOOKING_OPEN">Booking Open</option>
@@ -722,25 +807,31 @@ export default function ShowsManagement() {
         {(searchTerm || statusFilter !== "ALL") && (
           <button 
             onClick={() => { setSearchTerm(""); setStatusFilter("ALL"); }} 
-            className="px-3 py-2 rounded-lg text-red-500 text-sm hover:bg-red-500/10 transition-all"
+            className="px-3 py-2 rounded-lg text-sm transition-all"
+            style={{ color: "#ef4444" }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
           >
             Clear
           </button>
         )}
-        <div className="text-xs text-foreground/40 ml-auto">
+        <div className="text-xs ml-auto" style={{ color: "var(--foreground)", opacity: 0.6 }}>
           {filtered.length} show{filtered.length !== 1 ? 's' : ''}
         </div>
       </div>
       
       {/* Shows Grid */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-card rounded-xl border" style={{ borderColor: "var(--card-border)" }}>
-          <FaFilm className="text-5xl mx-auto mb-3 text-foreground/30" />
-          <p className="text-foreground/50">No shows found</p>
+        <div className="text-center py-16 rounded-xl transition-all duration-300 hover:shadow-lg" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+          <FaFilm className="text-5xl mx-auto mb-3" style={{ color: "var(--foreground)", opacity: 0.3 }} />
+          <p style={{ color: "var(--foreground)", opacity: 0.6 }}>No shows found</p>
           {!searchTerm && statusFilter === "ALL" && (
             <button 
               onClick={() => router.push('/admin/shows/create')} 
-              className="mt-4 px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-bold"
+              className="mt-4 px-4 py-2 rounded-lg text-white text-sm font-bold transition-all hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.4)"}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
             >
               Create Your First Show
             </button>

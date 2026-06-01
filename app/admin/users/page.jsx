@@ -66,7 +66,7 @@ const AnimatedCounter = ({ value }) => {
 
   return (
     <div className="text-[34px] font-black tracking-tighter leading-none transition-all duration-300" style={{ color: "var(--foreground)" }}>
-      {count}
+      {count.toLocaleString()}
     </div>
   );
 };
@@ -206,18 +206,32 @@ function IconButton({ title, onClick, children, tone = "slate" }) {
   );
 }
 
-function StatCard({ label, value, icon: Icon }) {
+function StatCard({ label, value, icon: Icon, color }) {
+  const colorMap = {
+    blue: { light: "#3b82f6", dark: "#2563eb" },
+    green: { light: "#22c55e", dark: "#16a34a" },
+    purple: { light: "#a855f7", dark: "#9333ea" },
+    yellow: { light: "#eab308", dark: "#ca8a04" },
+    red: { light: "#ef4444", dark: "#dc2626" },
+    indigo: { light: "#6366f1", dark: "#4f46e5" },
+    cyan: { light: "#06b6d4", dark: "#0891b2" },
+    emerald: { light: "#10b981", dark: "#059669" },
+    orange: { light: "#f97316", dark: "#ea580c" },
+    pink: { light: "#ec4899", dark: "#db2777" }
+  };
+  const themeColor = colorMap[color] || colorMap.blue;
+
   return (
-    <div className="group rounded-xl p-4 flex flex-col justify-between shadow-sm transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105" 
+    <div className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
       style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 transition-colors" style={{ color: "var(--foreground)", opacity: 0.4 }}>{label}</div>
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>{label}</div>
         <AnimatedCounter value={value} />
       </div>
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6`}
-        style={{ background: "var(--background)", opacity: 0.8 }}>
-        <Icon className="text-lg" style={{ color: "var(--foreground)" }} />
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+        style={{ background: `${themeColor.light}15`, border: `1px solid ${themeColor.light}30` }}>
+        <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor.light }} />
       </div>
     </div>
   );
@@ -490,7 +504,7 @@ export default function Users() {
 
 
   return (
-    <div className="min-h-screen transition-colors duration-300" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" toastOptions={{
         className: "!rounded-xl !text-sm !font-semibold !shadow-xl !bg-card !text-foreground !border",
         style: { borderColor: "var(--card-border)" },
@@ -498,54 +512,44 @@ export default function Users() {
       }} />
       <MotionStyles />
 
-      {/* Header */}
-      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl"
-        style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-        <div className=" mx-auto px-8">
-          <div className="flex items-center justify-between py-4 flex-wrap gap-3">
+      {/* Header Section */}
+      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+        <div className="px-8 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="absolute inset-0 rounded-2xl bg-gradient-primary animate-pulse blur-lg opacity-50" />
-                <div className="relative w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-xl">
-                  <FaUsers className="text-white text-xl animate-pulse" />
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                  <FaUsers className="text-white text-xl" />
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight transition-colors duration-300" style={{ color: "var(--foreground)" }}>
+                <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
                   People & Access
                 </h1>
-                <p className="text-xs font-medium transition-colors duration-300" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                   Manage user accounts, roles & access levels
                 </p>
               </div>
             </div>
-
-            {/* <button
-              type="button"
-              onClick={() => setIsAddOpen(true)}
-              className="relative group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border"
-              style={{ borderColor: "var(--card-border)" }}
-            >
-              <FaPlus className="text-[11px]" /> Add User
-            </button> */}
           </div>
         </div>
       </div>
       
-      <div className=" mx-auto pt-8">
+      <div className="mx-auto">
 
         {/* Stats Cards with Animated Counter */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-          <StatCard label="Total Users" value={stats.total} icon={FaUsers} />
-          <StatCard label="Active" value={stats.active} icon={FaUserShield} />
-          <StatCard label="Admins" value={stats.admins} icon={FaUserShield} />
-          <StatCard label="Owners" value={stats.owners} icon={FaTheaterMasks} />
-          <StatCard label="Vendors" value={stats.vendors} icon={FaStore} />
-          <StatCard label="Buyers" value={stats.buyers} icon={FaUsers} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          <StatCard label="Total Users" value={stats.total} icon={FaUsers} color="blue" />
+          <StatCard label="Active" value={stats.active} icon={FaUserShield} color="green" />
+          <StatCard label="Admins" value={stats.admins} icon={FaUserShield} color="purple" />
+          <StatCard label="Owners" value={stats.owners} icon={FaTheaterMasks} color="indigo" />
+          <StatCard label="Vendors" value={stats.vendors} icon={FaStore} color="orange" />
+          <StatCard label="Buyers" value={stats.buyers} icon={FaUsers} color="red" />
         </div>
         
         {/* Search and Filter */}
-        <div className="rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300" 
+        <div className="rounded-xl p-5 mb-8 flex flex-wrap gap-3 items-center shadow-lg transition-all duration-300 border" 
           style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <div className="flex-1 min-w-[220px] relative">
             <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: "var(--foreground)", opacity: 0.4 }} />
@@ -554,14 +558,14 @@ export default function Users() {
               placeholder="Search by name, email, phone..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all border"
-              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} 
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 transition-all border"
+              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
             />
           </div>
           <select 
             value={roleFilter} 
             onChange={e => setRoleFilter(e.target.value)} 
-            className="appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 border"
+            className="appearance-none rounded-lg py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 border transition-all"
             style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
             <option value="ALL">All Roles</option>
             {roles.map((role) => (
@@ -571,7 +575,7 @@ export default function Users() {
           <select 
             value={statusFilter} 
             onChange={e => setStatusFilter(e.target.value)} 
-            className="appearance-none rounded-xl py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 border"
+            className="appearance-none rounded-lg py-2.5 pl-3.5 pr-9 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 border transition-all"
             style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
             <option value="ALL">All Status</option>
             {statuses.map((status) => (
@@ -581,8 +585,11 @@ export default function Users() {
           {hasFilters && (
             <button 
               onClick={clearFilters} 
-              className="px-3.5 py-2.5 rounded-xl border transition-all hover:scale-105"
-              style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+              className="px-3.5 py-2.5 rounded-lg border transition-all hover:scale-105"
+              style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            >
               <FaTimes className="text-[10px]" /> Clear
             </button>
           )}
@@ -593,10 +600,10 @@ export default function Users() {
 
         {/* Users Table */}
         {filteredUsers.length === 0 ? (
-          <div className="rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300"
+          <div className="rounded-2xl text-center py-16 px-8 shadow-xl transition-all duration-300 border"
             style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
             <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center"
-              style={{ background: "rgba(var(--background), 0.5)" }}>
+              style={{ background: "var(--background)" }}>
               <FaUsers className="text-3xl" style={{ color: "var(--foreground)", opacity: 0.2 }} />
             </div>
             <h3 className="text-lg font-extrabold mb-2" style={{ color: "var(--foreground)" }}>No users found</h3>
@@ -606,8 +613,11 @@ export default function Users() {
             {!hasFilters && (
               <button 
                 onClick={() => setIsAddOpen(true)} 
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all hover:-translate-y-0.5 border"
-                style={{ borderColor: "var(--card-border)" }}>
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-bold text-sm shadow-lg transition-all hover:-translate-y-0.5 border"
+                style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)", borderColor: "var(--card-border)" }}
+                onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.4)"}
+                onMouseLeave={(e) => e.currentTarget.style.boxShadow = ""}
+              >
                 <FaPlus className="text-[11px]" /> Add User
               </button>
             )}
@@ -617,7 +627,7 @@ export default function Users() {
             style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full divide-y" style={{ divideColor: "var(--card-border)" }}>
-                <thead style={{ background: "var(--card)" }}>
+                <thead style={{ background: "var(--background)" }}>
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>User</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)", opacity: 0.6 }}>Role</th>
@@ -631,8 +641,11 @@ export default function Users() {
                   {filteredUsers.map((user, idx) => (
                     <tr 
                       key={user._id} 
-                      className="transition hover:bg-blue-500/5 animate-in fade-in slide-in-from-bottom-4 duration-500"
-                      style={{ borderColor: "var(--card-border)", animationDelay: `${idx * 50}ms` }}>
+                      className="transition animate-in fade-in slide-in-from-bottom-4 duration-500 hover:shadow-md"
+                      style={{ borderColor: "var(--card-border)", animationDelay: `${idx * 50}ms`, background: "var(--card)" }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(59, 130, 246, 0.05)"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "var(--card)"}
+                    >
                       <td className="px-6 py-4">
                         <button type="button" onClick={() => setSelectedUser(user)} className="flex items-center gap-3 text-left">
                           <UserAvatar user={user} />
@@ -723,30 +736,81 @@ export default function Users() {
                     <button
                       type="button"
                       onClick={() => setSelectedUser(user)}
-                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition-all hover:scale-105"
                       style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#3b82f6";
+                        e.currentTarget.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--card-border)";
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }}
                     >
                       View
                     </button>
                     <button
                       type="button"
                       onClick={() => setEditingUser(user)}
-                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition-all hover:scale-105"
                       style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#8b5cf6";
+                        e.currentTarget.style.backgroundColor = "rgba(139, 92, 246, 0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--card-border)";
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }}
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeleteTarget(user)}
-                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition-all hover:scale-105"
                       style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#ef4444";
+                        e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--card-border)";
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }}
                     >
                       Delete
                     </button>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Summary Cards */}
+        {filteredUsers.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div className="rounded-xl p-6 text-center transition-all duration-300 hover:scale-105" 
+                 style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+              <div className="text-3xl font-black" style={{ color: "var(--foreground)" }}>
+                {stats.active}
+              </div>
+              <div className="text-xs mt-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>Active Users</div>
+            </div>
+            <div className="rounded-xl p-6 text-center transition-all duration-300 hover:scale-105" 
+                 style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+              <div className="text-3xl font-black" style={{ color: "var(--foreground)" }}>
+                {stats.owners + stats.vendors}
+              </div>
+              <div className="text-xs mt-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>Business Partners</div>
+            </div>
+            <div className="rounded-xl p-6 text-center transition-all duration-300 hover:scale-105" 
+                 style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+              <div className="text-3xl font-black" style={{ color: "var(--foreground)" }}>
+                {stats.buyers}
+              </div>
+              <div className="text-xs mt-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>Total Customers</div>
             </div>
           </div>
         )}
@@ -779,8 +843,8 @@ export default function Users() {
       )}
 
       {deleteTarget && (
-        <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.5)" }}>
-          <div className="user-modal-in w-full max-w-md rounded-2xl p-8 shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)", opacity: 1, transform: "scale(1)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
+        <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.7)" }}>
+          <div className="user-modal-in w-full max-w-md rounded-2xl p-8 shadow-2xl border" style={{ background: "var(--card)", borderColor: "var(--card-border)", opacity: 1, transform: "scale(1)", transition: "opacity 200ms ease-out, transform 200ms ease-out" }}>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-red-500 mb-4" style={{ background: "var(--background)" }}>
               <FaTrash className="text-xl" />
             </div>
@@ -792,15 +856,19 @@ export default function Users() {
               <button
                 onClick={() => deleteMutation.mutate(deleteTarget._id)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-                style={{ background: "var(--gradient-primary)" }}
+                className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}
+                onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.4)"}
+                onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
               >
                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </button>
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition"
+                className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all hover:scale-105"
                 style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--background)"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
               >
                 Cancel
               </button>
