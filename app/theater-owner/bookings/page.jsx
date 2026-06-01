@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useSelector } from "react-redux";
 // import Foods from "../food/Foods";
@@ -11,9 +11,77 @@ import {
   FaBan, FaDownload, FaFilm, FaChevronLeft, FaChevronRight,
   FaSpinner,
 } from "react-icons/fa";
-import Header from "@/app/components/public/Header";
-import Footer from "@/app/components/public/Footer";
 import AuthModal from "@/app/components/public/AuthModal";
+
+const colorMap = {
+  blue: { light: "#3b82f6", dark: "#2563eb" },
+  green: { light: "#22c55e", dark: "#16a34a" },
+  purple: { light: "#a855f7", dark: "#9333ea" },
+  yellow: { light: "#eab308", dark: "#ca8a04" },
+  red: { light: "#ef4444", dark: "#dc2626" },
+  indigo: { light: "#6366f1", dark: "#4f46e5" },
+  cyan: { light: "#06b6d4", dark: "#0891b2" },
+  emerald: { light: "#10b981", dark: "#059669" },
+  orange: { light: "#f97316", dark: "#ea580c" },
+};
+
+const AnimatedCounter = ({ value, prefix = "" }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value) || 0;
+    if (start === end) {
+      setCount(end);
+      return;
+    }
+
+    const duration = 800;
+    const increment = Math.max(1, end / (duration / 16));
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return (
+    <div className="text-[34px] font-black tracking-tighter leading-none">
+      {prefix}{count.toLocaleString()}
+    </div>
+  );
+};
+
+const StatsCard = ({ label, value, icon: Icon, color = "blue", prefix = "" }) => {
+  const themeColor = colorMap[color] || colorMap.blue;
+
+  return (
+    <div
+      className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
+      style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <div className="relative">
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+          {label}
+        </div>
+        <AnimatedCounter value={value} prefix={prefix} />
+      </div>
+      <div
+        className="relative w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+        style={{ background: `${themeColor.light}15`, border: `1px solid ${themeColor.light}30` }}
+      >
+        <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor.light }} />
+      </div>
+    </div>
+  );
+};
 
 /* ────────────────────────────────────────────────────────────────
    SINGLE TICKET STUB (one per seat)
@@ -322,26 +390,68 @@ const MyBookingsPage = () => {
     ? bookings 
     : bookings.filter(b => b.bookingStatus === filter);
 
-  if (loading) return (
-    <>
-      <style>{PAGE_STYLES}</style>
-      <div className="pg-root">
-        <Header />
-        <div className="pg-loading">
-          <div className="pg-spinner" />
-          <p className="pg-load-txt">Loading your bookings…</p>
-        </div>
-        <Footer />
-      </div>
-    </>
-  );
+  const dashboardStats = useMemo(() => {
+    const totalRevenue = bookings.reduce((sum, booking) => {
+      if (booking.bookingStatus === "CANCELLED") return sum;
+      return sum + Number(booking.totalAmount || 0);
+    }, 0);
+
+    return {
+      totalBookings: bookings.length,
+      confirmed: bookings.filter(b => b.bookingStatus === "CONFIRMED" || b.bookingStatus === "BOOKED").length,
+      pending: bookings.filter(b => b.bookingStatus === "PENDING").length,
+      cancelled: bookings.filter(b => b.bookingStatus === "CANCELLED").length,
+      seats: bookings.reduce((sum, booking) => sum + (booking.seats?.length || 0), 0),
+      revenue: totalRevenue,
+    };
+  }, [bookings]);
+
+
 
   return (
     <>
       <style>{PAGE_STYLES}</style>
-      <div className="pg-root">
-        <Header />
-        <div className="px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+      <div className="pg-root p-6">
+        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="px-8 py-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                    <FaTicketAlt className="text-white text-xl" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                    Bookings
+                  </h1>
+                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                    Review tickets, download passes, and manage booking status.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={fetchBookings}
+                className="p-2 rounded-xl transition-all duration-300 hover:scale-105 border flex items-center gap-2 text-sm font-semibold"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              >
+                <FaSpinner className={`text-sm ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard label="Total Bookings" value={dashboardStats.totalBookings} icon={FaTicketAlt} color="purple" />
+          <StatsCard label="Confirmed" value={dashboardStats.confirmed} icon={FaCheckCircle} color="green" />
+          <StatsCard label="Seats Booked" value={dashboardStats.seats} icon={FaChair} color="orange" />
+          <StatsCard label="Revenue" value={dashboardStats.revenue} prefix="Rs. " icon={FaDownload} color="emerald" />
+        </div>
+
+        <div>
           {/* Filter Tabs */}
           <div className="pg-tabs-bar">
             <div className="pg-tabs">
@@ -364,7 +474,7 @@ const MyBookingsPage = () => {
           </div>
 
           {/* Content */}
-          <main className="pg-main">
+          <main className="pt-10">
             {!hasBookingAccess ? (
               <div className="pg-empty">
                 <div className="pg-empty-icon">
@@ -504,7 +614,6 @@ const MyBookingsPage = () => {
           </main>
         </div>
         {/* <Foods /> */}
-        <Footer />
 
         {selected && <TicketModal booking={selected} onClose={() => setSelected(null)} />}
         <AuthModal
@@ -542,7 +651,7 @@ const PAGE_STYLES = `
   .pg-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:rgba(0,0,0,.07);color:#777;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;}
 
   /* Main */
-  .pg-main{max-width:1200px;margin:0 auto;padding:28px 24px 80px;}
+  // .pg-main{max-width:1200px;margin:0 auto;padding:28px 24px 80px;}
 
   /* Empty */
   .pg-empty{text-align:center;padding:72px 20px;max-width:420px;margin:0 auto;}

@@ -89,7 +89,7 @@ function Header() {
     { label: t("app.home") || "Home", href: "/" },
     // { label: "Movies", href: "/shows" },
     { label: "Browse Shows", href: "/public/shows" },
-    // { label: "My Bookings", href: "/public/my-bookings" },
+    { label: "My Bookings", href: "/public/my-bookings" },
   ];
 
   const isActive = (href) => pathname === href || (href !== "/" && pathname?.startsWith(href.split("#")[0]));

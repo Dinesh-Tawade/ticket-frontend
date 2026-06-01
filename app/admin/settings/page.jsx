@@ -1,52 +1,120 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { 
-  getAllShowsAdmin, 
-  updateShow, 
+
+import React, { useMemo, useState } from "react";
+import {
+  getAllShowsAdmin,
+  updateShow,
   setAllShowsPaymentMode,
-  getMyTheaters,
-  getMyShows
-} from '../../services/adminCommunication';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import toast, { Toaster } from 'react-hot-toast';
+} from "../../services/adminCommunication";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast, { Toaster } from "react-hot-toast";
+import useTheme from "@/app/hooks/useTheme";
+import {
+  FaBolt,
+  FaCheckCircle,
+  FaCog,
+  FaEdit,
+  FaExclamationTriangle,
+  FaFilm,
+  FaGift,
+  FaInfoCircle,
+  FaMoneyBillWave,
+  FaSave,
+  FaSpinner,
+  FaTheaterMasks,
+  FaTimes,
+} from "react-icons/fa";
+import { MdSettings } from "react-icons/md";
+
+const tabs = [
+  { id: "shows", label: "Show Payment Settings", icon: FaFilm },
+  { id: "bulk", label: "Bulk Actions", icon: FaBolt },
+  { id: "theaters", label: "Theater Settings", icon: FaTheaterMasks },
+];
+
+const statusStyles = {
+  BOOKING_OPEN: { color: "#22c55e", label: "BOOKING OPEN" },
+  BOOKING_CLOSED: { color: "#ef4444", label: "BOOKING CLOSED" },
+  CANCELLED: { color: "#6b7280", label: "CANCELLED" },
+};
+
+const StatCard = ({ label, value, icon: Icon, color }) => (
+  <div
+    className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 overflow-hidden relative hover:shadow-xl hover:scale-105"
+    style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+  >
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+    <div className="relative">
+      <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+        {label}
+      </div>
+      <div className="text-[34px] font-black tracking-tighter leading-none" style={{ color: "var(--foreground)" }}>
+        {value}
+      </div>
+    </div>
+    <div
+      className="relative w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+      style={{ background: `${color}15`, border: `1px solid ${color}30` }}
+    >
+      <Icon className="text-xl" style={{ color }} />
+    </div>
+  </div>
+);
+
+const Pill = ({ children, color }) => (
+  <span
+    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+    style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}
+  >
+    <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+    {children}
+  </span>
+);
 
 function AdminSettingsPage() {
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
   const [selectedShow, setSelectedShow] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('shows'); // 'shows', 'bulk', 'theaters'
+  const [activeTab, setActiveTab] = useState("shows");
 
-  // Fetch all shows
   const { data: showsData, isLoading: showsLoading } = useQuery({
-    queryKey: ['admin-shows'],
+    queryKey: ["admin-shows"],
     queryFn: getAllShowsAdmin,
   });
 
-  // Update single show mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => updateShow(id, data),
     onSuccess: () => {
-      toast.success('Show updated successfully!');
-      queryClient.invalidateQueries(['admin-shows']);
+      toast.success("Show updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["admin-shows"] });
       setIsModalOpen(false);
       setSelectedShow(null);
     },
     onError: (error) => {
-      toast.error('Failed to update show: ' + error.message);
-    }
+      toast.error("Failed to update show: " + error.message);
+    },
   });
 
-  // Bulk update mutation
   const bulkUpdateMutation = useMutation({
     mutationFn: setAllShowsPaymentMode,
     onSuccess: () => {
-      toast.success('All shows updated successfully!');
-      queryClient.invalidateQueries(['admin-shows']);
+      toast.success("All shows updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["admin-shows"] });
     },
     onError: (error) => {
-      toast.error('Failed to update shows: ' + error.message);
-    }
+      toast.error("Failed to update shows: " + error.message);
+    },
   });
+
+  const shows = showsData?.data || [];
+  const paidShows = shows.filter((show) => show.isPaid).length;
+  const freeShows = shows.length - paidShows;
+  const openShows = shows.filter((show) => show.status === "BOOKING_OPEN").length;
+  const isUpdatingShow = updateMutation.isPending || updateMutation.isLoading;
+  const isBulkUpdating = bulkUpdateMutation.isPending || bulkUpdateMutation.isLoading;
+
+  const activeTabMeta = useMemo(() => tabs.find((tab) => tab.id === activeTab) || tabs[0], [activeTab]);
 
   const handleUpdateShow = (show) => {
     setSelectedShow(show);
@@ -57,365 +125,381 @@ function AdminSettingsPage() {
     e.preventDefault();
     const formData = new FormData(e.target);
     const updateData = {
-      isPaid: formData.get('isPaid') === 'true',
-      basePrice: parseInt(formData.get('basePrice')) || 0,
-      status: formData.get('status'),
+      isPaid: formData.get("isPaid") === "true",
+      basePrice: parseInt(formData.get("basePrice")) || 0,
+      status: formData.get("status"),
     };
     updateMutation.mutate({ id: selectedShow._id, data: updateData });
   };
 
   const handleBulkUpdate = (isPaid) => {
-    if (window.confirm(`⚠️ Are you sure you want to set ALL shows to ${isPaid ? 'PAID' : 'FREE'} mode?\n\nThis will affect all existing and future shows.`)) {
+    const mode = isPaid ? "PAID" : "FREE";
+    if (window.confirm(`Are you sure you want to set ALL shows to ${mode} mode?\n\nThis will affect all existing and future shows.`)) {
       bulkUpdateMutation.mutate({ isPaid });
     }
   };
 
-  const shows = showsData?.data || [];
-
   return (
-    <>
+    <div className="min-h-screen transition-colors duration-300 p-4 sm:p-6" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
-      
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">⚙️ Admin Settings</h1>
-          <p className="text-gray-600 mt-2">Manage system-wide configurations and show payment modes</p>
-        </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('shows')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'shows'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              🎬 Show Payment Settings
-            </button>
-            <button
-              onClick={() => setActiveTab('bulk')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'bulk'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              ⚡ Bulk Actions
-            </button>
-            <button
-              onClick={() => setActiveTab('theaters')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'theaters'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              🏢 Theater Settings
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab 1: Show Payment Settings */}
-        {activeTab === 'shows' && (
-          <div className="space-y-6">
-            {/* Info Card */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
+      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+        <div className="px-5 sm:px-8 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                  <MdSettings className="text-white text-xl" />
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800">How it works</h3>
-                  <div className="mt-1 text-sm text-blue-700">
-                    <p>• <strong>Paid shows</strong> require users to pay before booking confirmation</p>
-                    <p>• <strong>Free shows</strong> get confirmed immediately without payment</p>
-                    <p>• Click <strong>Edit</strong> on any show to change its payment mode</p>
-                  </div>
-                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                  Admin Settings
+                </h1>
+                <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  Manage system-wide show payment modes and theater defaults.
+                </p>
               </div>
             </div>
 
-            {/* Shows Table */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 className="text-lg font-semibold">All Shows</h2>
+            <div
+              className="px-3 py-2 rounded-xl border flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
+              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+            >
+              <FaCog className="text-blue-500" />
+              {theme} mode
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <StatCard label="Total Shows" value={shows.length} icon={FaFilm} color="#3b82f6" />
+        <StatCard label="Paid Shows" value={paidShows} icon={FaMoneyBillWave} color="#22c55e" />
+        <StatCard label="Free Shows" value={freeShows} icon={FaGift} color="#6366f1" />
+        <StatCard label="Booking Open" value={openShows} icon={FaCheckCircle} color="#10b981" />
+      </div>
+
+      <div className="rounded-xl p-2 mb-6 flex flex-wrap gap-2" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+        {tabs.map(({ id, label, icon: Icon }) => {
+          const active = activeTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300"
+              style={{
+                background: active ? "linear-gradient(135deg, #3b82f6, #4f46e5)" : "transparent",
+                color: active ? "#ffffff" : "var(--foreground)",
+                opacity: active ? 1 : 0.65,
+              }}
+            >
+              <Icon className="text-sm" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === "shows" && (
+        <div className="space-y-6">
+          <div className="rounded-xl p-5 flex gap-3 transition-all duration-300 hover:shadow-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <FaInfoCircle className="text-blue-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold mb-1" style={{ color: "var(--foreground)" }}>How it works</h3>
+              <p className="text-sm leading-6" style={{ color: "var(--foreground)", opacity: 0.65 }}>
+                Paid shows require payment before booking confirmation. Free shows confirm immediately without payment.
+                Use Edit on any show to change its payment mode, base price, or booking status.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: "var(--card-border)" }}>
+              <div className="flex items-center gap-2">
+                <activeTabMeta.icon className="text-blue-500 text-lg" />
+                <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>All Shows</h2>
               </div>
-              
-              {showsLoading ? (
-                <div className="p-8 text-center">Loading shows...</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Movie</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Theater</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {shows.map((show) => (
-                        <tr key={show._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {show.movie?.name || 'N/A'}
+              <span className="text-xs font-semibold" style={{ color: "var(--foreground)", opacity: 0.55 }}>
+                {shows.length} records
+              </span>
+            </div>
+
+            {showsLoading ? (
+              <div className="p-10 flex items-center justify-center gap-3" style={{ color: "var(--foreground)" }}>
+                <FaSpinner className="animate-spin text-blue-500" />
+                <span className="text-sm font-semibold">Loading shows...</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead style={{ background: "var(--background)" }}>
+                    <tr>
+                      {["Movie", "Theater", "Date", "Time", "Mode", "Price", "Status", "Action"].map((heading) => (
+                        <th key={heading} className="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shows.map((show) => {
+                      const status = statusStyles[show.status] || { color: "#6b7280", label: show.status?.replace("_", " ") || "N/A" };
+                      return (
+                        <tr key={show._id} className="transition-colors" style={{ borderTop: "1px solid var(--card-border)" }}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold" style={{ color: "var(--foreground)" }}>
+                            {show.movie?.name || "N/A"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {show.theater?.name || 'N/A'}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: "var(--foreground)", opacity: 0.65 }}>
+                            {show.theater?.name || "N/A"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: "var(--foreground)", opacity: 0.65 }}>
                             {new Date(show.showDate).toLocaleDateString()}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: "var(--foreground)", opacity: 0.65 }}>
                             {show.startTime}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              show.isPaid ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {show.isPaid ? '💰 PAID' : '🎁 FREE'}
-                            </span>
+                            <Pill color={show.isPaid ? "#22c55e" : "#3b82f6"}>{show.isPaid ? "PAID" : "FREE"}</Pill>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {show.isPaid ? `₹${show.basePrice}` : '₹0'}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                            {show.isPaid ? `Rs. ${show.basePrice || 0}` : "Rs. 0"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              show.status === 'BOOKING_OPEN' ? 'bg-green-100 text-green-800' :
-                              show.status === 'BOOKING_CLOSED' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {show.status?.replace('_', ' ')}
-                            </span>
+                            <Pill color={status.color}>{status.label}</Pill>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
                               onClick={() => handleUpdateShow(show)}
-                              className="text-blue-600 hover:text-blue-900 font-medium"
+                              className="px-3 py-2 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all duration-300 hover:scale-105"
+                              style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "#3b82f6" }}
                             >
+                              <FaEdit />
                               Edit
                             </button>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Bulk Actions */}
-        {activeTab === 'bulk' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">⚡ Bulk Payment Mode Update</h2>
-              <p className="text-gray-600 mb-6">
-                Update all shows at once. This will override individual show settings.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Set All Paid */}
-                <div className="border rounded-lg p-6 text-center">
-                  <div className="text-4xl mb-3">💰</div>
-                  <h3 className="text-lg font-semibold mb-2">Set All Shows to PAID</h3>
-                  <p className="text-gray-500 text-sm mb-4">
-                    Users will need to pay for all tickets
-                  </p>
-                  <button
-                    onClick={() => handleBulkUpdate(true)}
-                    disabled={bulkUpdateMutation.isLoading}
-                    className="w-full bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 disabled:bg-gray-400 transition-colors"
-                  >
-                    {bulkUpdateMutation.isLoading ? 'Updating...' : 'Make All Shows Paid'}
-                  </button>
-                </div>
-
-                {/* Set All Free */}
-                <div className="border rounded-lg p-6 text-center">
-                  <div className="text-4xl mb-3">🎁</div>
-                  <h3 className="text-lg font-semibold mb-2">Set All Shows to FREE</h3>
-                  <p className="text-gray-500 text-sm mb-4">
-                    All tickets will be completely free
-                  </p>
-                  <button
-                    onClick={() => handleBulkUpdate(false)}
-                    disabled={bulkUpdateMutation.isLoading}
-                    className="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
-                  >
-                    {bulkUpdateMutation.isLoading ? 'Updating...' : 'Make All Shows Free'}
-                  </button>
-                </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-
-              {/* Warning */}
-              <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">Warning</h3>
-                    <div className="mt-1 text-sm text-yellow-700">
-                      This action will affect ALL shows in the system. Existing bookings will not be affected.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Tab 3: Theater Settings */}
-        {activeTab === 'theaters' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">🏢 General Theater Settings</h2>
-            <p className="text-gray-600 mb-6">
-              Configure global theater preferences and defaults.
+      {activeTab === "bulk" && (
+        <div className="space-y-6">
+          <div className="rounded-xl p-6 transition-all duration-300 hover:shadow-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <FaBolt className="text-yellow-500 text-lg" />
+              <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Bulk Payment Mode Update</h2>
+            </div>
+            <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.65 }}>
+              Update all shows at once. This will override individual show payment settings.
             </p>
-            
-            <div className="space-y-4">
-              {/* Default Payment Mode */}
-              <div className="border rounded-lg p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Default Payment Mode for New Shows
-                </label>
-                <select className="w-full md:w-64 px-3 py-2 border rounded-md">
-                  <option value="paid">Paid (Default)</option>
-                  <option value="free">Free</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  This setting will apply to all new shows created
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="rounded-xl p-6 text-center transition-all duration-300 hover:scale-[1.02]" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                  <FaMoneyBillWave className="text-green-500 text-2xl" />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: "var(--foreground)" }}>Set All Shows to Paid</h3>
+                <p className="text-sm mb-5" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  Users will need to pay for all tickets.
                 </p>
-              </div>
-
-              {/* Default Ticket Price */}
-              <div className="border rounded-lg p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Default Ticket Price (₹)
-                </label>
-                <input 
-                  type="number" 
-                  defaultValue="200"
-                  className="w-full md:w-64 px-3 py-2 border rounded-md"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Default price for new paid shows
-                </p>
-              </div>
-
-              {/* Max Seats Per Booking */}
-              <div className="border rounded-lg p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maximum Seats Per Booking
-                </label>
-                <input 
-                  type="number" 
-                  defaultValue="10"
-                  className="w-full md:w-64 px-3 py-2 border rounded-md"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Limit how many seats a user can book at once
-                </p>
-              </div>
-
-              <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
-                Save Theater Settings
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {isModalOpen && selectedShow && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Edit Show Payment Mode</h2>
-                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                  ✕
+                <button
+                  onClick={() => handleBulkUpdate(true)}
+                  disabled={isBulkUpdating}
+                  className="w-full px-4 py-3 rounded-xl text-white font-bold transition-all duration-300 hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+                >
+                  {isBulkUpdating ? "Updating..." : "Make All Shows Paid"}
                 </button>
               </div>
-              
-              <form onSubmit={handleSubmitUpdate}>
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Movie: <span className="font-medium">{selectedShow.movie?.name}</span></p>
-                  <p className="text-sm text-gray-600">Theater: <span className="font-medium">{selectedShow.theater?.name}</span></p>
-                  <p className="text-sm text-gray-600">Date: <span className="font-medium">{new Date(selectedShow.showDate).toLocaleDateString()}</span></p>
-                </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Payment Mode</label>
-                  <select
-                    name="isPaid"
-                    defaultValue={selectedShow.isPaid}
-                    className="w-full px-3 py-2 border rounded-md"
-                  >
-                    <option value="true">💰 Paid (Users must pay)</option>
-                    <option value="false">🎁 Free (No payment required)</option>
-                  </select>
+              <div className="rounded-xl p-6 text-center transition-all duration-300 hover:scale-[1.02]" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                  <FaGift className="text-blue-500 text-2xl" />
                 </div>
-
-                <div className="mb-4" id="priceField">
-                  <label className="block text-sm font-medium mb-2">Ticket Price (₹)</label>
-                  <input
-                    type="number"
-                    name="basePrice"
-                    defaultValue={selectedShow.basePrice}
-                    className="w-full px-3 py-2 border rounded-md"
-                    min="0"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Only applicable for paid shows</p>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Booking Status</label>
-                  <select
-                    name="status"
-                    defaultValue={selectedShow.status}
-                    className="w-full px-3 py-2 border rounded-md"
-                  >
-                    <option value="BOOKING_OPEN">Open for Booking</option>
-                    <option value="BOOKING_CLOSED">Closed for Booking</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 px-4 py-2 border rounded-md hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={updateMutation.isLoading}
-                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
-                  >
-                    {updateMutation.isLoading ? 'Updating...' : 'Update Show'}
-                  </button>
-                </div>
-              </form>
+                <h3 className="text-lg font-bold mb-2" style={{ color: "var(--foreground)" }}>Set All Shows to Free</h3>
+                <p className="text-sm mb-5" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  All tickets will be completely free.
+                </p>
+                <button
+                  onClick={() => handleBulkUpdate(false)}
+                  disabled={isBulkUpdating}
+                  className="w-full px-4 py-3 rounded-xl text-white font-bold transition-all duration-300 hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #3b82f6, #4f46e5)" }}
+                >
+                  {isBulkUpdating ? "Updating..." : "Make All Shows Free"}
+                </button>
+              </div>
             </div>
           </div>
-        )}
-      </div>
-    </>
+
+          <div className="rounded-xl p-5 flex gap-3" style={{ background: "rgba(234, 179, 8, 0.08)", border: "1px solid rgba(234, 179, 8, 0.25)" }}>
+            <FaExclamationTriangle className="text-yellow-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-bold text-yellow-500 mb-1">Warning</h3>
+              <p className="text-sm leading-6" style={{ color: "var(--foreground)", opacity: 0.7 }}>
+                This action will affect all shows in the system. Existing bookings will not be affected.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "theaters" && (
+        <div className="rounded-xl p-6 transition-all duration-300 hover:shadow-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <FaTheaterMasks className="text-blue-500 text-lg" />
+            <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>General Theater Settings</h2>
+          </div>
+          <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.65 }}>
+            Configure global theater preferences and defaults.
+          </p>
+
+          <div className="space-y-4 max-w-3xl">
+            <div className="rounded-xl p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                Default Payment Mode for New Shows
+              </label>
+              <select className="w-full md:w-64 px-3 py-2 rounded-xl border outline-none" style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+                <option value="paid">Paid (Default)</option>
+                <option value="free">Free</option>
+              </select>
+              <p className="text-xs mt-2" style={{ color: "var(--foreground)", opacity: 0.55 }}>
+                This setting will apply to all new shows created.
+              </p>
+            </div>
+
+            <div className="rounded-xl p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                Default Ticket Price (Rs.)
+              </label>
+              <input
+                type="number"
+                defaultValue="200"
+                className="w-full md:w-64 px-3 py-2 rounded-xl border outline-none"
+                style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              />
+              <p className="text-xs mt-2" style={{ color: "var(--foreground)", opacity: 0.55 }}>
+                Default price for new paid shows.
+              </p>
+            </div>
+
+            <div className="rounded-xl p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                Maximum Seats Per Booking
+              </label>
+              <input
+                type="number"
+                defaultValue="10"
+                className="w-full md:w-64 px-3 py-2 rounded-xl border outline-none"
+                style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              />
+              <p className="text-xs mt-2" style={{ color: "var(--foreground)", opacity: 0.55 }}>
+                Limit how many seats a user can book at once.
+              </p>
+            </div>
+
+            <button className="px-4 py-3 rounded-xl text-white font-bold flex items-center gap-2 transition-all duration-300 hover:scale-[1.02]" style={{ background: "linear-gradient(135deg, #3b82f6, #4f46e5)" }}>
+              <FaSave />
+              Save Theater Settings
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && selectedShow && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: "rgba(0, 0, 0, 0.7)" }}>
+          <div className="rounded-xl p-6 max-w-md w-full shadow-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-black" style={{ color: "var(--foreground)" }}>Edit Show Payment Mode</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="w-9 h-9 rounded-xl border flex items-center justify-center transition-all hover:scale-105"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitUpdate}>
+              <div className="mb-4 p-4 rounded-xl" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <p className="text-sm mb-1" style={{ color: "var(--foreground)", opacity: 0.65 }}>Movie: <span className="font-bold" style={{ color: "var(--foreground)" }}>{selectedShow.movie?.name}</span></p>
+                <p className="text-sm mb-1" style={{ color: "var(--foreground)", opacity: 0.65 }}>Theater: <span className="font-bold" style={{ color: "var(--foreground)" }}>{selectedShow.theater?.name}</span></p>
+                <p className="text-sm" style={{ color: "var(--foreground)", opacity: 0.65 }}>Date: <span className="font-bold" style={{ color: "var(--foreground)" }}>{new Date(selectedShow.showDate).toLocaleDateString()}</span></p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>Payment Mode</label>
+                <select
+                  name="isPaid"
+                  defaultValue={String(selectedShow.isPaid)}
+                  className="w-full px-3 py-2 rounded-xl border outline-none"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                >
+                  <option value="true">Paid (users must pay)</option>
+                  <option value="false">Free (no payment required)</option>
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>Ticket Price (Rs.)</label>
+                <input
+                  type="number"
+                  name="basePrice"
+                  defaultValue={selectedShow.basePrice}
+                  className="w-full px-3 py-2 rounded-xl border outline-none"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                  min="0"
+                />
+                <p className="text-xs mt-1" style={{ color: "var(--foreground)", opacity: 0.55 }}>Only applicable for paid shows.</p>
+              </div>
+
+              <div className="mb-5">
+                <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>Booking Status</label>
+                <select
+                  name="status"
+                  defaultValue={selectedShow.status}
+                  className="w-full px-3 py-2 rounded-xl border outline-none"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                >
+                  <option value="BOOKING_OPEN">Open for Booking</option>
+                  <option value="BOOKING_CLOSED">Closed for Booking</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 px-4 py-3 rounded-xl border font-bold transition-all hover:scale-[1.02]"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingShow}
+                  className="flex-1 px-4 py-3 rounded-xl text-white font-bold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #3b82f6, #4f46e5)" }}
+                >
+                  {isUpdatingShow ? "Updating..." : "Update Show"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
