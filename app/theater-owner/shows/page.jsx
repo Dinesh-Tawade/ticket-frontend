@@ -9,6 +9,7 @@
     createBooking,
     getTheaterByIdAdmin,
     getMe,
+    getAvailableSeats,
   } from "../../services/adminCommunication";
   import {
     FaTimes,
@@ -352,9 +353,8 @@
                     const zone = sd?.zone ? getZone(sd.zone) : null;
                     const isAisle = !sd || sd.aisle;
                     const isBlocked = sd?.blocked;
-                    const isBookedFromData = sd?.booked || sd?.isBooked === true || sd?.isAvailable === false;
                     const seatNumber = `${rowLabel}${c + 1}`;
-                    const isBooked = bookedSeatsSet.has(seatNumber) || isBookedFromData;
+                    const isBooked = bookedSeatsSet.has(seatNumber);
                     const isSel = selected.has(fullKey);
                     const col = zone ? zone.color : "#4a9edd";
                     const colAisle = aisleCols.find((a) => a.idx === c - 1);
@@ -449,15 +449,28 @@
       if (!timingId || !show?._id) return;
       setIsLoadingSeats(true);
       try {
-        // You can add an API endpoint to get booked seats for a specific timing
-        // For now, using existing seat data from theater
+        const response = await getAvailableSeats(show._id, timingId);
         const booked = new Set();
-        // This would come from your backend API
-        // const response = await getBookedSeats(show._id, timingId);
-        // response.data.forEach(seat => booked.add(seat));
+        // Extract booked seats from seatCategories in the response
+        if (response?.data?.seatCategories && Array.isArray(response.data.seatCategories)) {
+          response.data.seatCategories.forEach(category => {
+            if (category.rows && Array.isArray(category.rows)) {
+              category.rows.forEach(row => {
+                if (row.seats && Array.isArray(row.seats)) {
+                  row.seats.forEach(seat => {
+                    if (seat.isBooked && seat.seatNumber) {
+                      booked.add(seat.seatNumber);
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
         setBookedSeats(booked);
       } catch (error) {
         console.error("Failed to fetch booked seats:", error);
+        setBookedSeats(new Set()); // Clear booked seats on error
       } finally {
         setIsLoadingSeats(false);
       }
