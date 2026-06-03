@@ -2,9 +2,11 @@
 
 import React, { useMemo, useState } from "react";
 import {
+  getBookingSettings,
   getAllShowsAdmin,
   updateShow,
   setAllShowsPaymentMode,
+  updateGlobalSettings,
 } from "../../services/adminCommunication";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast, { Toaster } from "react-hot-toast";
@@ -23,11 +25,13 @@ import {
   FaSpinner,
   FaTheaterMasks,
   FaTimes,
+  FaToggleOn,
 } from "react-icons/fa";
 import { MdSettings } from "react-icons/md";
 
 const tabs = [
   { id: "shows", label: "Show Payment Settings", icon: FaFilm },
+  { id: "booking", label: "Booking Settings", icon: FaToggleOn },
   { id: "bulk", label: "Bulk Actions", icon: FaBolt },
   { id: "theaters", label: "Theater Settings", icon: FaTheaterMasks },
 ];
@@ -83,6 +87,11 @@ function AdminSettingsPage() {
     queryFn: getAllShowsAdmin,
   });
 
+  const { data: bookingSettingsData, isLoading: bookingSettingsLoading } = useQuery({
+    queryKey: ["booking-settings"],
+    queryFn: getBookingSettings,
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => updateShow(id, data),
     onSuccess: () => {
@@ -107,12 +116,28 @@ function AdminSettingsPage() {
     },
   });
 
+  const bookingSettingsMutation = useMutation({
+    mutationFn: updateGlobalSettings,
+    onSuccess: () => {
+      toast.success("Booking settings updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["booking-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["public-booking-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["show-booking-status"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to update booking settings: " + error.message);
+    },
+  });
+
   const shows = showsData?.data || [];
   const paidShows = shows.filter((show) => show.isPaid).length;
   const freeShows = shows.length - paidShows;
   const openShows = shows.filter((show) => show.status === "BOOKING_OPEN").length;
   const isUpdatingShow = updateMutation.isPending || updateMutation.isLoading;
   const isBulkUpdating = bulkUpdateMutation.isPending || bulkUpdateMutation.isLoading;
+  const bookingSettings = bookingSettingsData?.data || {};
+  const isBookingEnabled = bookingSettings.isBookingEnabled === true;
+  const isSavingBookingSettings = bookingSettingsMutation.isPending || bookingSettingsMutation.isLoading;
 
   const activeTabMeta = useMemo(() => tabs.find((tab) => tab.id === activeTab) || tabs[0], [activeTab]);
 
@@ -137,6 +162,24 @@ function AdminSettingsPage() {
     if (window.confirm(`Are you sure you want to set ALL shows to ${mode} mode?\n\nThis will affect all existing and future shows.`)) {
       bulkUpdateMutation.mutate({ isPaid });
     }
+  };
+
+  const handleBookingSettingsSubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    bookingSettingsMutation.mutate({
+      isBookingEnabled: formData.get("isBookingEnabled") === "true",
+      disabledReason: formData.get("disabledReason") || "Online booking is temporarily disabled.",
+      maxTicketsPerBooking: Number(formData.get("maxTicketsPerBooking")) || 40,
+    });
+  };
+
+  const handleBookingToggle = (isEnabled) => {
+    bookingSettingsMutation.mutate({
+      isBookingEnabled: isEnabled,
+      disabledReason: bookingSettings.disabledReason || "Online booking is temporarily disabled.",
+      maxTicketsPerBooking: bookingSettings.maxTicketsPerBooking || 40,
+    });
   };
 
   return (
@@ -350,6 +393,115 @@ function AdminSettingsPage() {
                 This action will affect all shows in the system. Existing bookings will not be affected.
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "booking" && (
+        <div className="space-y-6">
+          <div className="rounded-xl p-6 transition-all duration-300 hover:shadow-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FaToggleOn className={isBookingEnabled ? "text-green-500 text-lg" : "text-red-500 text-lg"} />
+                  <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Global Booking Control</h2>
+                </div>
+                <p className="text-sm" style={{ color: "var(--foreground)", opacity: 0.65 }}>
+                  Enable or disable ticket booking for all public users.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Pill color={isBookingEnabled ? "#22c55e" : "#ef4444"}>
+                  {isBookingEnabled ? "BOOKING ENABLED" : "BOOKING DISABLED"}
+                </Pill>
+                <button
+                  type="button"
+                  onClick={() => handleBookingToggle(!isBookingEnabled)}
+                  disabled={isSavingBookingSettings}
+                  className="px-4 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-2 transition-all duration-300 hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    background: isBookingEnabled
+                      ? "linear-gradient(135deg, #ef4444, #dc2626)"
+                      : "linear-gradient(135deg, #22c55e, #16a34a)",
+                  }}
+                >
+                  {isSavingBookingSettings ? <FaSpinner className="animate-spin" /> : <FaToggleOn />}
+                  {isSavingBookingSettings
+                    ? "Updating..."
+                    : isBookingEnabled
+                    ? "Disable Booking"
+                    : "Enable Booking"}
+                </button>
+              </div>
+            </div>
+
+            {bookingSettingsLoading ? (
+              <div className="p-8 flex items-center gap-3" style={{ color: "var(--foreground)" }}>
+                <FaSpinner className="animate-spin text-blue-500" />
+                <span className="text-sm font-semibold">Loading booking settings...</span>
+              </div>
+            ) : (
+              <form
+                key={`${isBookingEnabled}-${bookingSettings.updatedAt || "new"}`}
+                onSubmit={handleBookingSettingsSubmit}
+                className="space-y-4 max-w-3xl"
+              >
+                <div className="rounded-xl p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                  <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                    Booking Availability
+                  </label>
+                  <select
+                    name="isBookingEnabled"
+                    defaultValue={String(isBookingEnabled)}
+                    className="w-full md:w-72 px-3 py-2 rounded-xl border outline-none"
+                    style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                  >
+                    <option value="true">Enable booking for users</option>
+                    <option value="false">Disable booking for users</option>
+                  </select>
+                </div>
+
+                <div className="rounded-xl p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                  <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                    Disabled Message
+                  </label>
+                  <textarea
+                    name="disabledReason"
+                    defaultValue={bookingSettings.disabledReason || "Online booking is temporarily disabled."}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl border outline-none resize-none"
+                    style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                  />
+                  <p className="text-xs mt-2" style={{ color: "var(--foreground)", opacity: 0.55 }}>
+                    Users will see this message when booking is disabled.
+                  </p>
+                </div>
+
+                <div className="rounded-xl p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                  <label className="block text-sm font-bold mb-2" style={{ color: "var(--foreground)" }}>
+                    Maximum Seats Per Booking
+                  </label>
+                  <input
+                    type="number"
+                    name="maxTicketsPerBooking"
+                    min="1"
+                    defaultValue={bookingSettings.maxTicketsPerBooking || 40}
+                    className="w-full md:w-64 px-3 py-2 rounded-xl border outline-none"
+                    style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSavingBookingSettings}
+                  className="px-4 py-3 rounded-xl text-white font-bold flex items-center gap-2 transition-all duration-300 hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #3b82f6, #4f46e5)" }}
+                >
+                  {isSavingBookingSettings ? <FaSpinner className="animate-spin" /> : <FaSave />}
+                  {isSavingBookingSettings ? "Saving..." : "Save Booking Settings"}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

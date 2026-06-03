@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getPublicShowById, getTheaterProducts } from "@/app/services/publicCommunication";
+import { getPublicBookingStatus, getPublicShowById, getTheaterProducts } from "@/app/services/publicCommunication";
 import SeatSelection from "../../components/SeatSelection";
 import FoodOrder from "../../../../components/FoodOrder";
 import AuthModal from "@/app/components/public/AuthModal";
@@ -25,10 +25,23 @@ function BookingPage() {
     enabled: !!showId,
   });
 
+  const { data: bookingStatusData, isLoading: bookingStatusLoading } = useQuery({
+    queryKey: ["show-booking-status", showId],
+    queryFn: () => getPublicBookingStatus(showId),
+    enabled: !!showId,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
+  const bookingStatus = bookingStatusData?.data;
+  const isBookingEnabled = bookingStatus?.isBookingEnabled === true;
+  const bookingDisabledReason = bookingStatus?.disabledReason || "Booking is currently disabled.";
+
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ["theater-products", showData?.data?.theaterId?._id],
     queryFn: () => getTheaterProducts(showData?.data?.theaterId?._id),
-    enabled: !!showData?.data?.theaterId?._id && !skipFood,
+    enabled: !!showData?.data?.theaterId?._id && isBookingEnabled && !skipFood,
   });
 
   const handleBack = () => {
@@ -63,7 +76,7 @@ function BookingPage() {
   const show = showData?.data;
   const products = productsData?.data?.products || {};
 
-  if (isLoading) {
+  if (isLoading || bookingStatusLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="text-center">
@@ -85,6 +98,30 @@ function BookingPage() {
             style={{ background: "var(--gradient-primary)" }}
           >
             Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isBookingEnabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--background)" }}>
+        <div className="text-center rounded-2xl p-8 border max-w-md" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center bg-red-500/10">
+            <FaTicketAlt className="text-red-500 text-xl" />
+          </div>
+          <h1 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>
+            Booking is disabled
+          </h1>
+          <p className="text-sm mb-6" style={{ color: "var(--foreground)", opacity: 0.7 }}>
+            {bookingDisabledReason}
+          </p>
+          <button
+            onClick={() => router.push(`/public/shows/${showId}`)}
+            className="px-6 py-3 rounded-xl font-semibold text-black bg-yellow-500"
+          >
+            Back to Show
           </button>
         </div>
       </div>

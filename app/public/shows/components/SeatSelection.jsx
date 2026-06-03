@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getAvailableSeats, createBooking, confirmPayment, getTheaterProducts
+  getAvailableSeats, createBooking, confirmPayment, getTheaterProducts, getPublicBookingStatus
 } from "@/app/services/publicCommunication";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -194,6 +194,15 @@ function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelect
     enabled:  !!showId,
   });
 
+  const { data: bookingStatusData } = useQuery({
+    queryKey: ["show-booking-status", showId],
+    queryFn: () => getPublicBookingStatus(showId),
+    enabled: !!showId,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
   // ── API: food products ──
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ["theater-products", showDetails?.theaterId?._id],
@@ -301,6 +310,9 @@ function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelect
   const groundData  = useMemo(() => buildLevel("ground"),  [buildLevel]);
   const balconyData = useMemo(() => buildLevel("balcony"), [buildLevel]);
   const hasLayout   = groundData || balconyData;
+  const bookingStatus = bookingStatusData?.data;
+  const isBookingEnabled = bookingStatus?.isBookingEnabled === true;
+  const bookingDisabledReason = bookingStatus?.disabledReason || "Booking is currently disabled.";
 
   // ── Zones (deduped from all screens) ──
   const allZones = useMemo(() => {
@@ -329,6 +341,7 @@ function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelect
 
   // ── Booking ──
   const handleInitialProceed = () => {
+    if (!isBookingEnabled) { alert(bookingDisabledReason); return; }
     if (selectedSeats.length === 0) { alert("Please select at least one seat"); return; }
     const token = typeof window !== "undefined" && localStorage.getItem("token");
     if (!token) {
@@ -340,6 +353,7 @@ function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelect
   };
 
   const handleFinalBooking = () => {
+    if (!isBookingEnabled) { alert(bookingDisabledReason); return; }
     const formattedSeats = selectedSeats.map((s) => ({
       rowName:    s.sd?.seatLabel?.replace(/\d+$/, "") || String.fromCharCode(65 + s.r),
       seatNumber: s.sd?.seatNumber || `${String.fromCharCode(65 + s.r)}${s.c + 1}`,
@@ -755,17 +769,20 @@ function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelect
           </div>
           <button
             onClick={handleInitialProceed}
+            disabled={!isBookingEnabled}
+            title={!isBookingEnabled ? bookingDisabledReason : ""}
             style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "14px 24px", borderRadius: 14,
-              background: "linear-gradient(135deg,#d4af37,#b8860b)",
+              background: isBookingEnabled ? "linear-gradient(135deg,#d4af37,#b8860b)" : "rgba(255,255,255,0.12)",
               color: "#000", fontWeight: 800, fontSize: 14, border: "none",
-              cursor: "pointer",
-              boxShadow: "0 4px 18px rgba(212,175,55,0.45)",
+              cursor: isBookingEnabled ? "pointer" : "not-allowed",
+              opacity: isBookingEnabled ? 1 : 0.55,
+              boxShadow: isBookingEnabled ? "0 4px 18px rgba(212,175,55,0.45)" : "none",
               whiteSpace: "nowrap",
             }}
           >
-            <FaTicketAlt /> Confirm Seats
+            <FaTicketAlt /> {isBookingEnabled ? "Confirm Seats" : "Booking Disabled"}
           </button>
         </div>
       </div>
@@ -815,11 +832,18 @@ function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelect
             ) : allProducts.length === 0 ? (
               <div style={{ flex: 1, padding: 48, textAlign: "center" }}>
                 <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, marginBottom: 20 }}>No food items available for this theater</p>
-                <button onClick={handleFinalBooking} style={{
+                <button
+                  onClick={handleFinalBooking}
+                  disabled={!isBookingEnabled || createBookingMutation.isPending}
+                  title={!isBookingEnabled ? bookingDisabledReason : ""}
+                  style={{
                   padding: "12px 28px", borderRadius: 14, fontWeight: 700,
-                  background: "linear-gradient(135deg,#d4af37,#b8860b)", color: "#000", border: "none", cursor: "pointer",
+                  background: isBookingEnabled ? "linear-gradient(135deg,#d4af37,#b8860b)" : "rgba(255,255,255,0.12)",
+                  color: "#000", border: "none",
+                  cursor: isBookingEnabled ? "pointer" : "not-allowed",
+                  opacity: isBookingEnabled ? 1 : 0.55,
                 }}>
-                  Continue without snacks
+                  {isBookingEnabled ? "Continue without snacks" : "Booking Disabled"}
                 </button>
               </div>
             ) : (
@@ -876,16 +900,20 @@ function SeatSelection({ showId, showDetails, onBack, onNeedLogin, onSeatsSelect
                   </div>
                   <button
                     onClick={handleFinalBooking}
-                    disabled={createBookingMutation.isPending}
+                    disabled={!isBookingEnabled || createBookingMutation.isPending}
+                    title={!isBookingEnabled ? bookingDisabledReason : ""}
                     style={{
                       width: "100%", padding: "16px 0", borderRadius: 16, fontWeight: 800, fontSize: 16,
-                      background: "linear-gradient(135deg,#d4af37,#b8860b)", color: "#000", border: "none",
-                      cursor: createBookingMutation.isPending ? "not-allowed" : "pointer",
-                      opacity: createBookingMutation.isPending ? 0.7 : 1,
-                      boxShadow: "0 4px 20px rgba(212,175,55,0.4)",
+                      background: isBookingEnabled ? "linear-gradient(135deg,#d4af37,#b8860b)" : "rgba(255,255,255,0.12)",
+                      color: "#000", border: "none",
+                      cursor: (!isBookingEnabled || createBookingMutation.isPending) ? "not-allowed" : "pointer",
+                      opacity: (!isBookingEnabled || createBookingMutation.isPending) ? 0.7 : 1,
+                      boxShadow: isBookingEnabled ? "0 4px 20px rgba(212,175,55,0.4)" : "none",
                     }}
                   >
-                    {createBookingMutation.isPending
+                    {!isBookingEnabled
+                      ? "Booking Disabled"
+                      : createBookingMutation.isPending
                       ? <FaSpinner style={{ animation: "spin .8s linear infinite", margin: "0 auto" }} />
                       : `Proceed to Pay ₹${grandTotal}`}
                   </button>

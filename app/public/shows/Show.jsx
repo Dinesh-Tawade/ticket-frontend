@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getPublicShows } from "@/app/services/publicCommunication";
+import { getPublicBookingSettings, getPublicShows } from "@/app/services/publicCommunication";
 import { useQuery } from "@tanstack/react-query";
 import {
   FaStar, FaClock, FaTicketAlt, FaFire, FaArrowRight,
@@ -43,17 +43,21 @@ const SLIDER_SETTINGS = {
 };
 
 /* ─────────────────────── ShowCard Component ─────────────────────── */
-function ShowCard({ show, onClick }) {
-  const isOpen = show.status === "BOOKING_OPEN";
+function ShowCard({ show, onClick, isBookingFeatureEnabled, bookingDisabledReason }) {
+  const isOpen = show.status === "BOOKING_OPEN" && isBookingFeatureEnabled;
   const isTrending = show.movie?.isTrending;
   const rating = show.movie?.rating;
   const genre = show.movie?.genre;
+  const handleClick = () => {
+    onClick(show._id);
+  };
 
   return (
     <div
-      className="group rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+      className="group rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer"
       style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
-      onClick={() => onClick(show._id)}
+      onClick={handleClick}
+      title={!isBookingFeatureEnabled ? `${bookingDisabledReason} View show details.` : ""}
     >
       {/* Poster */}
       <div className="relative aspect-[2/3] overflow-hidden bg-gray-900">
@@ -64,11 +68,12 @@ function ShowCard({ show, onClick }) {
           loading="lazy"
         />
         
+        
         {/* Overlay on hover */}
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500 text-black font-semibold text-sm">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm ${isBookingFeatureEnabled ? "bg-yellow-500 text-black" : "bg-gray-700 text-white"}`}>
             <FaTicketAlt size={12} />
-            <span>Book Now</span>
+            <span>{isBookingFeatureEnabled ? "Book Now" : "Booking Disabled"}</span>
           </div>
         </div>
 
@@ -117,7 +122,7 @@ function ShowCard({ show, onClick }) {
             {show.isPaid ? `₹${show.basePrice}` : "FREE"}
           </span>
           <span className={`text-xs ${isOpen ? "text-green-500" : "text-gray-400"}`}>
-            {isOpen ? "Now Showing" : "Coming Soon"}
+            {isOpen ? "Now Showing" : "Closed"}
           </span>
         </div>
       </div>
@@ -126,7 +131,7 @@ function ShowCard({ show, onClick }) {
 }
 
 /* ─────────────────────── Trending Slider Component ─────────────────────── */
-function TrendingSlider({ shows, onMovieClick }) {
+function TrendingSlider({ shows, onMovieClick, isBookingFeatureEnabled, bookingDisabledReason }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [slidesToShow, setSlidesToShow] = useState(5);
 
@@ -169,6 +174,7 @@ function TrendingSlider({ shows, onMovieClick }) {
               className="flex-shrink-0 cursor-pointer group"
               style={{ width: `calc(${100 / slidesToShow}% - 12px)` }}
               onClick={() => onMovieClick(show._id)}
+              title={!isBookingFeatureEnabled ? `${bookingDisabledReason} View show details.` : ""}
             >
               <div className="relative rounded-lg overflow-hidden">
                 <img
@@ -177,7 +183,10 @@ function TrendingSlider({ shows, onMovieClick }) {
                   className="w-full aspect-[2/3] object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <FaTicketAlt className="text-yellow-500 text-xl" />
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold ${isBookingFeatureEnabled ? "bg-yellow-500 text-black" : "bg-gray-700 text-white"}`}>
+                    <FaTicketAlt size={12} />
+                    <span>{isBookingFeatureEnabled ? "Book Now" : "Booking Disabled"}</span>
+                  </div>
                 </div>
                 {show.movie?.isTrending && (
                   <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-500 text-white text-xs font-bold">
@@ -331,7 +340,18 @@ export default function ShowsPage() {
     refetchOnReconnect: false, // Don't refetch on reconnect
   });
 
+  const { data: bookingSettingsData } = useQuery({
+    queryKey: ["public-booking-settings"],
+    queryFn: getPublicBookingSettings,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
   const allShows = showsData?.data || [];
+  const bookingSettings = bookingSettingsData?.data;
+  const isBookingFeatureEnabled = bookingSettings?.isBookingEnabled === true;
+  const bookingDisabledReason = bookingSettings?.disabledReason || "Booking is currently disabled.";
 
   // Apply filters
   let filteredShows = [...allShows];
@@ -412,7 +432,12 @@ export default function ShowsPage() {
               <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Trending Now</h2>
               <span className="text-xs text-gray-400">Most popular this week</span>
             </div>
-            <TrendingSlider shows={trendingShows} onMovieClick={handleMovieClick} />
+            <TrendingSlider
+              shows={trendingShows}
+              onMovieClick={handleMovieClick}
+              isBookingFeatureEnabled={isBookingFeatureEnabled}
+              bookingDisabledReason={bookingDisabledReason}
+            />
           </div>
         )}
 
@@ -446,7 +471,13 @@ export default function ShowsPage() {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {paginatedShows.map((show) => (
-                  <ShowCard key={show._id} show={show} onClick={handleMovieClick} />
+                  <ShowCard
+                    key={show._id}
+                    show={show}
+                    onClick={handleMovieClick}
+                    isBookingFeatureEnabled={isBookingFeatureEnabled}
+                    bookingDisabledReason={bookingDisabledReason}
+                  />
                 ))}
               </div>
               
