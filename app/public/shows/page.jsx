@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getPublicShows } from "@/app/services/publicCommunication";
+import { getPublicBookingSettings, getPublicShows } from "@/app/services/publicCommunication";
 import { useQuery } from "@tanstack/react-query";
 import {
   FaStar, FaClock, FaTicketAlt, FaFire,
@@ -17,20 +17,24 @@ const FILTERS = [
   { key: "COMING_SOON", label: "Coming Soon" },
 ];
 
-function ShowCard({ show, onClick, index, visible }) {
-  const isOpen = show.status === "BOOKING_OPEN";
+function ShowCard({ show, onClick, index, visible, isBookingFeatureEnabled, bookingDisabledReason }) {
+  const isOpen = show.status === "BOOKING_OPEN" && isBookingFeatureEnabled;
   const isTrending = show.movie?.isTrending;
   const rating = show.movie?.rating;
+  const handleClick = () => {
+    onClick(show._id);
+  };
 
   return (
     <div
       className={`show-card group ${visible ? "visible" : ""}`}
-      onClick={() => onClick(show._id)}
+      onClick={handleClick}
       style={{ animationDelay: `${index * 60}ms` }}
       tabIndex={0}
       role="button"
-      aria-label={`Book tickets for ${show.movie?.name}`}
-      onKeyDown={(e) => e.key === "Enter" && onClick(show._id)}
+      aria-label={`View details for ${show.movie?.name}`}
+      title={!isBookingFeatureEnabled ? `${bookingDisabledReason} View show details.` : ""}
+      onKeyDown={(e) => e.key === "Enter" && handleClick()}
     >
       {/* Poster */}
       <div className="show-card__poster">
@@ -52,8 +56,8 @@ function ShowCard({ show, onClick, index, visible }) {
         <div className="show-card__overlay">
           <div className="show-card__book-btn">
             <FaTicketAlt size={13} />
-            <span>Book Now</span>
-            <FaArrowRight size={11} />
+            <span>{isBookingFeatureEnabled ? "Book Now" : "Booking Disabled"}</span>
+            {isBookingFeatureEnabled && <FaArrowRight size={11} />}
           </div>
         </div>
 
@@ -128,7 +132,18 @@ function ShowsPage() {
     queryFn: getPublicShows,
   }); 
 
+  const { data: bookingSettingsData } = useQuery({
+    queryKey: ["public-booking-settings"],
+    queryFn: getPublicBookingSettings,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
   const allShows = showsData?.data || [];
+  const bookingSettings = bookingSettingsData?.data;
+  const isBookingFeatureEnabled = bookingSettings?.isBookingEnabled === true;
+  const bookingDisabledReason = bookingSettings?.disabledReason || "Booking is currently disabled.";
   
   const filtered = (filter === "ALL" || filter === "NOW_SHOWING")
     ? allShows
@@ -206,6 +221,8 @@ function ShowsPage() {
                   onClick={handleMovieClick}
                   index={index}
                   visible={true}
+                  isBookingFeatureEnabled={isBookingFeatureEnabled}
+                  bookingDisabledReason={bookingDisabledReason}
                 />
               ))}
             </div>
@@ -292,6 +309,14 @@ function ShowsPage() {
           transform: translateY(-4px);
           box-shadow: 0 12px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(212,175,55,0.2);
         }
+        .show-card--disabled {
+          cursor: not-allowed;
+          opacity: 0.72;
+        }
+        .show-card--disabled:hover {
+          transform: none;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
 
         /* ── Poster ── */
         .show-card__poster {
@@ -352,6 +377,12 @@ function ShowsPage() {
           cursor: pointer;
           box-shadow: 0 4px 16px rgba(212,175,55,0.4);
           transition: all 0.3s ease;
+        }
+        .show-card--disabled .show-card__book-btn {
+          color: #fff;
+          background: #4b5563;
+          box-shadow: none;
+          cursor: not-allowed;
         }
         .show-card__book-btn:hover {
           transform: translateY(-2px);

@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import {
   FaMoon, FaSun, FaSignOutAlt,
   FaBars, FaTimes, FaTicketAlt, FaChevronDown,
@@ -16,6 +17,7 @@ import useZoom from "@/app/hooks/useZoom";
 import useAuth from "@/app/hooks/useAuth";
 import useLanguage from "@/app/hooks/useLanguage";
 import AuthModal from "./AuthModal";
+import { getPublicBookingSettings } from "@/app/services/publicCommunication";
 
 function Header() {
   const router = useRouter();
@@ -33,7 +35,19 @@ function Header() {
   const [authModalMode, setAuthModalMode] = useState("login");
   const [localUserData, setLocalUserData] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const { data: bookingAccessData } = useQuery({
+    queryKey: ["public-booking-settings"],
+    queryFn: getPublicBookingSettings,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+  const bookingAccess = bookingAccessData?.data || {
+    isBookingEnabled: true,
+    disabledReason: "Booking is currently disabled.",
+  };
   const isLoggedIn = isAuthenticated || !!localUserData;
+  const isBookingFeatureEnabled = bookingAccess.isBookingEnabled !== false;
   const langRef = useRef(null);
   const userRef = useRef(null);
 
@@ -77,6 +91,11 @@ function Header() {
     setLocalUserData(null);
     setShowUserDropdown(false);
     window.location.href = "/";
+  };
+
+  const handleMyBookingsClick = () => {
+    if (!isBookingFeatureEnabled) return;
+    router.push("/public/my-bookings");
   };
 
   const languageOptions = [
@@ -283,9 +302,15 @@ function Header() {
                 return isMyBookings ? (
                   <button
                     key={link.label}
-                    onClick={() => router.push(link.href)}
+                    onClick={handleMyBookingsClick}
+                    disabled={!isBookingFeatureEnabled}
+                    title={!isBookingFeatureEnabled ? bookingAccess.disabledReason : ""}
                     className={`nav-link px-4 py-2 text-sm font-medium rounded-lg ${isActive(link.href) ? "active" : ""}`}
-                    style={{ color: isActive(link.href) ? "#d4af37" : scrolled_text }}
+                    style={{
+                      color: isActive(link.href) ? "#d4af37" : scrolled_text,
+                      opacity: isBookingFeatureEnabled ? 1 : 0.35,
+                      cursor: isBookingFeatureEnabled ? "pointer" : "not-allowed",
+                    }}
                   >
                     {link.label}
                   </button>
@@ -460,16 +485,31 @@ function Header() {
                           ...((user || localUserData)?.role === "SUPER_ADMIN"
                             ? [{ href: "/admin/dashboard", label: "Admin Dashboard", icon: "⚙️" }]
                             : []),
-                        ].map(({ href, label, icon }) => (
-                          <a key={href} href={href}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/15 transition-colors"
-                            style={{ color: "var(--foreground)" }}
-                            onClick={() => setShowUserDropdown(false)}
-                          >
-                            <span>{icon}</span>
-                            {label}
-                          </a>
-                        ))}
+                        ].map(({ href, label, icon }) => {
+                          const disabled = label === "My Bookings" && !isBookingFeatureEnabled;
+                          return disabled ? (
+                            <button
+                              key={href}
+                              type="button"
+                              disabled
+                              title={bookingAccess.disabledReason}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-not-allowed opacity-40"
+                              style={{ color: "var(--foreground)" }}
+                            >
+                              <span>{icon}</span>
+                              {label}
+                            </button>
+                          ) : (
+                            <a key={href} href={href}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/15 transition-colors"
+                              style={{ color: "var(--foreground)" }}
+                              onClick={() => setShowUserDropdown(false)}
+                            >
+                              <span>{icon}</span>
+                              {label}
+                            </a>
+                          );
+                        })}
                       </div>
 
                       <div className="border-t py-1.5" style={{ borderColor: "var(--card-border, #e5e7eb)" }}>
@@ -560,13 +600,20 @@ function Header() {
                     <button
                       key={link.label}
                       onClick={() => {
+                        if (!isBookingFeatureEnabled) return;
                         router.push(link.href);
                         setShowMobileMenu(false);
                       }}
+                      disabled={!isBookingFeatureEnabled}
+                      title={!isBookingFeatureEnabled ? bookingAccess.disabledReason : ""}
                       className={`mobile-nav-link flex items-center w-full px-4 py-3 text-sm font-medium transition-all text-left ${
                         isActive(link.href) ? "active" : ""
                       }`}
-                      style={{ color: isActive(link.href) ? "#d4af37" : "var(--foreground)" }}
+                      style={{
+                        color: isActive(link.href) ? "#d4af37" : "var(--foreground)",
+                        opacity: isBookingFeatureEnabled ? 1 : 0.4,
+                        cursor: isBookingFeatureEnabled ? "pointer" : "not-allowed",
+                      }}
                     >
                       {link.label}
                     </button>
@@ -634,15 +681,29 @@ function Header() {
                       { href: "/public/profile", label: "My Profile" },
                       { href: "/public/my-bookings", label: "My Bookings" },
                       ...((user || localUserData)?.role === "SUPER_ADMIN" ? [{ href: "/admin/dashboard", label: "Admin Dashboard" }] : []),
-                    ].map(({ href, label }) => (
-                      <a key={href} href={href}
-                        className="mobile-nav-link flex items-center px-4 py-3 text-sm"
-                        style={{ color: "var(--foreground)" }}
-                        onClick={() => setShowMobileMenu(false)}
-                      >
-                        {label}
-                      </a>
-                    ))}
+                    ].map(({ href, label }) => {
+                      const disabled = label === "My Bookings" && !isBookingFeatureEnabled;
+                      return disabled ? (
+                        <button
+                          key={href}
+                          type="button"
+                          disabled
+                          title={bookingAccess.disabledReason}
+                          className="mobile-nav-link flex items-center px-4 py-3 text-sm opacity-40 cursor-not-allowed"
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          {label}
+                        </button>
+                      ) : (
+                        <a key={href} href={href}
+                          className="mobile-nav-link flex items-center px-4 py-3 text-sm"
+                          style={{ color: "var(--foreground)" }}
+                          onClick={() => setShowMobileMenu(false)}
+                        >
+                          {label}
+                        </a>
+                      );
+                    })}
                     <button
                       onClick={handleLogout}
                       className="mobile-nav-link w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500"

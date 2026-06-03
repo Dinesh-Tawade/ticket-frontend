@@ -121,6 +121,16 @@ export const getPublicShowById = async (id) => {
   return res.data;
 };
 
+export const getPublicBookingSettings = async () => {
+  const res = await axios.get(`${BE_URL}/public/booking-settings`);
+  return res.data;
+};
+
+export const getPublicBookingStatus = async (showId) => {
+  const res = await axios.get(`${BE_URL}/public/shows/${showId}/booking-status`);
+  return res.data;
+};
+
 export const getPublicTheaters = async (city = "") => {
   const url = city ? `${BE_URL}/public/theaters?city=${city}` : `${BE_URL}/public/theaters`;
   const res = await axios.get(url);
@@ -255,3 +265,4 @@ export const getProductCategories = async () => {
   const res = await axios.get(`${BE_URL}/buyer/categories`, getAuthHeader());
   return res.data;
 };
+

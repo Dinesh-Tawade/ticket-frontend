@@ -6,7 +6,7 @@
 import React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getPublicShowById } from "@/app/services/publicCommunication";
+import { getPublicShowById, getPublicBookingSettings } from "@/app/services/publicCommunication";
 import {
   FaStar, FaClock, FaCalendarAlt, FaMapMarkerAlt,
   FaTicketAlt, FaArrowLeft, FaFire, FaGlobe,
@@ -27,8 +27,19 @@ function ShowDetails() {
     enabled: !!showId,
   });
 
+  const { data: bookingSettingsData } = useQuery({
+    queryKey: ["public-booking-settings"],
+    queryFn: getPublicBookingSettings,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
   const show = showData?.data;
-  const isOpen = show?.status === "BOOKING_OPEN";
+  const bookingSettings = bookingSettingsData?.data;
+  const isBookingFeatureEnabled = bookingSettings?.isBookingEnabled === true;
+  const bookingDisabledReason = bookingSettings?.disabledReason || "Booking is currently disabled.";
+  const isOpen = show?.status === "BOOKING_OPEN" && isBookingFeatureEnabled;
 
   const handleBookNow = () => router.push(`/public/shows/${showId}/booking`);
 
@@ -345,9 +356,10 @@ function ShowDetails() {
                   className={`sd-book-cta ${isOpen ? "sd-book-cta--active" : "sd-book-cta--disabled"}`}
                   onClick={handleBookNow}
                   disabled={!isOpen}
+                  title={!isBookingFeatureEnabled ? bookingDisabledReason : ""}
                 >
                   <FaTicketAlt size={15} />
-                  {isOpen ? "Book Now" : "Booking Closed"}
+                  {isBookingFeatureEnabled ? (isOpen ? "Book Now" : "Booking Closed") : "Booking Disabled"}
                 </button>
 
                 {isOpen && (
