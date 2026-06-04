@@ -216,6 +216,13 @@ function OrdersPage() {
     return null;
   };
 
+  // Extract seat numbers from specialInstructions
+  const extractSeatNumbers = (specialInstructions) => {
+    if (!specialInstructions) return 'N/A';
+    const match = specialInstructions.match(/seat\s+([A-Z0-9,\s]+)/i);
+    return match ? match[1].trim() : specialInstructions;
+  };
+
   // Handle Status Update
   const handleStatusUpdate = (orderId, currentStatus) => {
     const nextAction = getNextAction(currentStatus);
@@ -391,6 +398,7 @@ function OrdersPage() {
                   <tr className="text-left">
                     <th className="px-4 py-3 text-xs font-medium text-gray-400">Order ID</th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-400">Customer</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-400">Seat</th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-400">Items</th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-400">Total</th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-400">Status</th>
@@ -401,6 +409,7 @@ function OrdersPage() {
                 <tbody className="divide-y divide-gray-800">
                   {paginatedOrders.map((order) => {
                     const nextAction = getNextAction(order.orderStatus);
+                    const seatNumbers = extractSeatNumbers(order.specialInstructions);
                     return (
                       <tr key={order._id} className="hover:bg-gray-800/50 transition-colors">
                         <td className="px-4 py-3 text-white text-sm font-mono">{order.orderId}</td>
@@ -408,6 +417,7 @@ function OrdersPage() {
                           <div className="text-white text-sm">{order.buyerId?.name || "N/A"}</div>
                           <div className="text-gray-500 text-xs">{order.buyerId?.phone || "N/A"}</div>
                          </td>
+                        <td className="px-4 py-3 text-orange-400 text-sm font-medium">{seatNumbers}</td>
                         <td className="px-4 py-3 text-gray-300 text-sm">{order.items?.length || 0} items</td>
                         <td className="px-4 py-3 text-white text-sm font-medium">₹{order.totalAmount}</td>
                         <td className="px-4 py-3">{getStatusBadge(order.orderStatus)}</td>
@@ -512,6 +522,10 @@ function OrdersPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div><p className="text-gray-400 text-xs">Delivery Type</p><p className="text-white">{selectedOrder.deliveryType?.replace("_", " ") || "SEAT DELIVERY"}</p></div>
                   <div><p className="text-gray-400 text-xs">Payment</p><p className={`${selectedOrder.paymentStatus === "PAID" ? "text-green-400" : "text-yellow-400"}`}>{selectedOrder.paymentStatus || "PENDING"}</p></div>
+                  <div><p className="text-gray-400 text-xs">Seat Number</p><p className="text-orange-400 font-semibold">{extractSeatNumbers(selectedOrder.specialInstructions)}</p></div>
+                  {selectedOrder.scheduledFor && (
+                    <div><p className="text-gray-400 text-xs">Scheduled For</p><p className="text-white">{new Date(selectedOrder.scheduledFor).toLocaleString()}</p></div>
+                  )}
                 </div>
               </div>
 

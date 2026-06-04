@@ -11,6 +11,7 @@ import {
   FaChevronLeft,
   FaCalendarAlt,
   FaSignOutAlt,
+  FaUtensils,
 } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
 import { GiTheaterCurtains } from "react-icons/gi";
@@ -73,6 +74,7 @@ export default function TheaterOwnerSidebar() {
       { name: "Dashboard", path: "/theater-owner/dashboard", icon: MdDashboard },
       { name: "Shows", path: "/theater-owner/shows", icon: FaFilm },
       { name: "Booked Tickets", path: "/theater-owner/bookings", icon: FaCalendarAlt },
+      { name: "Food Ordering", path: "/theater-owner/food-ordering", icon: FaUtensils },
     ],
     []
   );
