@@ -46,9 +46,6 @@ function AddStorePage() {
   const currentUser = getCurrentUser();
   const vendorTheaterId = currentUser?.assignedTheater;
 
-  console.log("Current User:", currentUser);
-  console.log("Vendor's assigned theater ID:", vendorTheaterId);
-
   // Fetch all theaters for dropdown
   const { 
     data: theatersData, 
@@ -58,6 +55,7 @@ function AddStorePage() {
     queryKey: ["all-theaters"],
     queryFn: getAllTheatersAdmin,
     enabled: true, // Always fetch theaters
+    retry: false,
   });
 
   // Filter theaters - only show the vendor's assigned theater if they have one
@@ -85,7 +83,7 @@ function AddStorePage() {
     if (existingStore?.data) {
       setStoreExists(true);
       setTimeout(() => {
-        router.push("/vendor/store");
+        router.push("/vendor/dashboard");
       }, 2000);
     }
   }, [existingStore, router]);
@@ -110,7 +108,7 @@ function AddStorePage() {
       toast.success("Store created successfully!");
       queryClient.invalidateQueries(["vendor-my-store"]);
       setTimeout(() => {
-        router.push("/vendor/store");
+        router.push("/vendor/dashboard");
       }, 1500);
     },
     onError: (error) => {
@@ -199,8 +197,30 @@ function AddStorePage() {
   // Loading state
   if (storeLoading || theatersLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <FaSpinner className="animate-spin text-3xl text-purple-500" />
+      <div className="min-h-screen flex flex-col items-center justify-center transition-colors duration-300" style={{ background: "var(--background)" }}>
+        <FaSpinner className="animate-spin text-4xl text-blue-500 mb-4" />
+        <p style={{ color: "var(--foreground)", opacity: 0.7 }}>Loading store data...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (theatersError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 transition-colors duration-300" style={{ background: "var(--background)" }}>
+        <div className="max-w-md w-full rounded-xl p-6 text-center border shadow-xl" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <FaInfoCircle className="text-6xl text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>Error Loading Theaters</h2>
+          <p className="mb-6" style={{ color: "var(--foreground)", opacity: 0.7 }}>
+            There was a problem connecting to the server. Please check your connection or contact support.
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -208,14 +228,14 @@ function AddStorePage() {
   // If store already exists, show message
   if (storeExists || existingStore?.data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-        <div className="max-w-md w-full bg-gray-800 rounded-xl p-6 text-center">
-          <FaStore className="text-6xl text-purple-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Store Already Exists!</h2>
-          <p className="text-gray-400 mb-6">
-            You have already created a store. Redirecting to your store page...
+      <div className="min-h-screen flex items-center justify-center p-4 transition-colors duration-300" style={{ background: "var(--background)" }}>
+        <div className="max-w-md w-full rounded-xl p-6 text-center border shadow-xl" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <FaStore className="text-6xl text-blue-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>Store Already Exists!</h2>
+          <p className="mb-6" style={{ color: "var(--foreground)", opacity: 0.7 }}>
+            You have already created a store. Redirecting to your dashboard...
           </p>
-          <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
     );
@@ -224,16 +244,16 @@ function AddStorePage() {
   // If no theaters available
   if (availableTheaters.length === 0 && !vendorTheaterId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-        <div className="max-w-md w-full bg-gray-800 rounded-xl p-6 text-center">
+      <div className="min-h-screen flex items-center justify-center p-4 transition-colors duration-300" style={{ background: "var(--background)" }}>
+        <div className="max-w-md w-full rounded-xl p-6 text-center border shadow-xl" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <FaBuilding className="text-6xl text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">No Theaters Available</h2>
-          <p className="text-gray-400 mb-6">
+          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>No Theaters Available</h2>
+          <p className="mb-6" style={{ color: "var(--foreground)", opacity: 0.7 }}>
             No theaters are available to assign to your store. Please contact the administrator.
           </p>
           <button
             onClick={() => router.back()}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all"
           >
             Go Back
           </button>
@@ -243,57 +263,68 @@ function AddStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8 px-4">
+    <div className="min-h-screen transition-colors duration-300 py-8 px-4" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
-          >
-            <FaArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
-              <FaStore className="text-white text-2xl" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Create Your Store</h1>
-              <p className="text-gray-400 mt-1">Fill in the details to register your food store</p>
+        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="px-8 py-4">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 hover:opacity-100 transition-opacity mb-4" style={{ color: "var(--foreground)", opacity: 0.7 }}
+            >
+              <FaArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                    <FaStore className="text-white text-xl" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                    Create Your Store
+                  </h1>
+                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                    Fill in the details to register your food store
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Form Card */}
-        <form onSubmit={handleSubmit} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl overflow-hidden">
+        <form onSubmit={handleSubmit} className="rounded-xl overflow-hidden shadow-lg" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
           {/* Logo Upload */}
-          <div className="p-6 border-b border-gray-700">
-            <label className="block text-white font-medium mb-2">Store Logo</label>
+          <div className="p-6 border-b" style={{ borderColor: "var(--card-border)" }}>
+            <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Store Logo</label>
             <div className="flex items-center gap-6 flex-wrap">
               <div
                 className={`w-28 h-28 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-                  logoPreview ? "border-green-500 bg-green-500/10" : "border-gray-600 hover:border-purple-500"
+                  logoPreview ? "border-green-500 bg-green-500/10" : "hover:border-blue-500"
                 }`}
+                style={!logoPreview ? { borderColor: "var(--card-border)" } : {}}
                 onClick={() => document.getElementById("logoInput").click()}
               >
                 {logoPreview ? (
                   <img src={logoPreview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
                 ) : (
                   <>
-                    <FaUpload className="text-gray-400 text-2xl mb-1" />
-                    <span className="text-xs text-gray-500">Upload Logo</span>
+                    <FaUpload className="text-2xl mb-1" style={{ color: "var(--foreground)", opacity: 0.4 }} />
+                    <span className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Upload Logo</span>
                   </>
                 )}
               </div>
               <input id="logoInput" type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
               <div className="flex-1">
-                <p className="text-sm text-gray-400">Recommended: Square image, at least 200x200px</p>
+                <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.5 }}>Recommended: Square image, at least 200x200px</p>
                 {selectedLogo && (
-                  <button type="button" onClick={() => { setSelectedLogo(null); setLogoPreview(null); }} className="text-red-400 text-sm mt-2 hover:text-red-300">
+                  <button type="button" onClick={() => { setSelectedLogo(null); setLogoPreview(null); }} className="text-red-400 text-sm mt-2 font-medium hover:text-red-300 transition-colors">
                     Remove Logo
                   </button>
                 )}
@@ -304,58 +335,62 @@ function AddStorePage() {
           {/* Form Fields */}
           <div className="p-6 space-y-5">
             <div>
-              <label className="block text-white font-medium mb-2">Store Name <span className="text-red-400">*</span></label>
+              <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Store Name <span className="text-red-400">*</span></label>
               <div className="relative">
-                <FaStore className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <FaStore className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style={{ color: "var(--foreground)" }} />
                 <input 
                   type="text" 
                   name="storeName" 
                   value={formData.storeName} 
                   onChange={handleChange} 
                   placeholder="e.g., Food Corner PVR" 
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" 
+                  className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-white font-medium mb-2">Description</label>
+              <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Description</label>
               <textarea 
                 name="description" 
                 value={formData.description} 
                 onChange={handleChange} 
                 rows="3" 
                 placeholder="Describe your store, specialties, etc." 
-                className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 resize-none" 
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none" 
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-white font-medium mb-2">Contact Number <span className="text-red-400">*</span></label>
+                <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Contact Number <span className="text-red-400">*</span></label>
                 <div className="relative">
-                  <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style={{ color: "var(--foreground)" }} />
                   <input 
                     type="tel" 
                     name="contactNumber" 
                     value={formData.contactNumber} 
                     onChange={handleChange} 
                     placeholder="9876543210" 
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" 
+                    className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                    style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-white font-medium mb-2">Address <span className="text-red-400">*</span></label>
+                <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Address <span className="text-red-400">*</span></label>
                 <div className="relative">
-                  <FaMapMarkerAlt className="absolute left-3 top-3 text-gray-500" />
+                  <FaMapMarkerAlt className="absolute left-3 top-3 opacity-50" style={{ color: "var(--foreground)" }} />
                   <textarea 
                     name="address" 
                     value={formData.address} 
                     onChange={handleChange} 
                     rows="1" 
                     placeholder="Full address of the store" 
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 resize-none" 
+                    className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none" 
+                    style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   />
                 </div>
               </div>
@@ -363,32 +398,34 @@ function AddStorePage() {
 
             {/* Assigned Theater - Dropdown */}
             <div>
-              <label className="block text-white font-medium mb-2">Assigned Theater <span className="text-red-400">*</span></label>
+              <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Assigned Theater <span className="text-red-400">*</span></label>
               <div className="relative">
-                <FaBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10" />
+                <FaBuilding className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50 z-10" style={{ color: "var(--foreground)" }} />
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-left focus:outline-none focus:border-purple-500 flex items-center justify-between"
+                  className="w-full pl-10 pr-10 py-2.5 border rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex items-center justify-between transition-all"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   disabled={vendorTheaterId && availableTheaters.length === 1}
                 >
-                  <span className={!formData.assignedTheater ? "text-gray-500" : "text-white"}>
+                  <span style={{ opacity: !formData.assignedTheater ? 0.5 : 1 }}>
                     {getSelectedTheaterName()}
                   </span>
-                  <FaChevronDown className={`text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  <FaChevronDown className={`transition-transform opacity-50 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {isDropdownOpen && (
-                  <div className="absolute z-20 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  <div className="absolute z-20 w-full mt-1 border rounded-lg shadow-xl max-h-60 overflow-y-auto" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
                     {availableTheaters.map((theater) => (
                       <button
                         key={theater._id}
                         type="button"
                         onClick={() => handleTheaterSelect(theater._id, theater.name)}
-                        className="w-full px-4 py-2.5 text-left text-white hover:bg-gray-700 transition-colors flex flex-col"
+                        className="w-full px-4 py-2.5 text-left transition-colors flex flex-col hover:bg-black/10 dark:hover:bg-white/5"
+                        style={{ color: "var(--foreground)" }}
                       >
                         <span className="font-medium">{theater.name}</span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs" style={{ opacity: 0.6 }}>
                           {theater.city}, {theater.state} - {theater.pincode}
                         </span>
                       </button>
@@ -396,7 +433,7 @@ function AddStorePage() {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs mt-1.5 font-medium" style={{ color: "var(--foreground)", opacity: 0.5 }}>
                 <FaInfoCircle className="inline mr-1 text-xs" />
                 {vendorTheaterId 
                   ? "This theater is assigned to your vendor account. You can only create a store for this theater."
@@ -406,56 +443,60 @@ function AddStorePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-white font-medium mb-2">GST Number</label>
+                <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>GST Number</label>
                 <div className="relative">
-                  <FaIdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <FaIdCard className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style={{ color: "var(--foreground)" }} />
                   <input 
                     type="text" 
                     name="gstNumber" 
                     value={formData.gstNumber} 
                     onChange={handleChange} 
                     placeholder="27AAAAA1234B1Z" 
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" 
+                    className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                    style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-white font-medium mb-2">FSSAI License</label>
+                <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>FSSAI License</label>
                 <input 
                   type="text" 
                   name="fssaiLicense" 
                   value={formData.fssaiLicense} 
                   onChange={handleChange} 
                   placeholder="FSSAI-1234567890" 
-                  className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" 
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-white font-medium mb-2">Opening Time <span className="text-red-400">*</span></label>
+                <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Opening Time <span className="text-red-400">*</span></label>
                 <div className="relative">
-                  <FaClock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <FaClock className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style={{ color: "var(--foreground)" }} />
                   <input 
                     type="time" 
                     name="openingTime" 
                     value={formData.openingTime} 
                     onChange={handleChange} 
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500" 
+                    className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all [color-scheme:light] dark:[color-scheme:dark]" 
+                    style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-white font-medium mb-2">Closing Time <span className="text-red-400">*</span></label>
+                <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Closing Time <span className="text-red-400">*</span></label>
                 <div className="relative">
-                  <FaClock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <FaClock className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style={{ color: "var(--foreground)" }} />
                   <input 
                     type="time" 
                     name="closingTime" 
                     value={formData.closingTime} 
                     onChange={handleChange} 
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500" 
+                    className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all [color-scheme:light] dark:[color-scheme:dark]" 
+                    style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   />
                 </div>
               </div>
@@ -463,27 +504,26 @@ function AddStorePage() {
           </div>
 
           {/* Submit Buttons */}
-          <div className="p-6 border-t border-gray-700 bg-gray-900/30">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button 
-                type="button" 
-                onClick={() => router.back()} 
-                className="px-6 py-2.5 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                disabled={createStoreMutation.isPending || !formData.assignedTheater} 
-                className="flex-1 px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {createStoreMutation.isPending ? (
-                  <><FaSpinner className="animate-spin" /> Creating Store...</>
-                ) : (
-                  <><FaCheckCircle className="w-4 h-4" /> Create Store</>
-                )}
-              </button>
-            </div>
+          <div className="p-6 border-t flex flex-col sm:flex-row gap-3" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+            <button 
+              type="button" 
+              onClick={() => router.back()} 
+              className="px-6 py-2.5 border rounded-lg hover:opacity-80 transition-opacity font-medium"
+              style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={createStoreMutation.isPending || !formData.assignedTheater} 
+              className="flex-1 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+            >
+              {createStoreMutation.isPending ? (
+                <><FaSpinner className="animate-spin" /> Creating Store...</>
+              ) : (
+                <><FaCheckCircle className="w-4 h-4" /> Create Store</>
+              )}
+            </button>
           </div>
         </form>
       </div>

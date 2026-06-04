@@ -11,7 +11,11 @@ import {
   IoCashOutline,
   IoTrendingUpOutline,
   IoRestaurantOutline,
-  IoPricetagOutline
+  IoPricetagOutline,
+  IoRefreshOutline,
+  IoCubeOutline,
+  IoTime,
+  IoCheckmarkDone,
 } from "react-icons/io5";
 import toast from "react-hot-toast";
 
@@ -104,24 +108,65 @@ function VendorSalesReportPage() {
     }
   };
 
+  const colorMap = {
+    blue: "#3b82f6",
+    green: "#22c55e",
+    purple: "#a855f7",
+    yellow: "#eab308",
+    indigo: "#6366f1",
+    cyan: "#06b6d4",
+    emerald: "#10b981",
+    orange: "#f97316",
+    red: "#ef4444",
+  };
+
+  const DashboardStatCard = ({ title, value, icon: Icon, color = "blue", prefix = "" }) => {
+    const themeColor = colorMap[color] || colorMap.blue;
+    const displayValue = `${prefix}${Number(value || 0).toLocaleString()}`;
+
+    return (
+      <div
+        className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
+        style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+        <div className="relative">
+          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+            {title}
+          </div>
+          <div className="text-[34px] font-black tracking-tighter leading-none" style={{ color: "var(--foreground)" }}>
+            {displayValue}
+          </div>
+        </div>
+        <div
+          className="relative w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+          style={{ background: `${themeColor}15`, border: `1px solid ${themeColor}30` }}
+        >
+          <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor }} />
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="w-10 h-10 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center rounded-xl py-20" style={{ background: "var(--background)" }}>
+        <IoRefreshOutline className="mb-4 animate-spin text-4xl text-blue-500" />
+        <p style={{ color: "var(--foreground)", opacity: 0.65 }}>Loading sales report...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="bg-red-500/10 rounded-full p-4 mb-4">
-          <IoBarChartOutline className="text-red-400 text-4xl" />
+      <div className="flex flex-col items-center justify-center rounded-xl py-20" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-500/10">
+          <IoBarChartOutline className="text-5xl text-red-400" />
         </div>
-        <p className="text-red-400 mb-3">{error.message || "Failed to load sales report"}</p>
+        <p className="mb-3 text-red-400">{error.message || "Failed to load sales report"}</p>
         <button 
           onClick={() => refetch()} 
-          className="px-4 py-2 bg-orange-500 rounded-lg text-white hover:bg-orange-600 transition"
+          className="px-4 py-2 bg-blue-500 rounded-lg text-white hover:bg-blue-600 transition"
         >
           Try Again
         </button>
@@ -130,74 +175,83 @@ function VendorSalesReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 px-4 py-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
+      <main className="space-y-8">
         {/* Header */}
-        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl shadow-lg">
-              <IoBarChartOutline className="text-white text-2xl" />
+        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="px-8 py-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                    <IoBarChartOutline className="text-white text-xl" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                    Sales Report
+                  </h1>
+                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                    Track your sales performance
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleExport} 
+                  className="px-4 py-2 hover:bg-gray-700/50 rounded-lg text-sm flex items-center gap-2 transition-colors border"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                >
+                  <IoDownloadOutline /> Export CSV
+                </button>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Sales Report</h1>
-              <p className="text-gray-400 text-sm">Track your sales performance</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={handleExport} 
-              className="px-4 py-2 bg-gray-800 rounded-lg text-white text-sm flex items-center gap-2 hover:bg-gray-700 transition"
-            >
-              <IoDownloadOutline /> Export CSV
-            </button>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl p-4 border border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <IoCashOutline className="text-green-400 text-lg" />
-              <p className="text-gray-400 text-xs uppercase tracking-wide">Total Revenue</p>
-            </div>
-            <p className="text-2xl font-bold text-white">₹{summary.totalRevenue?.toLocaleString() || 0}</p>
-          </div>
-          <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl p-4 border border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <IoCartOutline className="text-blue-400 text-lg" />
-              <p className="text-gray-400 text-xs uppercase tracking-wide">Total Orders</p>
-            </div>
-            <p className="text-2xl font-bold text-white">{summary.totalOrders || 0}</p>
-          </div>
-          <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl p-4 border border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <IoRestaurantOutline className="text-purple-400 text-lg" />
-              <p className="text-gray-400 text-xs uppercase tracking-wide">Items Sold</p>
-            </div>
-            <p className="text-2xl font-bold text-white">{summary.totalItems || 0}</p>
-          </div>
-          <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl p-4 border border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <IoTrendingUpOutline className="text-orange-400 text-lg" />
-              <p className="text-gray-400 text-xs uppercase tracking-wide">Avg Order Value</p>
-            </div>
-            <p className="text-2xl font-bold text-white">₹{summary.averageOrderValue?.toFixed(0) || 0}</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <DashboardStatCard
+            title="Total Revenue"
+            value={summary.totalRevenue || 0}
+            icon={IoCashOutline}
+            color="green"
+            prefix="₹"
+          />
+          <DashboardStatCard
+            title="Total Orders"
+            value={summary.totalOrders || 0}
+            icon={IoCartOutline}
+            color="blue"
+          />
+          <DashboardStatCard
+            title="Items Sold"
+            value={summary.totalItems || 0}
+            icon={IoCubeOutline}
+            color="purple"
+          />
+          <DashboardStatCard
+            title="Avg Order Value"
+            value={summary.averageOrderValue?.toFixed(0) || 0}
+            icon={IoTrendingUpOutline}
+            color="indigo"
+            prefix="₹"
+          />
         </div>
 
         {/* Period Info */}
         {(period.from || period.to) && (
-          <div className="bg-gray-800/30 rounded-xl p-3 mb-6 text-center">
-            <p className="text-gray-400 text-sm">
+          <div className="rounded-xl p-3 mb-6 text-center" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <p className="text-sm" style={{ color: "var(--foreground)", opacity: 0.7 }}>
               📅 Report Period: {formatDate(period.from)} - {formatDate(period.to)}
             </p>
           </div>
         )}
 
         {/* Date Filter */}
-        <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-700">
+        <div className="rounded-xl p-4" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
           <div className="flex flex-wrap gap-3 items-center">
-            <IoCalendarOutline className="text-gray-400 text-xl" />
+            <IoCalendarOutline className="text-xl" style={{ color: "var(--foreground)", opacity: 0.6 }} />
             <div className="flex flex-wrap gap-2">
               {['all', 'today', 'week', 'month', 'year', 'custom'].map((range) => (
                 <button
@@ -205,9 +259,14 @@ function VendorSalesReportPage() {
                   onClick={() => setDateRange(range)}
                   className={`px-3 py-1.5 rounded-lg text-sm capitalize transition ${
                     dateRange === range 
-                      ? 'bg-orange-500 text-white' 
-                      : 'bg-gray-900 text-gray-400 hover:bg-gray-700'
+                      ? 'bg-blue-500 text-white' 
+                      : ''
                   }`}
+                  style={{ 
+                    background: dateRange === range ? '' : 'var(--background)',
+                    border: '1px solid var(--card-border)',
+                    color: dateRange === range ? '' : 'var(--foreground)'
+                  }}
                 >
                   {range === 'all' ? 'All Time' : range}
                 </button>
@@ -219,14 +278,16 @@ function VendorSalesReportPage() {
                   type="date" 
                   value={startDate} 
                   onChange={(e) => setStartDate(e.target.value)} 
-                  className="px-3 py-1.5 bg-gray-900 rounded-lg text-white text-sm border border-gray-700 focus:outline-none focus:border-orange-500"
+                  className="px-3 py-1.5 rounded-lg text-sm focus:outline-none transition-colors"
+                  style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
                 />
-                <span className="text-gray-500">to</span>
+                <span style={{ color: "var(--foreground)", opacity: 0.5 }}>to</span>
                 <input 
                   type="date" 
                   value={endDate} 
                   onChange={(e) => setEndDate(e.target.value)} 
-                  className="px-3 py-1.5 bg-gray-900 rounded-lg text-white text-sm border border-gray-700 focus:outline-none focus:border-orange-500"
+                  className="px-3 py-1.5 rounded-lg text-sm focus:outline-none transition-colors"
+                  style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
                 />
               </div>
             )}
@@ -235,18 +296,18 @@ function VendorSalesReportPage() {
 
         {/* Daily Sales Chart (Summary) */}
         {dailySales.length > 0 && (
-          <div className="bg-gray-800/50 rounded-xl p-4 mb-6 border border-gray-700">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <IoCalendarOutline className="text-orange-400" /> Daily Sales Trend
+          <div className="rounded-xl p-4" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+            <h3 className="font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+              <IoCalendarOutline className="text-blue-500" /> Daily Sales Trend
             </h3>
             <div className="space-y-3">
               {dailySales.slice(0, 7).map((day, idx) => (
                 <div key={idx} className="flex items-center justify-between">
                   <div className="w-24">
-                    <span className="text-gray-400 text-sm">{day.date}</span>
+                    <span className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>{day.date}</span>
                   </div>
                   <div className="flex-1 mx-4">
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--background)" }}>
                       <div 
                         className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
                         style={{ width: `${Math.min((day.revenue / (summary.totalRevenue || 1)) * 100, 100)}%` }}
@@ -254,8 +315,8 @@ function VendorSalesReportPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-white text-sm font-medium">₹{day.revenue}</span>
-                    <span className="text-gray-500 text-xs ml-2">({day.orders} orders)</span>
+                    <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>₹{day.revenue}</span>
+                    <span className="text-xs ml-2" style={{ color: "var(--foreground)", opacity: 0.5 }}>({day.orders} orders)</span>
                   </div>
                 </div>
               ))}
@@ -265,54 +326,58 @@ function VendorSalesReportPage() {
 
         {/* Top Products Table */}
         {topProducts.length === 0 ? (
-          <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-700">
-            <IoBarChartOutline className="w-16 h-16 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400">No sales data available for this period</p>
-            <p className="text-gray-500 text-sm mt-1">Try selecting a different date range</p>
+          <div className="rounded-xl py-20 text-center" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500/10">
+              <IoBarChartOutline className="text-5xl text-blue-500" />
+            </div>
+            <h3 className="mb-2 text-xl font-semibold" style={{ color: "var(--foreground)" }}>No Sales Data</h3>
+            <p className="mx-auto max-w-md text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              No sales data available for this period. Try selecting a different date range.
+            </p>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-xl border border-gray-700">
+            <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--card-border)" }}>
               <table className="w-full">
-                <thead className="bg-gray-800">
-                  <tr className="text-left text-gray-400 text-xs">
-                    <th className="px-4 py-3 rounded-l-lg">#</th>
-                    <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => handleSort("productName")}>
+                <thead style={{ background: "var(--card)", borderBottom: "1px solid var(--card-border)" }}>
+                  <tr className="text-left text-xs">
+                    <th className="px-4 py-3 rounded-l-lg" style={{ color: "var(--foreground)", opacity: 0.6 }}>#</th>
+                    <th className="px-4 py-3 cursor-pointer" style={{ color: "var(--foreground)", opacity: 0.6 }} onClick={() => handleSort("productName")}>
                       Product Name {sortBy === "productName" && (sortOrder === "asc" ? "↑" : "↓")}
                     </th>
-                    <th className="px-4 py-3 text-right cursor-pointer hover:text-white" onClick={() => handleSort("quantitySold")}>
+                    <th className="px-4 py-3 text-right cursor-pointer" style={{ color: "var(--foreground)", opacity: 0.6 }} onClick={() => handleSort("quantitySold")}>
                       Quantity Sold {sortBy === "quantitySold" && (sortOrder === "asc" ? "↑" : "↓")}
                     </th>
-                    <th className="px-4 py-3 text-right cursor-pointer hover:text-white" onClick={() => handleSort("revenue")}>
+                    <th className="px-4 py-3 text-right cursor-pointer" style={{ color: "var(--foreground)", opacity: 0.6 }} onClick={() => handleSort("revenue")}>
                       Revenue {sortBy === "revenue" && (sortOrder === "asc" ? "↑" : "↓")}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody style={{ borderBottom: "1px solid var(--card-border)" }}>
                   {sortedProducts.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-800/50 transition">
-                      <td className="px-4 py-3 text-gray-500 text-sm">{idx + 1}</td>
-                      <td className="px-4 py-3 text-white text-sm font-medium">
+                    <tr key={idx} className="hover:opacity-80 transition" style={{ borderBottom: "1px solid var(--card-border)" }}>
+                      <td className="px-4 py-3 text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>{idx + 1}</td>
+                      <td className="px-4 py-3 text-sm font-medium" style={{ color: "var(--foreground)" }}>
                         {item.productName || "N/A"}
                       </td>
-                      <td className="px-4 py-3 text-right text-white">
+                      <td className="px-4 py-3 text-right" style={{ color: "var(--foreground)" }}>
                         <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium">
                           {item.quantitySold || 0} units
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-white font-semibold">
+                      <td className="px-4 py-3 text-right font-semibold" style={{ color: "var(--foreground)" }}>
                         ₹{(item.revenue || 0).toLocaleString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-gray-800 border-t border-gray-700">
+                <tfoot style={{ background: "var(--card)", borderTop: "1px solid var(--card-border)" }}>
                   <tr>
-                    <td colSpan="2" className="px-4 py-3 text-right text-gray-400 font-medium">Total:</td>
-                    <td className="px-4 py-3 text-right text-white font-bold">
+                    <td colSpan="2" className="px-4 py-3 text-right font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Total:</td>
+                    <td className="px-4 py-3 text-right font-bold" style={{ color: "var(--foreground)" }}>
                       {summary.totalItems || 0} units
                     </td>
-                    <td className="px-4 py-3 text-right text-white font-bold text-lg">
+                    <td className="px-4 py-3 text-right font-bold text-lg" style={{ color: "var(--foreground)" }}>
                       ₹{(summary.totalRevenue || 0).toLocaleString()}
                     </td>
                   </tr>
@@ -324,23 +389,23 @@ function VendorSalesReportPage() {
             {sortedProducts.length > 0 && (
               <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 {sortedProducts.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-xl p-4 border border-gray-700">
+                  <div key={idx} className="rounded-xl p-4" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-2xl">
                         {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                       </span>
-                      <span className="text-orange-400 text-sm font-medium">
+                      <span className="text-blue-500 text-sm font-medium">
                         #{idx + 1} Best Seller
                       </span>
                     </div>
-                    <p className="text-white font-semibold text-lg mb-2">{item.productName}</p>
+                    <p className="font-semibold text-lg mb-2" style={{ color: "var(--foreground)" }}>{item.productName}</p>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Quantity Sold:</span>
-                      <span className="text-white font-medium">{item.quantitySold} units</span>
+                      <span style={{ color: "var(--foreground)", opacity: 0.6 }}>Quantity Sold:</span>
+                      <span className="font-medium" style={{ color: "var(--foreground)" }}>{item.quantitySold} units</span>
                     </div>
                     <div className="flex justify-between text-sm mt-1">
-                      <span className="text-gray-400">Revenue:</span>
-                      <span className="text-green-400 font-semibold">₹{item.revenue?.toLocaleString()}</span>
+                      <span style={{ color: "var(--foreground)", opacity: 0.6 }}>Revenue:</span>
+                      <span className="font-semibold text-green-400">₹{item.revenue?.toLocaleString()}</span>
                     </div>
                   </div>
                 ))}
@@ -348,7 +413,7 @@ function VendorSalesReportPage() {
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }

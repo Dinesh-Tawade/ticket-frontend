@@ -11,6 +11,7 @@ import {
   FaChevronRight,
   FaSprayCan,
   FaSellcast,
+  FaShoppingCart,
 } from "react-icons/fa";
 import { SiMyshows } from "react-icons/si";
 import { MdDashboard } from "react-icons/md";
@@ -194,6 +195,7 @@ export default function Sidebar({ sidebarOpen = true, setSidebarOpen = null }) {
       { name: "Add Vendor", path: "/admin/vendors", icon: FaFilm },
       { name: "Scan Ticket", path: "/admin/scan-ticket", icon: FaSprayCan },
       { name: "Settings", path: "/admin/settings", icon: FaSellcast },
+      { name: "Orders", path: "/admin/orders", icon: FaShoppingCart },
     ],
     []
   );

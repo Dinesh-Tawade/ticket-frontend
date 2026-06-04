@@ -421,7 +421,7 @@ function Header() {
                   >
                     Login
                   </button>
-                  <button
+                  {/* <button
                     onClick={() => {
                       setAuthModalMode("register");
                       setShowAuthModal(true);
@@ -430,7 +430,7 @@ function Header() {
                   >
                     <FaTicketAlt size={12} />
                     <span>Register</span>
-                  </button>
+                  </button> */}
                 </div>
               )}
 

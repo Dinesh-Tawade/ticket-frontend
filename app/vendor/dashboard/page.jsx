@@ -1,319 +1,301 @@
 "use client";
 
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { 
+  getVendorDashboardStats, 
+  getVendorSalesReport 
+} from "../../services/adminCommunication";
+import toast from "react-hot-toast";
 import { 
   IoStorefrontOutline, 
   IoCubeOutline,
   IoCartOutline,
-  IoStatsChartOutline,
   IoCashOutline,
-  IoArrowUpOutline,
-  IoTimeOutline,
-  IoCheckmarkCircleOutline,
-  IoCloseCircleOutline,
-  IoArrowForwardOutline,
-  IoEyeOutline,
   IoWarningOutline
-} from 'react-icons/io5';
-import { getVendorDashboardStats } from '../../services/adminCommunication';
-import toast from 'react-hot-toast';
+} from "react-icons/io5";
+import { 
+  FaSpinner, FaBoxOpen, FaClipboardList, 
+  FaMoneyBillWave, FaChartLine, FaCheckCircle
+} from "react-icons/fa";
+import { 
+  AreaChart, Area, PieChart, Pie, Cell, 
+  XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, BarChart, Bar 
+} from "recharts";
 
-function VendorDashboardPage() {
+// Animated Counter Component
+const AnimatedCounter = ({ value }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value) || 0;
+    if (start === end) {
+      setCount(end);
+      return;
+    }
+
+    const duration = 1000;
+    const increment = end / (duration / 16);
+
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return (
+    <div className="text-[34px] font-black tracking-tighter leading-none">
+      {count.toLocaleString()}
+    </div>
+  );
+};
+
+// Stats Card Component
+const StatsCard = ({ label, value, icon: Icon, color }) => {
+  const colorMap = {
+    blue: { light: "#3b82f6", dark: "#2563eb" },
+    green: { light: "#22c55e", dark: "#16a34a" },
+    purple: { light: "#a855f7", dark: "#9333ea" },
+    yellow: { light: "#eab308", dark: "#ca8a04" },
+    red: { light: "#ef4444", dark: "#dc2626" },
+    indigo: { light: "#6366f1", dark: "#4f46e5" },
+    orange: { light: "#f97316", dark: "#ea580c" }
+  };
+  const themeColor = colorMap[color] || colorMap.blue;
+
+  return (
+    <div className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
+      style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>{label}</div>
+        <div className="flex items-baseline gap-1">
+          {label.includes("Revenue") && <span className="text-xl font-bold">₹</span>}
+          <AnimatedCounter value={value} />
+        </div>
+      </div>
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+        style={{ background: `${themeColor.light}15`, border: `1px solid ${themeColor.light}30` }}>
+        <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor.light }} />
+      </div>
+    </div>
+  );
+};
+
+// Custom Tooltip for Charts
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-lg p-3 shadow-lg" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+        <p className="text-xs font-bold mb-1" style={{ color: "var(--foreground)" }}>{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-xs" style={{ color: entry.color }}>
+            {entry.name}: {entry.name.includes("Revenue") ? "₹" : ""}{entry.value.toLocaleString()}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+export default function VendorDashboardPage() {
   // Fetch Dashboard Stats
-  const { data: statsData, isLoading, error } = useQuery({
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: ['vendor-dashboard-stats'],
     queryFn: getVendorDashboardStats,
     retry: 1,
     onError: (error) => {
-      toast.error('Failed to load dashboard stats: ' + error.message);
+      toast.error('Failed to load dashboard stats');
     }
   });
 
-  // Extract data from API response
+  // Fetch Sales Report for Charts (last 30 days)
+  const { data: reportData, isLoading: reportLoading, refetch: refetchReport } = useQuery({
+    queryKey: ['vendor-sales-report', 'month'],
+    queryFn: () => getVendorSalesReport({ period: 'month' }),
+    retry: 1
+  });
+
+  const isLoading = statsLoading || reportLoading;
+
   const dashboardData = statsData?.data || {};
   const store = dashboardData?.store || {};
   const products = dashboardData?.products || {};
   const orders = dashboardData?.orders || {};
   const revenue = dashboardData?.revenue || {};
 
-  // Stat Cards based on actual API response
-  const statCards = [
-    {
-      title: 'Total Revenue',
-      value: `₹${(revenue.total || 0).toLocaleString()}`,
-      icon: <IoCashOutline className="w-6 h-6" />,
-      bgGradient: 'from-green-500 to-emerald-600',
-      iconColor: 'text-green-400',
-      subtitle: `Today: ₹${(revenue.today || 0).toLocaleString()}`
-    },
-    {
-      title: 'Total Orders',
-      value: (orders.pending || 0) + (orders.today || 0),
-      icon: <IoCartOutline className="w-6 h-6" />,
-      bgGradient: 'from-blue-500 to-indigo-600',
-      iconColor: 'text-blue-400',
-      subtitle: `Pending: ${orders.pending || 0}`
-    },
-    {
-      title: 'Total Products',
-      value: products.total || 0,
-      icon: <IoCubeOutline className="w-6 h-6" />,
-      bgGradient: 'from-purple-500 to-pink-600',
-      iconColor: 'text-purple-400',
-      subtitle: products.lowStock > 0 ? `${products.lowStock} low stock` : 'All in stock'
-    },
-    {
-      title: 'Store Status',
-      value: store?.status === 'ACTIVE' ? 'Active' : 'Inactive',
-      icon: <IoStorefrontOutline className="w-6 h-6" />,
-      bgGradient: store?.status === 'ACTIVE' ? 'from-emerald-500 to-teal-600' : 'from-orange-500 to-red-600',
-      iconColor: store?.status === 'ACTIVE' ? 'text-emerald-400' : 'text-orange-400',
-      subtitle: store?.isOpen ? 'Open for orders' : 'Currently closed'
-    },
-  ];
+  const report = reportData?.data || {};
+  const dailySales = report?.dailySales || [];
+  const topProducts = report?.topProducts || [];
 
-  // Order Status Summary
-  const orderStatusSummary = [
-    { status: 'Pending Orders', count: orders.pending || 0, icon: <IoTimeOutline />, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-    { status: "Today's Orders", count: orders.today || 0, icon: <IoArrowUpOutline />, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  ];
+  // Colors for pie chart
+  const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#06b6d4'];
 
-  // Low Stock Warning
-  const hasLowStock = products.lowStock > 0;
-
-  // Loading State
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="relative">
           <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <IoStorefrontOutline className="text-purple-400 text-2xl animate-pulse" />
+            <IoStorefrontOutline className="text-blue-500 text-2xl animate-pulse" />
           </div>
-        </div>
-        <p className="text-gray-400 mt-4">Loading dashboard...</p>
-      </div>
-    );
-  }
-
-  // Error State
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-20 h-20 mx-auto bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-            <IoCloseCircleOutline className="text-red-500 text-3xl" />
-          </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Failed to Load Dashboard</h3>
-          <p className="text-gray-400 mb-4">{error.message}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-          >
-            Retry
-          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Vendor Dashboard</h1>
-          <p className="text-gray-400 mt-1">
-            Welcome back, <span className="text-white font-medium">{store?.name || 'Vendor'}</span>! Here's your store overview.
-          </p>
-        </div>
-        <div className="px-3 py-2 bg-gray-800 rounded-lg">
-          <span className="text-gray-400 text-sm">Today: </span>
-          <span className="text-white text-sm font-medium">
-            {new Date().toLocaleDateString('en-IN', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </span>
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
+      {/* Header Section */}
+      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+        <div className="px-8 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                  <IoStorefrontOutline className="text-white text-xl" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                  Vendor Dashboard
+                </h1>
+                <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                  Welcome back, <span className="font-medium text-blue-500">{store?.name || 'Vendor'}</span>! Here is your store overview.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => { refetchStats(); refetchReport(); }}
+              className="p-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center gap-2"
+              style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
+            >
+              <FaSpinner className={`text-sm ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Low Stock Warning */}
-      {hasLowStock && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-center gap-3">
-          <IoWarningOutline className="text-yellow-400 text-xl" />
+      {products.lowStock > 0 && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-center gap-3 mb-8 hover:bg-yellow-500/20 transition-all cursor-pointer" onClick={() => window.location.href = '/vendor/products'}>
+          <IoWarningOutline className="text-yellow-400 text-2xl animate-pulse" />
           <div>
-            <p className="text-yellow-400 font-medium">Low Stock Alert</p>
+            <p className="text-yellow-400 font-bold">Low Stock Alert</p>
             <p className="text-gray-400 text-sm">{products.lowStock} product(s) are running low on stock. Please restock soon.</p>
           </div>
-          <button 
-            onClick={() => window.location.href = '/vendor/products'}
-            className="ml-auto px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm hover:bg-yellow-500/30 transition-colors"
-          >
-            View Products
-          </button>
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((card, index) => (
-          <div
-            key={index}
-            className={`relative overflow-hidden bg-gradient-to-br ${card.bgGradient}/10 backdrop-blur-sm border border-gray-700 rounded-xl p-5 transition-all duration-300 hover:scale-105 hover:shadow-xl group`}
-          >
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`p-2 rounded-lg bg-gradient-to-br ${card.bgGradient}/20 ${card.iconColor}`}>
-                  {card.icon}
-                </div>
-                <IoArrowForwardOutline className="text-gray-500 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
-              </div>
-              <h3 className="text-gray-400 text-sm font-medium">{card.title}</h3>
-              <p className="text-2xl font-bold text-white mt-1">{card.value}</p>
-              <p className="text-xs text-gray-500 mt-2">{card.subtitle}</p>
-            </div>
-            {/* Decorative circle */}
-            <div className="absolute -bottom-10 -right-10 w-32 h-32 rounded-full bg-white/5 group-hover:bg-white/10 transition-all"></div>
-          </div>
-        ))}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatsCard label="Total Revenue" value={revenue.total || 0} icon={FaMoneyBillWave} color="green" />
+        <StatsCard label="Today's Revenue" value={revenue.today || 0} icon={FaChartLine} color="blue" />
+        <StatsCard label="Total Orders" value={(orders.pending || 0) + (orders.today || 0)} icon={FaClipboardList} color="purple" />
+        <StatsCard label="Pending Orders" value={orders.pending || 0} icon={IoCartOutline} color="orange" />
+        <StatsCard label="Total Products" value={products.total || 0} icon={FaBoxOpen} color="indigo" />
+        <StatsCard label="Store Status" value={store?.status === 'ACTIVE' ? 1 : 0} icon={store?.status === 'ACTIVE' ? FaCheckCircle : IoWarningOutline} color={store?.status === 'ACTIVE' ? "green" : "red"} />
       </div>
 
-      {/* Order Status Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Order Status Summary */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <IoStatsChartOutline className="text-purple-400 text-lg" />
-            <h2 className="text-lg font-semibold text-white">Order Summary</h2>
-          </div>
-          <div className="space-y-3">
-            {orderStatusSummary.map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${item.bg}`}>
-                    <div className={`${item.color}`}>{item.icon}</div>
-                  </div>
-                  <span className="text-gray-300">{item.status}</span>
-                </div>
-                <span className="text-white font-semibold text-xl">{item.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Store Performance */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <IoEyeOutline className="text-blue-400 text-lg" />
-            <h2 className="text-lg font-semibold text-white">Store Performance</h2>
-          </div>
-          <div className="space-y-4">
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Revenue Trend Area Chart */}
+        <div className="lg:col-span-2 rounded-xl p-6 transition-all duration-300 hover:shadow-xl" 
+             style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Store Status</span>
-                <span className={store?.status === 'ACTIVE' ? 'text-green-400' : 'text-red-400'}>
-                  {store?.status === 'ACTIVE' ? '🟢 Active' : '🔴 Inactive'}
-                </span>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Store Availability</span>
-                <span className={store?.isOpen ? 'text-green-400' : 'text-orange-400'}>
-                  {store?.isOpen ? 'Open for orders' : 'Currently closed'}
-                </span>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Total Products</span>
-                <span className="text-white font-medium">{products.total || 0}</span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <div className="bg-purple-500 h-2 rounded-full" style={{ width: '100%' }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Today's Orders</span>
-                <span className="text-white font-medium">{orders.today || 0}</span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min((orders.today / 100) * 100, 100)}%` }}></div>
-              </div>
+              <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Revenue Trend</h2>
+              <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>Last 30 Days</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <button
-          onClick={() => window.location.href = '/vendor/products/add'}
-          className="group flex items-center justify-between p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl hover:border-orange-500/50 transition-all duration-300"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-orange-500/20 group-hover:bg-orange-500/30 transition-all">
-              <IoCubeOutline className="text-orange-400 text-lg" />
+          
+          {dailySales.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={dailySales} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--card-border)" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "var(--foreground)", opacity: 0.5 }} 
+                       tickFormatter={(str) => {
+                         const date = new Date(str);
+                         return date.getDate() + ' ' + date.toLocaleString('default', { month: 'short' });
+                       }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "var(--foreground)", opacity: 0.5 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[300px] text-gray-500">
+              No sales data available for this period.
             </div>
-            <span className="text-white font-medium">Add New Product</span>
-          </div>
-          <IoArrowForwardOutline className="text-gray-500 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
-        </button>
-
-        <button
-          onClick={() => window.location.href = '/vendor/store'}
-          className="group flex items-center justify-between p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl hover:border-emerald-500/50 transition-all duration-300"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/20 group-hover:bg-emerald-500/30 transition-all">
-              <IoStorefrontOutline className="text-emerald-400 text-lg" />
-            </div>
-            <span className="text-white font-medium">Manage Store</span>
-          </div>
-          <IoArrowForwardOutline className="text-gray-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
-        </button>
-
-        <button
-          onClick={() => window.location.href = '/vendor/orders'}
-          className="group flex items-center justify-between p-4 bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl hover:border-purple-500/50 transition-all duration-300"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-all">
-              <IoCartOutline className="text-purple-400 text-lg" />
-            </div>
-            <span className="text-white font-medium">View Orders</span>
-          </div>
-          {orders.pending > 0 && (
-            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
-              {orders.pending} pending
-            </span>
           )}
-          <IoArrowForwardOutline className="text-gray-500 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
-        </button>
-      </div>
+        </div>
 
-      {/* Quick Tip */}
-      <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-orange-500/20 rounded-lg">
-            <IoArrowUpOutline className="text-orange-400 text-lg" />
+        {/* Top Products Pie Chart */}
+        <div className="rounded-xl p-6 transition-all duration-300 hover:shadow-xl" 
+             style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Top Products</h2>
           </div>
-          <div>
-            <h4 className="text-white font-medium mb-1">Pro Tip: Boost Your Sales</h4>
-            <p className="text-gray-400 text-sm">
-              Add high-quality product images and offer combo deals to increase average order value. 
-              Customers love discounts and visually appealing food photos!
-            </p>
-          </div>
+          
+          {topProducts.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={topProducts.slice(0, 5)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="quantitySold"
+                  >
+                    {topProducts.slice(0, 5).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2 mt-4">
+                {topProducts.slice(0, 5).map((product, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                      <span style={{ color: "var(--foreground)", opacity: 0.8 }}>{product.productName}</span>
+                    </div>
+                    <span className="font-bold" style={{ color: "var(--foreground)" }}>{product.quantitySold}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-[300px] text-gray-500 text-center px-4">
+              Not enough data to display top products.
+            </div>
+          )}
         </div>
       </div>
+      
     </div>
   );
 }
-
-export default VendorDashboardPage;

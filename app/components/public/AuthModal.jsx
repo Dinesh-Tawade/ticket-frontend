@@ -319,7 +319,6 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
           {/* Register Form */}
           {mode === "register" && (
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
-              {/* Profile Image Upload */}
               <div className="flex justify-center mb-4">
                 <div className="relative">
                   <div
@@ -355,8 +354,6 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
                   )}
                 </div>
               </div>
-
-              {/* Name */}
               <div>
                 <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
                   Full Name
@@ -373,8 +370,6 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
                   />
                 </div>
               </div>
-
-              {/* Email & Phone */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
@@ -409,8 +404,6 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
                   </div>
                 </div>
               </div>
-
-              {/* Password */}
               <div>
                 <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
                   Password
@@ -434,8 +427,6 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
                   </button>
                 </div>
               </div>
-
-              {/* Confirm Password */}
               <div>
                 <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
                   Confirm Password
@@ -463,7 +454,6 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
                 )}
               </div>
 
-              {/* Address */}
               <div>
                 <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
                   Address
@@ -477,7 +467,6 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
                 />
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading || registerForm.password !== registerForm.confirmPassword}

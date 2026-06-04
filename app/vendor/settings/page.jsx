@@ -16,6 +16,7 @@ import {
   FaMapMarkerAlt,
   FaPhone,
 } from "react-icons/fa";
+import { IoRefreshOutline } from "react-icons/io5";
 import { getMyStore, toggleStoreStatus } from "../../services/adminCommunication";
 
 function StoreSettingsPage() {
@@ -49,22 +50,25 @@ function StoreSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <FaSpinner className="animate-spin text-3xl text-purple-500" />
+      <div className="flex flex-col items-center justify-center rounded-xl py-20" style={{ background: "var(--background)" }}>
+        <IoRefreshOutline className="mb-4 animate-spin text-4xl text-blue-500" />
+        <p style={{ color: "var(--foreground)", opacity: 0.65 }}>Loading store settings...</p>
       </div>
     );
   }
 
   if (!store) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+      <div className="flex flex-col items-center justify-center rounded-xl py-20" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
         <div className="text-center">
-          <FaStore className="text-6xl text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">No Store Found</h2>
-          <p className="text-gray-400 mb-6">Please create your store first.</p>
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500/10">
+            <FaStore className="text-5xl text-blue-500" />
+          </div>
+          <h2 className="mb-2 text-xl font-semibold" style={{ color: "var(--foreground)" }}>No Store Found</h2>
+          <p className="mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>Please create your store first.</p>
           <button
             onClick={() => router.push("/vendor/store/add")}
-            className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
           >
             Create Store
           </button>
@@ -74,35 +78,55 @@ function StoreSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8 px-4">
-      <Toaster position="top-right" />
+    <div className="min-h-screen transition-colors duration-300 py-8 px-4" style={{ background: "var(--background)" }}>
+      <Toaster 
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            background: "var(--card)",
+            color: "var(--foreground)",
+            border: "1px solid var(--card-border)",
+          },
+        }}
+      />
 
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
-          >
-            <FaArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
-              <FaStore className="text-white text-2xl" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Store Settings</h1>
-              <p className="text-gray-400 mt-1">Manage your store status and settings</p>
+        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="px-8 py-4">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 hover:text-white transition-colors mb-4" style={{ color: "var(--foreground)", opacity: 0.7 }}
+            >
+              <FaArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                    <FaStore className="text-white text-xl" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                    Store Settings
+                  </h1>
+                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                    Manage your store status and settings
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Store Status Card */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl overflow-hidden">
+        <div className="rounded-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
           {/* Store Info */}
-          <div className="p-6 border-b border-gray-700">
+          <div className="p-6" style={{ borderBottom: "1px solid var(--card-border)" }}>
             <div className="flex items-start gap-4">
               {store.storeLogo ? (
                 <img
@@ -111,13 +135,13 @@ function StoreSettingsPage() {
                   className="w-20 h-20 rounded-xl object-cover"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                  <FaStore className="text-3xl text-purple-400" />
+                <div className="w-20 h-20 rounded-xl bg-gradient-to-r from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
+                  <FaStore className="text-3xl text-blue-500" />
                 </div>
               )}
               <div className="flex-1">
-                <h2 className="text-xl font-bold text-white">{store.storeName}</h2>
-                <div className="flex items-center gap-3 mt-1 text-sm text-gray-400">
+                <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>{store.storeName}</h2>
+                <div className="flex items-center gap-3 mt-1 text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                   <span className="flex items-center gap-1">
                     <FaMapMarkerAlt size={12} />
                     {store.address?.substring(0, 50)}...
@@ -127,7 +151,7 @@ function StoreSettingsPage() {
                     {store.contactNumber}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>
                   <span className="flex items-center gap-1">
                     <FaClock size={10} />
                     {store.openingTime} - {store.closingTime}
@@ -141,8 +165,8 @@ function StoreSettingsPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-white">Store Status</h3>
-                <p className="text-sm text-gray-400 mt-1">
+                <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>Store Status</h3>
+                <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                   {store.isOpen
                     ? "Your store is currently OPEN and accepting orders"
                     : "Your store is currently CLOSED and not accepting orders"}
@@ -187,8 +211,8 @@ function StoreSettingsPage() {
           </div>
 
           {/* Info Note */}
-          <div className="p-4 bg-gray-900/50 border-t border-gray-700">
-            <p className="text-xs text-gray-500 text-center">
+          <div className="p-4" style={{ background: "var(--background)", borderTop: "1px solid var(--card-border)" }}>
+            <p className="text-xs text-center" style={{ color: "var(--foreground)", opacity: 0.5 }}>
               When your store is closed, customers will not be able to place orders.
               You can open it anytime from here.
             </p>

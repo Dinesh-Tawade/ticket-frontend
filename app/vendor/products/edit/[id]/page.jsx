@@ -12,7 +12,8 @@ import {
   FaLeaf,
   FaUtensils,
   FaSpinner,
-  FaTrash
+  FaTrash,
+  FaEdit
 } from "react-icons/fa";
 import {
   getProductById,
@@ -180,50 +181,68 @@ function EditProductPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <FaSpinner className="w-10 h-10 text-green-500 animate-spin" />
-        <p className="text-gray-400 mt-3">Loading product details...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] transition-colors duration-300" style={{ background: "var(--background)" }}>
+        <FaSpinner className="w-10 h-10 text-blue-500 animate-spin" />
+        <p className="mt-3 font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Loading product details...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button 
-            onClick={() => router.back()} 
-            className="p-2 bg-gray-800 rounded-lg text-white hover:bg-gray-700 transition-colors"
-          >
-            <FaArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Edit Product</h1>
-            <p className="text-gray-400 text-sm">Update product information</p>
+        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="px-8 py-4">
+            <button 
+              onClick={() => router.back()} 
+              className="flex items-center gap-2 hover:opacity-100 transition-opacity mb-4 font-medium" style={{ color: "var(--foreground)", opacity: 0.7 }}
+            >
+              <FaArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-xl">
+                    <FaEdit className="text-white text-xl" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                    Edit Product
+                  </h1>
+                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                    Update product information
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Form Card */}
-        <form onSubmit={handleSubmit} className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+        <form onSubmit={handleSubmit} className="rounded-xl overflow-hidden shadow-lg border" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           {/* Image Section */}
-          <div className="p-5 border-b border-gray-700">
-            <label className="block text-white font-medium mb-2">Product Image</label>
+          <div className="p-5 border-b" style={{ borderColor: "var(--card-border)" }}>
+            <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Product Image</label>
             <div className="flex flex-wrap items-start gap-5">
               <div
                 onClick={() => document.getElementById("imageInput").click()}
                 className={`w-28 h-28 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-                  imagePreview ? "border-green-500 bg-green-500/10" : "border-gray-600 hover:border-green-500"
+                  imagePreview ? "border-amber-500 bg-amber-500/10" : "hover:border-amber-500"
                 }`}
+                style={!imagePreview ? { borderColor: "var(--card-border)" } : {}}
               >
                 {imagePreview ? (
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
                 ) : (
                   <>
-                    <FaUpload className="text-gray-400 text-2xl mb-1" />
-                    <span className="text-xs text-gray-500">Upload</span>
+                    <FaUpload className="text-2xl mb-1 opacity-50" style={{ color: "var(--foreground)" }} />
+                    <span className="text-xs font-medium opacity-50" style={{ color: "var(--foreground)" }}>Upload</span>
                   </>
                 )}
               </div>
@@ -239,21 +258,21 @@ function EditProductPage() {
                 <button
                   type="button"
                   onClick={removeImage}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm hover:bg-red-500/30 transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
                 >
                   <FaTrash className="w-3 h-3" />
                   Remove
                 </button>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-2">Recommended: Square image, JPG/PNG, Max 5MB</p>
+            <p className="text-xs font-medium mt-2 opacity-50" style={{ color: "var(--foreground)" }}>Recommended: Square image, JPG/PNG, Max 5MB</p>
           </div>
 
           {/* Form Fields */}
           <div className="p-5 space-y-4">
             {/* Product Name */}
             <div>
-              <label className="block text-white text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>
                 Product Name <span className="text-red-400">*</span>
               </label>
               <input
@@ -262,33 +281,36 @@ function EditProductPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Enter product name"
-                className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                 required
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-white text-sm font-medium mb-1">Description</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>Description</label>
               <textarea
                 name="description"
                 rows="3"
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="Describe your product..."
-                className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors resize-none"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors resize-none"
+                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
               />
             </div>
 
             {/* Category & Unit */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-white text-sm font-medium mb-1">Category</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>Category</label>
                 <select
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                 >
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat.replace("_", " ")}</option>
@@ -296,12 +318,13 @@ function EditProductPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-white text-sm font-medium mb-1">Unit</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>Unit</label>
                 <select
                   name="unit"
                   value={formData.unit}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                 >
                   {units.map(unit => (
                     <option key={unit} value={unit}>{unit}</option>
@@ -313,7 +336,7 @@ function EditProductPage() {
             {/* Price & Discount */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-white text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>
                   Price (₹) <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -322,26 +345,28 @@ function EditProductPage() {
                   value={formData.price}
                   onChange={handleChange}
                   placeholder="0"
-                  className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   min="0"
                   step="0.01"
                   required
                 />
               </div>
               <div>
-                <label className="block text-white text-sm font-medium mb-1">Discount Price (₹)</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>Discount Price (₹)</label>
                 <input
                   type="number"
                   name="discountPrice"
                   value={formData.discountPrice}
                   onChange={handleChange}
                   placeholder="0"
-                  className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   min="0"
                   step="0.01"
                 />
                 {formData.discountPrice && parseFloat(formData.discountPrice) < parseFloat(formData.price) && (
-                  <p className="text-xs text-green-400 mt-1">
+                  <p className="text-xs text-green-500 mt-1 font-medium">
                     Save ₹{parseFloat(formData.price) - parseFloat(formData.discountPrice)} per item!
                   </p>
                 )}
@@ -351,7 +376,7 @@ function EditProductPage() {
             {/* Stock & Preparation */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-white text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>
                   Stock Quantity <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -360,33 +385,35 @@ function EditProductPage() {
                   value={formData.stock}
                   onChange={handleChange}
                   placeholder="0"
-                  className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   min="0"
                   required
                 />
               </div>
               <div>
-                <label className="block text-white text-sm font-medium mb-1">Preparation Time (minutes)</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>Preparation Time (minutes)</label>
                 <input
                   type="number"
                   name="preparationTime"
                   value={formData.preparationTime}
                   onChange={handleChange}
                   placeholder="5"
-                  className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                   min="0"
                 />
               </div>
             </div>
 
             {/* Vegetarian Toggle */}
-            <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+            <div className="flex items-center justify-between p-3 border rounded-lg" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, isVegetarian: !prev.isVegetarian }))}
                   className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
-                    formData.isVegetarian ? "bg-green-500" : "bg-gray-600"
+                    formData.isVegetarian ? "bg-green-500" : "bg-gray-400 dark:bg-gray-600"
                   }`}
                 >
                   <div
@@ -397,11 +424,11 @@ function EditProductPage() {
                 </button>
                 <div className="flex items-center gap-2">
                   {formData.isVegetarian ? (
-                    <FaLeaf className="text-green-400 text-lg" />
+                    <FaLeaf className="text-green-500 text-lg" />
                   ) : (
-                    <FaUtensils className="text-orange-400 text-lg" />
+                    <FaUtensils className="text-orange-500 text-lg" />
                   )}
-                  <span className="text-white font-medium">
+                  <span className="font-medium" style={{ color: "var(--foreground)" }}>
                     {formData.isVegetarian ? "Vegetarian" : "Non-Vegetarian"}
                   </span>
                 </div>
@@ -410,18 +437,19 @@ function EditProductPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="p-5 border-t border-gray-700 bg-gray-900/30 flex gap-3">
+          <div className="p-5 border-t flex flex-col sm:flex-row gap-3" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 px-4 py-2.5 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+              className="px-6 py-2.5 border rounded-lg hover:opacity-80 transition-opacity font-medium"
+              style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={updateMutation.isLoading}
-              className="flex-1 px-4 py-2.5 bg-green-600 rounded-lg text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
             >
               {updateMutation.isLoading ? (
                 <>

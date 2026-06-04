@@ -16,7 +16,11 @@ import {
   IoArrowUpOutline,
   IoArrowDownOutline,
   IoWalletOutline,
-  IoReceiptOutline
+  IoReceiptOutline,
+  IoRefreshOutline,
+  IoCubeOutline,
+  IoCheckmarkDone,
+  IoClose,
 } from "react-icons/io5";
 import toast from "react-hot-toast";
 
@@ -76,6 +80,46 @@ function VendorPaymentsPage() {
     }
   };
 
+  const colorMap = {
+    blue: "#3b82f6",
+    green: "#22c55e",
+    purple: "#a855f7",
+    yellow: "#eab308",
+    indigo: "#6366f1",
+    cyan: "#06b6d4",
+    emerald: "#10b981",
+    orange: "#f97316",
+    red: "#ef4444",
+  };
+
+  const DashboardStatCard = ({ title, value, icon: Icon, color = "blue", prefix = "" }) => {
+    const themeColor = colorMap[color] || colorMap.blue;
+    const displayValue = `${prefix}${Number(value || 0).toLocaleString()}`;
+
+    return (
+      <div
+        className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
+        style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+        <div className="relative">
+          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+            {title}
+          </div>
+          <div className="text-[34px] font-black tracking-tighter leading-none" style={{ color: "var(--foreground)" }}>
+            {displayValue}
+          </div>
+        </div>
+        <div
+          className="relative w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+          style={{ background: `${themeColor}15`, border: `1px solid ${themeColor}30` }}
+        >
+          <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor }} />
+        </div>
+      </div>
+    );
+  };
+
   const getStatusBadge = (status) => {
     switch(status) {
       case "SUCCESS":
@@ -116,17 +160,21 @@ function VendorPaymentsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="w-10 h-10 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center rounded-xl py-20" style={{ background: "var(--background)" }}>
+        <IoRefreshOutline className="mb-4 animate-spin text-4xl text-blue-500" />
+        <p style={{ color: "var(--foreground)", opacity: 0.65 }}>Loading payments...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <p className="text-red-400 mb-3">{error.message}</p>
-        <button onClick={() => refetch()} className="px-4 py-2 bg-orange-500 rounded-lg text-white">
+      <div className="flex flex-col items-center justify-center rounded-xl py-20" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-500/10">
+          <IoWalletOutline className="text-5xl text-red-400" />
+        </div>
+        <p className="mb-3 text-red-400">{error.message}</p>
+        <button onClick={() => refetch()} className="px-4 py-2 bg-blue-500 rounded-lg text-white hover:bg-blue-600 transition">
           Try Again
         </button>
       </div>
@@ -134,66 +182,87 @@ function VendorPaymentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 px-4 py-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
+      <main className="space-y-8">
         {/* Header */}
-        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
-              <IoWalletOutline className="text-white text-2xl" />
+        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+          <div className="px-8 py-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                    <IoWalletOutline className="text-white text-xl" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
+                    Payments
+                  </h1>
+                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                    Track all your transactions
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleExport} className="px-4 py-2 hover:bg-gray-700/50 rounded-lg text-sm flex items-center gap-2 transition-colors border" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+                  <IoDownloadOutline /> Export
+                </button>
+                <button onClick={() => refetch()} className="px-4 py-2 hover:bg-gray-700/50 rounded-lg text-sm transition-colors border" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+                  Refresh
+                </button>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Payments</h1>
-              <p className="text-gray-400 text-sm">Track all your transactions</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={handleExport} className="px-4 py-2 bg-gray-800 rounded-lg text-white text-sm flex items-center gap-2">
-              <IoDownloadOutline /> Export
-            </button>
-            <button onClick={() => refetch()} className="px-4 py-2 bg-gray-800 rounded-lg text-white text-sm">
-              Refresh
-            </button>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-800/50 rounded-xl p-4">
-            <p className="text-gray-400 text-xs">Total Transactions</p>
-            <p className="text-2xl font-bold text-white">{summary.totalTransactions || 0}</p>
-          </div>
-          <div className="bg-gray-800/50 rounded-xl p-4">
-            <p className="text-gray-400 text-xs">Total Amount</p>
-            <p className="text-2xl font-bold text-green-400">₹{(summary.totalAmount || 0).toLocaleString()}</p>
-          </div>
-          <div className="bg-gray-800/50 rounded-xl p-4">
-            <p className="text-gray-400 text-xs">Successful</p>
-            <p className="text-2xl font-bold text-green-400">{summary.successfulTransactions || 0}</p>
-          </div>
-          <div className="bg-gray-800/50 rounded-xl p-4">
-            <p className="text-gray-400 text-xs">Pending</p>
-            <p className="text-2xl font-bold text-yellow-400">{summary.pendingTransactions || 0}</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <DashboardStatCard
+            title="Total Transactions"
+            value={summary.totalTransactions || 0}
+            icon={IoCubeOutline}
+            color="purple"
+          />
+          <DashboardStatCard
+            title="Total Amount"
+            value={summary.totalAmount || 0}
+            icon={IoCashOutline}
+            color="green"
+            prefix="₹"
+          />
+          <DashboardStatCard
+            title="Successful"
+            value={summary.successfulTransactions || 0}
+            icon={IoCheckmarkDone}
+            color="emerald"
+          />
+          <DashboardStatCard
+            title="Pending"
+            value={summary.pendingTransactions || 0}
+            icon={IoTimeOutline}
+            color="yellow"
+          />
         </div>
 
         {/* Search and Filter */}
-        <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
+        <div className="rounded-xl p-4" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px] relative">
-              <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground)", opacity: 0.5 }} />
               <input
                 type="text"
                 placeholder="Search by Transaction ID or Order ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-500"
+                className="w-full pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none transition-colors"
+                style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm"
+              className="px-4 py-2 rounded-lg text-sm focus:outline-none transition-colors"
+              style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
             >
               <option value="">All Status</option>
               <option value="SUCCESS">Success</option>
@@ -205,66 +274,62 @@ function VendorPaymentsPage() {
 
         {/* Payments Table */}
         {!filteredPayments.length ? (
-          <div className="text-center py-12 bg-gray-800/30 rounded-xl">
-            <IoCardOutline className="w-16 h-16 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400">No payment transactions found</p>
+          <div className="rounded-xl py-20 text-center" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500/10">
+              <IoCardOutline className="text-5xl text-blue-500" />
+            </div>
+            <h3 className="mb-2 text-xl font-semibold" style={{ color: "var(--foreground)" }}>No Payments Found</h3>
+            <p className="mx-auto max-w-md text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              No payment transactions found.
+            </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--card-border)" }}>
             <table className="w-full">
-              <thead className="bg-gray-800 border-b border-gray-700">
-                <tr className="text-left text-gray-400 text-xs">
-                  {/* <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => handleSort("transactionId")}>
-                    Transaction ID {sortBy === "transactionId" && (sortOrder === "asc" ? "↑" : "↓")}
-                  </th> */}
-                  <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => handleSort("orderId")}>
+              <thead style={{ background: "var(--card)", borderBottom: "1px solid var(--card-border)" }}>
+                <tr className="text-left text-xs">
+                  <th className="px-4 py-3 cursor-pointer" style={{ color: "var(--foreground)", opacity: 0.6 }} onClick={() => handleSort("orderId")}>
                     Order ID {sortBy === "orderId" && (sortOrder === "asc" ? "↑" : "↓")}
                   </th>
-                  <th className="px-4 py-3 text-right cursor-pointer hover:text-white" onClick={() => handleSort("amount")}>
+                  <th className="px-4 py-3 text-right cursor-pointer" style={{ color: "var(--foreground)", opacity: 0.6 }} onClick={() => handleSort("amount")}>
                     Amount {sortBy === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
                   </th>
-                  <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={() => handleSort("status")}>
+                  <th className="px-4 py-3 cursor-pointer" style={{ color: "var(--foreground)", opacity: 0.6 }} onClick={() => handleSort("status")}>
                     Status {sortBy === "status" && (sortOrder === "asc" ? "↑" : "↓")}
                   </th>
-                  <th className="px-4 py-3">Payment Method</th>
-                  <th className="px-4 py-3 text-right cursor-pointer hover:text-white" onClick={() => handleSort("createdAt")}>
+                  <th className="px-4 py-3" style={{ color: "var(--foreground)", opacity: 0.6 }}>Payment Method</th>
+                  <th className="px-4 py-3 text-right cursor-pointer" style={{ color: "var(--foreground)", opacity: 0.6 }} onClick={() => handleSort("createdAt")}>
                     Date {sortBy === "createdAt" && (sortOrder === "asc" ? "↑" : "↓")}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody style={{ borderBottom: "1px solid var(--card-border)" }}>
                 {filteredPayments.map((payment, idx) => (
-                  <tr key={payment._id || idx} className="hover:bg-gray-800/50 transition-colors">
-                    {/* <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <IoReceiptOutline className="text-gray-500 w-4 h-4" />
-                        <span className="text-white text-sm font-mono">{payment.transactionId || "N/A"}</span>
-                      </div>
-                    </td> */}
+                  <tr key={payment._id || idx} className="hover:opacity-80 transition" style={{ borderBottom: "1px solid var(--card-border)" }}>
                     <td className="px-4 py-3">
-                      <span className="text-gray-300 text-sm font-mono">{payment.orderId?.orderId || "N/A"}</span>
+                      <span className="text-sm font-mono" style={{ color: "var(--foreground)", opacity: 0.7 }}>{payment.orderId?.orderId || "N/A"}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="text-white font-semibold">₹{(payment.amount || 0).toLocaleString()}</span>
+                      <span className="font-semibold" style={{ color: "var(--foreground)" }}>₹{(payment.amount || 0).toLocaleString()}</span>
                     </td>
-                    <td className="px-4 py-3">{getStatusBadge(payment.status)}</td>
+                    <td className="px-4 py-3">getStatusBadge(payment.status)</td>
                     <td className="px-4 py-3">
-                      <span className="text-gray-300 text-sm flex items-center gap-1">
+                      <span className="text-sm flex items-center gap-1" style={{ color: "var(--foreground)", opacity: 0.7 }}>
                         <IoCardOutline className="w-3 h-3" />
                         {payment.paymentMethod || "ONLINE"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-400 text-sm">
+                    <td className="px-4 py-3 text-right text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                       {new Date(payment.createdAt).toLocaleDateString()} <br />
-                      <span className="text-xs text-gray-500">{new Date(payment.createdAt).toLocaleTimeString()}</span>
+                      <span className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{new Date(payment.createdAt).toLocaleTimeString()}</span>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-800 border-t border-gray-700">
+              <tfoot style={{ background: "var(--card)", borderTop: "1px solid var(--card-border)" }}>
                 <tr className="text-sm">
-                  <td colSpan="2" className="px-4 py-3 text-right text-gray-400">Total:</td>
-                  <td className="px-4 py-3 text-right text-white font-bold">₹{(summary.totalAmount || 0).toLocaleString()}</td>
+                  <td colSpan="2" className="px-4 py-3 text-right" style={{ color: "var(--foreground)", opacity: 0.6 }}>Total:</td>
+                  <td className="px-4 py-3 text-right font-bold" style={{ color: "var(--foreground)" }}>₹{(summary.totalAmount || 0).toLocaleString()}</td>
                   <td colSpan="3"></td>
                 </tr>
               </tfoot>
@@ -275,19 +340,19 @@ function VendorPaymentsPage() {
         {/* Recent Payments Summary */}
         {filteredPayments.length > 0 && (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-800/50 rounded-xl p-4">
-              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <IoCalendarOutline className="text-orange-400" /> Recent Transactions
+            <div className="rounded-xl p-4" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+              <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                <IoCalendarOutline className="text-blue-500" /> Recent Transactions
               </h3>
               <div className="space-y-2">
                 {filteredPayments.slice(0, 5).map((payment, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-2 bg-gray-900 rounded-lg">
+                  <div key={idx} className="flex justify-between items-center p-2 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
                     <div>
-                      <p className="text-white text-sm font-mono">{payment.transactionId?.slice(-12) || "N/A"}</p>
-                      <p className="text-gray-500 text-xs">{new Date(payment.createdAt).toLocaleDateString()}</p>
+                      <p className="text-sm font-mono" style={{ color: "var(--foreground)" }}>{payment.transactionId?.slice(-12) || "N/A"}</p>
+                      <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>{new Date(payment.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-semibold">₹{(payment.amount || 0).toLocaleString()}</p>
+                      <p className="font-semibold" style={{ color: "var(--foreground)" }}>₹{(payment.amount || 0).toLocaleString()}</p>
                       {getStatusBadge(payment.status)}
                     </div>
                   </div>
@@ -295,22 +360,22 @@ function VendorPaymentsPage() {
               </div>
             </div>
 
-            <div className="bg-gray-800/50 rounded-xl p-4">
-              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+            <div className="rounded-xl p-4" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+              <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
                 <IoCashOutline className="text-green-400" /> Payment Summary
               </h3>
               <div className="space-y-3">
-                <div className="flex justify-between p-2 bg-gray-900 rounded-lg">
-                  <span className="text-gray-400">Total Successful Payments</span>
-                  <span className="text-green-400 font-semibold">{summary.successfulTransactions || 0}</span>
+                <div className="flex justify-between p-2 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                  <span style={{ color: "var(--foreground)", opacity: 0.6 }}>Total Successful Payments</span>
+                  <span className="font-semibold text-green-400">{summary.successfulTransactions || 0}</span>
                 </div>
-                <div className="flex justify-between p-2 bg-gray-900 rounded-lg">
-                  <span className="text-gray-400">Total Pending Payments</span>
-                  <span className="text-yellow-400 font-semibold">{summary.pendingTransactions || 0}</span>
+                <div className="flex justify-between p-2 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                  <span style={{ color: "var(--foreground)", opacity: 0.6 }}>Total Pending Payments</span>
+                  <span className="font-semibold text-yellow-400">{summary.pendingTransactions || 0}</span>
                 </div>
-                <div className="flex justify-between p-2 bg-gray-900 rounded-lg">
-                  <span className="text-gray-400">Success Rate</span>
-                  <span className="text-white font-semibold">
+                <div className="flex justify-between p-2 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                  <span style={{ color: "var(--foreground)", opacity: 0.6 }}>Success Rate</span>
+                  <span className="font-semibold" style={{ color: "var(--foreground)" }}>
                     {summary.totalTransactions > 0 
                       ? Math.round((summary.successfulTransactions / summary.totalTransactions) * 100) 
                       : 0}%
@@ -320,7 +385,7 @@ function VendorPaymentsPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
