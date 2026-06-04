@@ -82,7 +82,7 @@ export default function VendorSidebar() {
             transition-all duration-300
             ${
               isActive
-                ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg"
                 : "text-gray-300 hover:bg-gray-800"
             }
           `}
@@ -92,7 +92,7 @@ export default function VendorSidebar() {
             className={`
               absolute left-0 top-0 h-full w-1 rounded-r-full
               transition-all duration-300
-              ${isActive ? "bg-gradient-to-b from-purple-500 to-pink-500 opacity-100" : "opacity-0 group-hover:opacity-100 group-hover:bg-purple-500"}
+              ${isActive ? "bg-gradient-to-b from-blue-500 to-indigo-500 opacity-100" : "opacity-0 group-hover:opacity-100 group-hover:bg-blue-500"}
             `}
           />
 
@@ -103,7 +103,7 @@ export default function VendorSidebar() {
               ${
                 isActive
                   ? "text-white"
-                  : "text-gray-400 group-hover:text-purple-400"
+                  : "text-gray-400 group-hover:text-blue-400"
               }
             `}
           />
@@ -133,8 +133,8 @@ export default function VendorSidebar() {
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse blur-lg opacity-50" />
-                <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-xl">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 animate-pulse blur-lg opacity-50" />
+                <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
                   <FaStore className="text-white text-xl" />
                 </div>
               </div>
@@ -148,7 +148,7 @@ export default function VendorSidebar() {
               </div>
             </div>
           ) : (
-            <div className="relative w-10 h-10 mx-auto rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-xl">
+            <div className="relative w-10 h-10 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
               <FaStore className="text-white text-xl" />
             </div>
           )}
@@ -197,7 +197,7 @@ export default function VendorSidebar() {
       <div className="flex-shrink-0 p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-xl">
+            <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
               <FaStore className="text-white text-xl" />
             </div>
             <div>
@@ -229,7 +229,7 @@ export default function VendorSidebar() {
                     transition-all duration-300
                     ${
                       isActive
-                        ? "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg"
                         : "text-gray-300 hover:bg-gray-800"
                     }
                   `}
@@ -279,7 +279,7 @@ export default function VendorSidebar() {
             {/* Collapse Button */}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="absolute -right-3 top-20 bg-purple-600 p-1 rounded-full shadow-lg hover:bg-purple-700 transition-colors z-30"
+              className="absolute -right-3 top-20 bg-blue-600 p-1 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-30"
             >
               {isCollapsed ? (
                 <FaChevronRight className="text-white text-xs" />

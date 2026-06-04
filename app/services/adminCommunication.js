@@ -820,3 +820,19 @@ export const getPublicShowWithBookingStatus = async (showId, timingId = null) =>
   const res = await axios.get(url);
   return res.data;
 };
+
+// ==================== ADMIN FOOD ORDER APIs ====================
+export const getAdminOrders = async () => {
+  const res = await axios.get(`${BE_URL}/admin/orders/all`, getAuthHeader());
+  return res.data;
+};
+
+export const getAdminOrderDetails = async (orderId) => {
+  const res = await axios.get(`${BE_URL}/admin/orders/${orderId}`, getAuthHeader());
+  return res.data;
+};
+
+export const updateAdminOrderStatus = async (orderId, statusData) => {
+  const res = await axios.put(`${BE_URL}/admin/orders/update-status/${orderId}`, statusData, getAuthHeader());
+  return res.data;
+};

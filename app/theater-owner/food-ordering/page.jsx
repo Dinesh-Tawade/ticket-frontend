@@ -2,12 +2,24 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FaUtensils, FaShoppingCart, FaPlus, FaMinus, FaTrash, FaCalendarAlt, FaClock, FaChair, FaRupeeSign, FaSpinner, FaStore, FaLock, FaHistory, FaTimes } from "react-icons/fa";
+import { FaUtensils, FaShoppingCart, FaPlus, FaMinus, FaTrash, FaCalendarAlt, FaClock, FaChair, FaRupeeSign, FaSpinner, FaStore, FaLock, FaHistory, FaTimes, FaEye, FaDownload } from "react-icons/fa";
 import { MdEventSeat } from "react-icons/md";
 import { getMyTheaters, getTheaterByIdAdmin } from "../../services/adminCommunication";
 import axios from "axios";
+import { io } from "socket.io-client";
+import { toast, Toaster } from "react-hot-toast";
+import { generateInvoicePDF } from "../../utils/invoiceGenerator";
 
 const BE_URL = process.env.NEXT_PUBLIC_BE_URL || "http://localhost:5000/api";
+
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  const normalizedPath = imagePath.replace(/\\/g, '/');
+  const prefix = normalizedPath.startsWith('/') ? '' : '/';
+  const baseUrl = BE_URL.replace('/api', '');
+  return `${baseUrl}${prefix}${normalizedPath}`;
+};
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
@@ -326,7 +338,56 @@ const CinemaSeatFloor = ({ levelKey, zones, seats, rows, cols, aisleCols = [], a
   );
 };
 
+const colorMap = {
+  blue: "#3b82f6",
+  green: "#22c55e",
+  purple: "#a855f7",
+  yellow: "#eab308",
+  indigo: "#6366f1",
+  cyan: "#06b6d4",
+  emerald: "#10b981",
+  orange: "#f97316",
+};
+
+const DashboardStatCard = ({ title, value, icon: Icon, color = "blue", prefix = "" }) => {
+  const themeColor = colorMap[color] || colorMap.blue;
+  const displayValue = `${prefix}${Number(value || 0).toLocaleString()}`;
+
+  return (
+    <div
+      className="group rounded-xl p-4 flex items-center justify-between transition-all duration-300 cursor-pointer overflow-hidden relative hover:shadow-xl hover:scale-105"
+      style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <div className="relative">
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground)", opacity: 0.5 }}>
+          {title}
+        </div>
+        <div className="text-[34px] font-black tracking-tighter leading-none" style={{ color: "var(--foreground)" }}>
+          {displayValue}
+        </div>
+      </div>
+      <div
+        className="relative w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"
+        style={{ background: `${themeColor}15`, border: `1px solid ${themeColor}30` }}
+      >
+        {Icon && <Icon className="text-xl transition-transform group-hover:scale-110" style={{ color: themeColor }} />}
+      </div>
+    </div>
+  );
+};
+
 const FoodOrderingPage = () => {
+  const currentUser = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const userStr = localStorage.getItem("user");
+    try {
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
   const [selectedTheater, setSelectedTheater] = useState(null);
   const [selectedShow, setSelectedShow] = useState(null);
   const [selectedTiming, setSelectedTiming] = useState(null);
@@ -343,6 +404,10 @@ const FoodOrderingPage = () => {
   const [scheduledDateTime, setScheduledDateTime] = useState('');
   const [productQuantities, setProductQuantities] = useState({});
   const [showOrderHistory, setShowOrderHistory] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [socket, setSocket] = useState(null);
+  const [placedOrderData, setPlacedOrderData] = useState(null);
 
   // Fetch theaters
   const { data: theatersData } = useQuery({
@@ -402,6 +467,60 @@ const FoodOrderingPage = () => {
       setCart(cartData.data);
     }
   }, [cartData]);
+
+  // Connect to Socket.io for live updates
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    let user = null;
+    try {
+      user = userStr ? JSON.parse(userStr) : null;
+    } catch (e) {}
+
+    if (!user) return;
+
+    const token = localStorage.getItem("token");
+    const SOCKET_URL = process.env.NEXT_PUBLIC_BE_URL?.replace("/api", "") || "http://localhost:5000";
+
+    const socketInstance = io(SOCKET_URL, {
+      auth: { token },
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+    });
+
+    socketInstance.on("connect", () => {
+      console.log("✅ Theater Owner Socket connected");
+      socketInstance.emit("buyer-join", user._id);
+    });
+
+    socketInstance.on("order-status-updated", (data) => {
+      console.log("📢 Live Order update received:", data);
+      refetchOrderHistory();
+      toast.success(data.message || `Order #${data.orderId} status updated!`, {
+        icon: "🍱",
+        duration: 5000,
+        style: {
+          background: "#1e293b",
+          color: "#fff",
+          border: "1px solid #334155"
+        }
+      });
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
+    };
+  }, [refetchOrderHistory]);
+
+  const extractSeatNumbers = (specialInstructions) => {
+    if (!specialInstructions) return 'N/A';
+    const match = specialInstructions.match(/seat\s+([A-Z0-9,\s]+)/i);
+    return match ? match[1].trim() : specialInstructions;
+  };
 
   const theaters = theatersData?.data || theatersData || [];
   const shows = showsData?.data || showsData || [];
@@ -639,9 +758,49 @@ const FoodOrderingPage = () => {
     if (result.success) {
       setOrderSuccess(true);
       setOrderId(result.data.orderId);
+
+      // Automatically generate and download the invoice after placing the order
+      try {
+        const tempOrderForInvoice = {
+          orderId: result.data.orderId || "N/A",
+          orderedAt: new Date().toISOString(),
+          orderStatus: 'PENDING',
+          buyerId: {
+            name: currentUser?.name || "Theater Owner",
+            phone: currentUser?.phone || "N/A"
+          },
+          storeId: {
+            storeName: store?.name || "Food Store"
+          },
+          theaterId: {
+            name: selectedTheater?.name || "Cinema Theater"
+          },
+          deliveryType: 'SEAT_DELIVERY',
+          specialInstructions: `Deliver to seat ${seatNumbers.join(', ')}`,
+          items: cart.items.map(item => ({
+            productName: item.productName,
+            price: item.price,
+            quantity: item.quantity,
+            total: item.total
+          })),
+          subTotal: cart.totalAmount,
+          tax: cart.totalAmount * 0.05,
+          deliveryCharge: 20,
+          totalAmount: cart.totalAmount + (cart.totalAmount * 0.05) + 20,
+          paymentMethod: 'CASH ON DELIVERY',
+          paymentStatus: 'PENDING'
+        };
+
+        setPlacedOrderData(tempOrderForInvoice);
+        generateInvoicePDF(tempOrderForInvoice, currentUser);
+      } catch (invoiceError) {
+        console.error("Error auto-generating invoice PDF:", invoiceError);
+      }
+
       setCart({ items: [], totalAmount: 0 });
       setSelectedSeats(new Set());
       await refetchCart();
+
       // Refresh order history if it's open
       if (showOrderHistory) {
         await refetchOrderHistory();
@@ -681,15 +840,15 @@ const FoodOrderingPage = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           <div className="px-8 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 animate-pulse blur-lg opacity-50" />
-                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-xl">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
+                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
                     <FaUtensils className="text-white text-xl" />
                   </div>
                 </div>
@@ -704,16 +863,12 @@ const FoodOrderingPage = () => {
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => {
-                    setShowOrderHistory(!showOrderHistory);
-                    if (!showOrderHistory) {
-                      refetchOrderHistory();
-                    }
-                  }}
-                  className="relative p-3 rounded-xl transition-all hover:scale-105"
-                  style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
+                  onClick={() => { refetchCart(); refetchOrderHistory(); }}
+                  className="h-10 px-3 rounded-xl transition-all duration-300 hover:scale-105 border flex items-center gap-2 text-sm font-semibold"
+                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                 >
-                  <FaHistory style={{ color: "var(--foreground)" }} />
+                  <FaSpinner className={`text-sm ${loading ? "animate-spin" : ""}`} />
+                  Refresh
                 </button>
                 <button
                   onClick={() => setShowCart(!showCart)}
@@ -722,7 +877,7 @@ const FoodOrderingPage = () => {
                 >
                   <FaShoppingCart style={{ color: "var(--foreground)" }} />
                   {cart.items.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {cart.items.length}
                     </span>
                   )}
@@ -732,7 +887,64 @@ const FoodOrderingPage = () => {
           </div>
         </div>
 
-        {orderSuccess ? (
+        {/* Dashboard Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <DashboardStatCard
+            title="Total Orders"
+            value={orderHistory.length}
+            icon={FaHistory}
+            color="blue"
+          />
+          <DashboardStatCard
+            title="Menu Items"
+            value={Object.values(products).flat().length}
+            icon={FaUtensils}
+            color="purple"
+          />
+          <DashboardStatCard
+            title="Cart Items"
+            value={cart.items.length}
+            icon={FaShoppingCart}
+            color="cyan"
+          />
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 p-1.5 rounded-2xl mb-8 max-w-md" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+          <button
+            onClick={() => {
+              setShowOrderHistory(false);
+              setOrderSuccess(false);
+            }}
+            className="flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02]"
+            style={{
+              background: !showOrderHistory ? "linear-gradient(135deg, #3b82f6, #4f46e5)" : "transparent",
+              color: !showOrderHistory ? "#ffffff" : "var(--foreground)",
+              opacity: !showOrderHistory ? 1 : 0.65,
+            }}
+          >
+            <FaUtensils className="text-sm" />
+            Place Order
+          </button>
+          <button
+            onClick={() => {
+              setShowOrderHistory(true);
+              setOrderSuccess(false);
+              refetchOrderHistory();
+            }}
+            className="flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02]"
+            style={{
+              background: showOrderHistory ? "linear-gradient(135deg, #3b82f6, #4f46e5)" : "transparent",
+              color: showOrderHistory ? "#ffffff" : "var(--foreground)",
+              opacity: showOrderHistory ? 1 : 0.65,
+            }}
+          >
+            <FaHistory className="text-sm" />
+            Order History
+          </button>
+        </div>
+
+        {orderSuccess && !showOrderHistory ? (
           <div className="rounded-xl p-8 text-center" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
               <FaUtensils className="text-4xl text-green-500" />
@@ -741,30 +953,36 @@ const FoodOrderingPage = () => {
             <p className="mb-4" style={{ color: "var(--foreground)", opacity: 0.6 }}>
               Your order #{orderId} has been placed with COD payment.
             </p>
-            <button
-              onClick={() => {
-                setOrderSuccess(false);
-                setOrderId(null);
-              }}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold hover:opacity-90 transition-opacity"
-            >
-              Place Another Order
-            </button>
+            <div className="flex justify-center gap-4 flex-wrap">
+              <button
+                onClick={() => {
+                  setOrderSuccess(false);
+                  setOrderId(null);
+                  setPlacedOrderData(null);
+                }}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                Place Another Order
+              </button>
+              {placedOrderData && (
+                <button
+                  onClick={() => generateInvoicePDF(placedOrderData, currentUser)}
+                  className="px-6 py-3 rounded-xl border flex items-center gap-2 font-semibold hover:scale-105 transition-all text-indigo-500 border-indigo-500/30 hover:bg-indigo-500/10 cursor-pointer"
+                  style={{ background: "var(--background)" }}
+                >
+                  <FaDownload />
+                  Download Invoice (PDF)
+                </button>
+              )}
+            </div>
           </div>
         ) : showOrderHistory ? (
-          // Order History Modal/Section
           <div className="rounded-xl p-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
                 <FaHistory className="inline mr-2" />
                 Order History
               </h2>
-              <button
-                onClick={() => setShowOrderHistory(false)}
-                className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <FaTimes />
-              </button>
             </div>
             
             {orderHistory.length === 0 ? (
@@ -772,73 +990,82 @@ const FoodOrderingPage = () => {
                 No orders found
               </p>
             ) : (
-              <div className="space-y-4">
-                {orderHistory.map((order) => (
-                  <div
-                    key={order._id}
-                    className="rounded-lg p-4"
-                    style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
-                  >
-                    <div className="flex flex-wrap justify-between items-start mb-3">
-                      <div>
-                        <div className="font-bold" style={{ color: "var(--foreground)" }}>
-                          Order #{order.orderNumber || order._id.slice(-6)}
-                        </div>
-                        <div className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                          {formatDate(order.createdAt)}
-                        </div>
-                      </div>
-                      <div>
-                        <span
-                          className="px-2 py-1 rounded-full text-xs font-semibold"
-                          style={{ 
-                            background: `${getStatusColor(order.status)}20`,
-                            color: getStatusColor(order.status),
-                            border: `1px solid ${getStatusColor(order.status)}40`
-                          }}
-                        >
-                          {order.status || 'Pending'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Items:</div>
-                      <div className="space-y-1">
-                        {order.items?.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm" style={{ color: "var(--foreground)", opacity: 0.8 }}>
-                            <span>{item.quantity}x {item.productName}</span>
-                            <span>₹{item.price * item.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center pt-2 border-t" style={{ borderColor: "var(--card-border)" }}>
-                      <div className="text-sm">
-                        {order.deliveryType === 'SEAT_DELIVERY' && (
-                          <span style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                            Delivery to: {order.specialInstructions?.replace('Deliver to seat ', 'Seat ')}
-                          </span>
-                        )}
-                        {order.scheduledFor && (
-                          <div className="text-xs mt-1" style={{ color: "#f59e0b" }}>
-                            <FaClock className="inline mr-1" />
-                            Scheduled: {formatDate(order.scheduledFor)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold" style={{ color: "var(--foreground)" }}>
-                          Total: ₹{order.totalAmount}
-                        </div>
-                        <div className="text-xs" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-                          {order.paymentMethod}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "var(--card-border)" }}>
+                <table className="min-w-full divide-y" style={{ divideColor: "var(--card-border)" }}>
+                  <thead style={{ background: "var(--background)" }}>
+                    <tr>
+                      {["Order ID", "Customer", "Seat", "Items", "Total", "Status", "Date", "Actions"].map((heading) => (
+                        <th key={heading} className="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ divideColor: "var(--card-border)" }}>
+                    {orderHistory.map((order) => {
+                      const seatNumbers = extractSeatNumbers(order.specialInstructions);
+                      return (
+                        <tr key={order._id} className="transition-colors hover:bg-white/5">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold" style={{ color: "var(--foreground)" }}>
+                            #{order.orderId || order._id.slice(-6)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{order.buyerId?.name || currentUser?.name || "Theater Owner"}</div>
+                            <div className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>{order.buyerId?.phone || currentUser?.phone || "N/A"}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-500">
+                            {seatNumbers}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: "var(--foreground)", opacity: 0.8 }}>
+                            {order.items?.length || 0} items
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold" style={{ color: "var(--foreground)" }}>
+                            ₹{order.totalAmount}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className="px-2 py-1 rounded-full text-xs font-semibold"
+                              style={{ 
+                                background: `${getStatusColor(order.orderStatus)}20`,
+                                color: getStatusColor(order.orderStatus),
+                                border: `1px solid ${getStatusColor(order.orderStatus)}40`
+                              }}
+                            >
+                              {order.orderStatus || 'Pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+                            {formatDate(order.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setIsModalOpen(true);
+                                }}
+                                className="px-3 py-1.5 rounded-lg border flex items-center gap-1 text-xs font-bold transition-all hover:scale-105 cursor-pointer"
+                                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                              >
+                                <FaEye className="text-xs" />
+                                View
+                              </button>
+                              <button
+                                onClick={() => generateInvoicePDF(order, currentUser)}
+                                className="px-3 py-1.5 rounded-lg border flex items-center gap-1 text-xs font-bold transition-all hover:scale-105 text-indigo-500 hover:bg-indigo-500/10 cursor-pointer"
+                                style={{ background: "var(--background)", borderColor: "var(--card-border)" }}
+                                title="Download Invoice"
+                              >
+                                <FaDownload className="text-xs" />
+                                Invoice
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -861,7 +1088,7 @@ const FoodOrderingPage = () => {
                       }}
                       className={`p-4 rounded-xl transition-all ${
                         selectedTheater?._id === theater._id
-                          ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
                           : "hover:scale-105"
                       }`}
                       style={selectedTheater?._id !== theater._id ? { background: "var(--background)", border: "1px solid var(--card-border)" } : {}}
@@ -918,7 +1145,7 @@ const FoodOrderingPage = () => {
                         }}
                         className={`w-full p-4 rounded-xl transition-all text-left ${
                           selectedShow?._id === show._id
-                            ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
+                            ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
                             : "hover:scale-105"
                         }`}
                         style={selectedShow?._id !== show._id ? { background: "var(--background)", border: "1px solid var(--card-border)" } : {}}
@@ -969,7 +1196,7 @@ const FoodOrderingPage = () => {
                           }}
                           className={`p-4 rounded-xl transition-all text-left ${
                             isSelected
-                              ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
                               : "hover:scale-105"
                           }`}
                           style={!isSelected ? { background: "var(--background)", border: "1px solid var(--card-border)" } : {}}
@@ -1131,45 +1358,75 @@ const FoodOrderingPage = () => {
                     Object.entries(groupedProducts).map(([category, items]) => (
                       <div key={category} className="mb-6">
                         <h3 className="text-md font-semibold mb-3" style={{ color: "var(--foreground)", opacity: 0.8 }}>{category}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-4">
                           {items.map((product) => (
                             <div
                               key={product._id}
-                              className="rounded-xl p-4 transition-all hover:scale-105"
+                              className="rounded-xl p-4 transition-all hover:scale-[1.01]"
                               style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
                             >
-                              {product.image && (
-                                <img src={product.image} alt={product.name} className="w-full h-32 object-cover rounded-lg mb-3" />
-                              )}
-                              <div className="font-semibold mb-1" style={{ color: "var(--foreground)" }}>{product.name}</div>
-                              <div className="text-sm mb-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>{product.description}</div>
-                              <div className="flex items-center justify-between">
-                                <div className="font-bold" style={{ color: "var(--foreground)" }}>
-                                  ₹{product.discountPrice || product.price}
+                              <div className="flex gap-4 items-stretch">
+                                {/* Left: Image */}
+                                <div className="w-28 h-28 shrink-0 rounded-lg overflow-hidden flex items-center justify-center border" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+                                  {product.image ? (
+                                    <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <FaUtensils className="text-3xl opacity-20" style={{ color: "var(--foreground)" }} />
+                                  )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => handleQuantityChange(product._id, -1)}
-                                    className="w-8 h-8 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors flex items-center justify-center"
-                                  >
-                                    <FaMinus />
-                                  </button>
-                                  <span className="w-8 text-center font-semibold" style={{ color: "var(--foreground)" }}>
-                                    {productQuantities[product._id] || 1}
-                                  </span>
-                                  <button
-                                    onClick={() => handleQuantityChange(product._id, 1)}
-                                    className="w-8 h-8 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 text-white hover:opacity-90 transition-colors flex items-center justify-center"
-                                  >
-                                    <FaPlus />
-                                  </button>
-                                  <button
-                                    onClick={() => handleAddToCart(product._id, productQuantities[product._id] || 1)}
-                                    disabled={loading}
-                                    className="px-3 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50 text-sm font-semibold"
-                                  >
-                                    Add
-                                  </button>
+                                
+                                {/* Right: Info */}
+                                <div className="flex flex-col justify-between flex-1 py-1">
+                                  <div>
+                                    <div className="font-bold text-lg mb-1" style={{ color: "var(--foreground)" }}>{product.name}</div>
+                                    <div className="text-sm line-clamp-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>{product.description}</div>
+                                  </div>
+                                  <div className="flex items-end justify-between mt-2">
+                                    <div className="font-bold text-lg text-blue-500">
+                                      ₹{product.discountPrice || product.price}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {cart.items.find(item => item.productId === product._id) ? (
+                                        <div className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white p-1">
+                                          <button
+                                            onClick={() => {
+                                              const item = cart.items.find(i => i.productId === product._id);
+                                              if (item.quantity <= 1) {
+                                                handleRemoveFromCart(product._id);
+                                              } else {
+                                                handleUpdateCartItem(product._id, item.quantity - 1);
+                                              }
+                                            }}
+                                            disabled={loading}
+                                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
+                                          >
+                                            <FaMinus className="text-[10px]" />
+                                          </button>
+                                          <span className="w-6 text-center font-bold text-sm">
+                                            {cart.items.find(item => item.productId === product._id).quantity}
+                                          </span>
+                                          <button
+                                            onClick={() => {
+                                              const item = cart.items.find(i => i.productId === product._id);
+                                              handleUpdateCartItem(product._id, item.quantity + 1);
+                                            }}
+                                            disabled={loading}
+                                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
+                                          >
+                                            <FaPlus className="text-[10px]" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => handleAddToCart(product._id, 1)}
+                                          disabled={loading}
+                                          className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50 text-sm font-bold flex items-center gap-2"
+                                        >
+                                          <FaPlus className="text-xs" /> Add
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1221,7 +1478,7 @@ const FoodOrderingPage = () => {
                                 <button
                                   onClick={() => handleUpdateCartItem(item.productId, item.quantity + 1)}
                                   disabled={loading}
-                                  className="w-6 h-6 rounded bg-gradient-to-r from-orange-500 to-red-500 text-white hover:opacity-90 transition-colors flex items-center justify-center disabled:opacity-50"
+                                  className="w-6 h-6 rounded bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90 transition-colors flex items-center justify-center disabled:opacity-50"
                                 >
                                   <FaPlus />
                                 </button>
@@ -1252,7 +1509,7 @@ const FoodOrderingPage = () => {
                             onClick={() => setOrderType('now')}
                             className={`py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
                               orderType === 'now'
-                                ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
                                 : 'hover:scale-105'
                             }`}
                             style={orderType !== 'now' ? { background: 'var(--background)', border: '1px solid var(--card-border)', color: 'var(--foreground)' } : {}}
@@ -1263,7 +1520,7 @@ const FoodOrderingPage = () => {
                             onClick={() => setOrderType('scheduled')}
                             className={`py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
                               orderType === 'scheduled'
-                                ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
                                 : 'hover:scale-105'
                             }`}
                             style={orderType !== 'scheduled' ? { background: 'var(--background)', border: '1px solid var(--card-border)', color: 'var(--foreground)' } : {}}
@@ -1294,7 +1551,7 @@ const FoodOrderingPage = () => {
                       <button
                         onClick={handlePlaceOrder}
                         disabled={loading || cart.items.length === 0}
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {loading ? <FaSpinner className="animate-spin" /> : orderType === 'now' ? 'Place Order (Cash)' : 'Schedule Order'}
                       </button>
@@ -1306,6 +1563,103 @@ const FoodOrderingPage = () => {
           </div>
         )}
       </div>
+
+      <Toaster position="top-right" />
+
+      {/* Detailed Order Modal */}
+      {isModalOpen && selectedOrder && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setIsModalOpen(false)}>
+          <div className="rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 border-b p-4 flex justify-between items-center" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+              <div>
+                <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Order Details</h2>
+                <p className="text-xs font-mono" style={{ color: "var(--foreground)", opacity: 0.6 }}>#{selectedOrder.orderId || selectedOrder._id}</p>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors" style={{ color: "var(--foreground)" }}>
+                <FaTimes className="text-xl" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Customer & Location Info */}
+              <div className="rounded-lg p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                  <FaUtensils className="text-blue-500" /> Details
+                </h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p style={{ color: "var(--foreground)", opacity: 0.6 }}>Customer Name</p>
+                    <p className="font-medium" style={{ color: "var(--foreground)" }}>{selectedOrder.buyerId?.name || currentUser?.name || "Theater Owner"}</p>
+                  </div>
+                  <div>
+                    <p style={{ color: "var(--foreground)", opacity: 0.6 }}>Contact Phone</p>
+                    <p className="font-medium" style={{ color: "var(--foreground)" }}>{selectedOrder.buyerId?.phone || currentUser?.phone || "N/A"}</p>
+                  </div>
+                  <div className="mt-2">
+                    <p style={{ color: "var(--foreground)", opacity: 0.6 }}>Delivery Type</p>
+                    <p className="font-medium" style={{ color: "var(--foreground)" }}>{selectedOrder.deliveryType?.replace("_", " ") || "SEAT DELIVERY"}</p>
+                  </div>
+                  <div className="mt-2">
+                    <p style={{ color: "var(--foreground)", opacity: 0.6 }}>Seat Number</p>
+                    <p className="font-bold text-blue-500">{extractSeatNumbers(selectedOrder.specialInstructions)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div className="rounded-lg p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                  Items Summary
+                </h3>
+                <div className="space-y-2">
+                  {selectedOrder.items?.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 rounded-lg border" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+                      <div>
+                        <p className="font-semibold" style={{ color: "var(--foreground)" }}>{item.productName}</p>
+                        <p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Qty: {item.quantity} × ₹{item.price}</p>
+                      </div>
+                      <p className="font-bold" style={{ color: "var(--foreground)" }}>₹{item.total}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price Summary */}
+              <div className="rounded-lg p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between" style={{ color: "var(--foreground)", opacity: 0.8 }}>
+                    <span>Subtotal</span>
+                    <span>₹{selectedOrder.subTotal}</span>
+                  </div>
+                  <div className="flex justify-between" style={{ color: "var(--foreground)", opacity: 0.8 }}>
+                    <span>Tax (5% GST)</span>
+                    <span>₹{selectedOrder.tax}</span>
+                  </div>
+                  <div className="flex justify-between" style={{ color: "var(--foreground)", opacity: 0.8 }}>
+                    <span>Delivery Charge</span>
+                    <span>₹{selectedOrder.deliveryCharge}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between font-bold" style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+                    <span>Total Amount</span>
+                    <span className="text-lg text-blue-500 font-bold">₹{selectedOrder.totalAmount}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Download Action */}
+              <div className="rounded-lg p-4 flex justify-end" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
+                <button
+                  onClick={() => generateInvoicePDF(selectedOrder, currentUser)}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <FaDownload className="text-sm" />
+                  Download Invoice
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

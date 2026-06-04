@@ -21,7 +21,7 @@ export default function VendorLayout({ children }) {
   const user = getCurrentUser();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="flex h-screen overflow-hidden transition-colors duration-300" style={{ background: "var(--background)" }}>
       {/* Sidebar */}
       <VendorSidebar onCollapseChange={setIsSidebarCollapsed} />
       
