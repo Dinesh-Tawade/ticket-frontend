@@ -51,6 +51,8 @@ export default function Login() {
       setTimeout(() => {
         if (role === "SUPER_ADMIN") {
           router.push("/admin/dashboard");
+        } else if (role === "SCANNING_USER") {
+          router.push("/admin/scan-ticket");
         } else if (role === "SELLER") {
           router.push("/seller/dashboard");
         } else if (role === "THEATER_OWNER") {

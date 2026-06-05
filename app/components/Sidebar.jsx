@@ -48,13 +48,13 @@ const SidebarItem = memo(({ item, collapsed, isActive, onNavigate }) => {
 SidebarItem.displayName = "SidebarItem";
 
 // Memoized Desktop Sidebar Content
-const DesktopSidebarContent = memo(({ collapsed, menuItems, pathname, onNavigate, onLogout }) => (
+const DesktopSidebarContent = memo(({ collapsed, menuItems, pathname, onNavigate, onLogout, title }) => (
   <div className="h-full flex flex-col bg-[#0f172a] will-change-auto">
     {/* Header */}
     <div className="flex-shrink-0 p-4 border-b border-gray-700 transition-all duration-300">
       <div className="flex items-center justify-between">
         {!collapsed ? (
-          <h1 className="text-xl font-bold text-white">Super Admin</h1>
+          <h1 className="text-xl font-bold text-white">{title}</h1>
         ) : (
           <span className="text-2xl text-center block text-white">🎟</span>
         )}
@@ -99,11 +99,11 @@ const DesktopSidebarContent = memo(({ collapsed, menuItems, pathname, onNavigate
 DesktopSidebarContent.displayName = "DesktopSidebarContent";
 
 // Memoized Mobile Sidebar Content
-const MobileSidebarContent = memo(({ menuItems, pathname, onNavigate, onLogout, onClose }) => (
+const MobileSidebarContent = memo(({ menuItems, pathname, onNavigate, onLogout, onClose, title }) => (
   <div className="h-full flex flex-col bg-[#0f172a] will-change-auto">
     <div className="flex-shrink-0 p-4 border-b border-gray-700">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">Super Admin</h1>
+        <h1 className="text-xl font-bold text-white">{title}</h1>
         <FaTimes
           className="text-gray-400 cursor-pointer hover:text-white text-xl transition-colors"
           onClick={onClose}
@@ -184,20 +184,44 @@ export default function Sidebar({ sidebarOpen = true, setSidebarOpen = null }) {
     };
   }, [isMobileMenuOpen]);
 
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        setUserRole(u.role || "");
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const sidebarTitle = userRole === "SCANNING_USER" ? "Ticket Scanner" : "Super Admin";
+
   // Menu items - memoized to prevent recreation
   const menuItems = useMemo(
-    () => [
-      { name: "Dashboard", path: "/admin/dashboard", icon: MdDashboard },
-      { name: "Theaters", path: "/admin/theaters", icon: FaFilm },
-      { name: "Shows", path: "/admin/shows", icon: SiMyshows },
-      { name: "Users", path: "/admin/users", icon: FaUser },
-      { name: "Admin", path: "/admin/theater-owners", icon: FaBars },
-      { name: "Add Vendor", path: "/admin/vendors", icon: FaFilm },
-      { name: "Scan Ticket", path: "/admin/scan-ticket", icon: FaSprayCan },
-      { name: "Settings", path: "/admin/settings", icon: FaSellcast },
-      { name: "Orders", path: "/admin/orders", icon: FaShoppingCart },
-    ],
-    []
+    () => {
+      if (userRole === "SCANNING_USER") {
+        return [
+          { name: "Scan Ticket", path: "/admin/scan-ticket", icon: FaSprayCan }
+        ];
+      }
+      return [
+        { name: "Dashboard", path: "/admin/dashboard", icon: MdDashboard },
+        { name: "Theaters", path: "/admin/theaters", icon: FaFilm },
+        { name: "Shows", path: "/admin/shows", icon: SiMyshows },
+        { name: "Users", path: "/admin/users", icon: FaUser },
+        { name: "Admin", path: "/admin/theater-owners", icon: FaBars },
+        { name: "Add Vendor", path: "/admin/vendors", icon: FaFilm },
+        { name: "Scan Ticket", path: "/admin/scan-ticket", icon: FaSprayCan },
+        { name: "Scanner Users", path: "/admin/scanner-users", icon: FaUser },
+        { name: "Settings", path: "/admin/settings", icon: FaSellcast },
+        { name: "Orders", path: "/admin/orders", icon: FaShoppingCart },
+      ];
+    },
+    [userRole]
   );
 
   // Memoized callbacks to prevent unnecessary re-renders
@@ -265,6 +289,7 @@ export default function Sidebar({ sidebarOpen = true, setSidebarOpen = null }) {
             pathname={pathname}
             onNavigate={handleNavigate}
             onLogout={handleLogout}
+            title={sidebarTitle}
           />
         </aside>
       )}
@@ -294,6 +319,7 @@ export default function Sidebar({ sidebarOpen = true, setSidebarOpen = null }) {
               onNavigate={handleNavigate}
               onLogout={handleLogout}
               onClose={handleCloseMenu}
+              title={sidebarTitle}
             />
           </div>
         </>

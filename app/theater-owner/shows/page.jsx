@@ -432,6 +432,34 @@
     );
   };
 
+  // Helper to check if show timing is in the past (timezone-safe, date & time checked)
+  const isTimingPast = (timing) => {
+    if (!timing || !timing.showDate) return true;
+    const timingDate = new Date(timing.showDate);
+    const today = new Date();
+    
+    const timingDateZero = new Date(timingDate);
+    timingDateZero.setHours(0, 0, 0, 0);
+    const todayZero = new Date(today);
+    todayZero.setHours(0, 0, 0, 0);
+
+    if (timingDateZero < todayZero) {
+      return true;
+    }
+    if (timingDateZero.getTime() === todayZero.getTime()) {
+      const [hours, minutes] = (timing.startTime || '00:00').split(':').map(Number);
+      const showDateTime = new Date(todayZero);
+      showDateTime.setHours(hours, minutes, 0, 0);
+      
+      // Expire 1 hour after the show's start time
+      const expirationTime = new Date(showDateTime.getTime() + 60 * 60 * 1000);
+      if (expirationTime < today) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   // ==================== CINEMA BOOKING PREVIEW WITH TIMING SELECTION ====================
   const CinemaBookingPreview = ({ theater, show, accessibleSeats = [], onClose, onBookingSuccess }) => {
     const [selected, setSelected] = useState(new Set());
@@ -770,8 +798,7 @@
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                   {showTimings.map((timing, idx) => {
                     const isSelected = selectedTiming?._id === timing._id;
-                    const isPast = new Date(timing.showDate) < new Date() && 
-                                  new Date(timing.showDate).toDateString() !== new Date().toDateString();
+                    const isPast = isTimingPast(timing);
                     
                     return (
                       <button
@@ -1104,7 +1131,11 @@
       });
     };
 
-    const visibleTimings = showAllTimings ? show.timings : show.timings?.slice(0, 2);
+    const activeTimings = useMemo(() => {
+      return (show.timings || []).filter(t => !isTimingPast(t));
+    }, [show.timings]);
+
+    const visibleTimings = showAllTimings ? activeTimings : activeTimings.slice(0, 2);
 
     return (
       <div className="group rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
@@ -1157,7 +1188,7 @@
               <span className="text-sm">Screen {show.screenNumber}</span>
             </div>
             
-            {show.timings && show.timings.length > 0 && (
+            {activeTimings && activeTimings.length > 0 && (
               <div className="mt-3">
                 <div className="text-xs font-semibold mb-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>
                   Show Timings:
@@ -1186,7 +1217,7 @@
                   ))}
                 </div>
                 
-                {show.timings.length > 2 && (
+                {activeTimings.length > 2 && (
                   <button
                     onClick={() => setShowAllTimings(!showAllTimings)}
                     className="mt-2 w-full py-1.5 text-xs font-semibold flex items-center justify-center gap-1 rounded-lg transition-all"
@@ -1195,7 +1226,7 @@
                     {showAllTimings ? (
                       <>Show Less <FaChevronUp size={10} /></>
                     ) : (
-                      <>View All {show.timings.length} Timings <FaChevronDown size={10} /></>
+                      <>View All {activeTimings.length} Timings <FaChevronDown size={10} /></>
                     )}
                   </button>
                 )}
@@ -1205,11 +1236,15 @@
 
           <button
             onClick={() => onBookTicket(show)}
-            disabled={accessibleCount === 0}
+            disabled={accessibleCount === 0 || activeTimings.length === 0}
             className="w-full py-3 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <FaTicketAlt />
-            {accessibleCount > 0 ? `Book Tickets (${accessibleCount})` : 'No seats assigned'}
+            {activeTimings.length === 0 
+              ? 'Show Expired' 
+              : accessibleCount > 0 
+                ? `Book Tickets (${accessibleCount})` 
+                : 'No seats assigned'}
           </button>
         </div>
       </div>

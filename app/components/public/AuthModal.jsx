@@ -73,6 +73,8 @@ function AuthModal({ isOpen, onClose, initialMode = "login" }) {
       setTimeout(() => {
         if (role === "SUPER_ADMIN") {
           router.push("/admin/dashboard");
+        } else if (role === "SCANNING_USER") {
+          router.push("/admin/scan-ticket");
         } else if (role === "VENDOR") {
           router.push("/vendor/dashboard");
         } else if (role === "THEATER_OWNER") {
