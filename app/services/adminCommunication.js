@@ -172,6 +172,12 @@ export const createSuperAdminByAdmin = async (userData) => {
   return res.data;
 };
 
+export const createScanningUser = async (userData) => {
+  const isFormData = userData instanceof FormData;
+  const res = await axios.post(`${BE_URL}/admin/create-scanning-user`, userData, isFormData ? getAuthHeaderForFormData() : getAuthHeader());
+  return res.data;
+};
+
 export const getAllUsers = async (filters = {}) => {
   const params = new URLSearchParams(filters).toString();
   const url = params ? `${BE_URL}/admin/users?${params}` : `${BE_URL}/admin/users`;

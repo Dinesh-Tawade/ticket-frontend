@@ -1,24 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
 
     if (!token) {
       router.push("/admin/login");
     } else {
-      setChecking(false);
+      if (userStr) {
+        try {
+          const userData = JSON.parse(userStr);
+          const role = userData.role?.trim().toUpperCase();
+
+          if (role === "SCANNING_USER" && pathname !== "/admin/scan-ticket") {
+            router.push("/admin/scan-ticket");
+          } else if (role !== "SUPER_ADMIN" && role !== "SCANNING_USER") {
+            if (role === "THEATER_OWNER") {
+              router.push("/theater-owner/dashboard");
+            } else if (role === "VENDOR") {
+              router.push("/vendor/dashboard");
+            } else {
+              router.push("/");
+            }
+          } else {
+            setChecking(false);
+          }
+        } catch (e) {
+          setChecking(false);
+        }
+      } else {
+        setChecking(false);
+      }
     }
-  }, [router]);
+  }, [router, pathname]);
 
   if (checking) {
     return (
