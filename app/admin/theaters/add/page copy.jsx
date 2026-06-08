@@ -1892,7 +1892,7 @@ export default function AddTheaterPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth:step===2?1200:760, margin:"0 auto", padding:"28px 20px" }}>
+      <div style={{ margin:"0 auto", padding:"28px 20px" }}>
         <StepIndicator current={step} />
 
         {/* ── STEP 1: Theater Info ── */}
