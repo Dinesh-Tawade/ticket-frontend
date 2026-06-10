@@ -13,6 +13,7 @@ import {
   FaEdit,
   FaEnvelope,
   FaEye,
+  FaKey,
   FaMapMarkerAlt,
   FaPhoneAlt,
   FaPlus,
@@ -127,7 +128,17 @@ const refineUserForm = (data, ctx) => {
 
 const addUserSchema = userFormBaseSchema.extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
-}).superRefine(refineUserForm);
+  confirmPassword: z.string().min(1, "Confirm password is required"),
+}).superRefine((data, ctx) => {
+  refineUserForm(data, ctx);
+  if (data.password !== data.confirmPassword) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["confirmPassword"],
+      message: "Passwords do not match",
+    });
+  }
+});
 
 const editUserSchema = userFormBaseSchema.extend({
   phone: z.string().trim().regex(/^[0-9]{10}$/, "Enter a valid 10 digit phone number").or(z.literal("")).nullable().optional(),
@@ -336,6 +347,7 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [resetPasswordTarget, setResetPasswordTarget] = useState(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["adminUsers"],
@@ -491,6 +503,18 @@ export default function Users() {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Unable to delete user");
+    },
+  });
+  
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ id, password }) => updateUser(id, { password }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+      setResetPasswordTarget(null);
+      toast.success("Password reset successfully");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Unable to reset password");
     },
   });
 
@@ -696,6 +720,9 @@ export default function Users() {
                           <IconButton title="Edit user" onClick={() => setEditingUser(user)}>
                             <FaEdit className="text-sm" />
                           </IconButton>
+                          <IconButton title="Reset password" onClick={() => setResetPasswordTarget(user)} tone="blue">
+                            <FaKey className="text-sm" />
+                          </IconButton>
                           <IconButton title="Delete user" onClick={() => setDeleteTarget(user)}>
                             <FaTrash className="text-sm" />
                           </IconButton>
@@ -764,6 +791,22 @@ export default function Users() {
                       }}
                     >
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetPasswordTarget(user)}
+                      className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition-all hover:scale-105"
+                      style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#3b82f6";
+                        e.currentTarget.style.backgroundColor = "rgba(59, 130, 246, 0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--card-border)";
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }}
+                    >
+                      Reset
                     </button>
                     <button
                       type="button"
@@ -839,6 +882,15 @@ export default function Users() {
           isSaving={createMutation.isPending}
           onClose={() => setIsAddOpen(false)}
           onSave={(role, payload, profileImage) => createMutation.mutate({ role, payload, profileImage })}
+        />
+      )}
+
+      {resetPasswordTarget && (
+        <ResetPasswordModal
+          user={resetPasswordTarget}
+          isSaving={resetPasswordMutation.isPending}
+          onClose={() => setResetPasswordTarget(null)}
+          onSave={(password) => resetPasswordMutation.mutate({ id: resetPasswordTarget._id, password })}
         />
       )}
 
@@ -1044,6 +1096,97 @@ function FieldLine({ label, value }) {
   );
 }
 
+function ResetPasswordModal({ user, isSaving, onClose, onSave }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    onSave(password);
+  };
+
+  return (
+    <div className="user-fade-in fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <form onSubmit={handleSubmit} className="user-modal-in w-full max-w-md overflow-hidden rounded-xl shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+        <div className="flex items-center justify-between border-b p-5" style={{ borderColor: "var(--card-border)" }}>
+          <div>
+            <p className="text-sm font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Security & Access</p>
+            <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Reset Password</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 transition" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+            <FaTimes />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <p className="text-sm" style={{ color: "var(--foreground)", opacity: 0.8 }}>
+            Reset password for user <span className="font-semibold">{user.name}</span> ({user.email}).
+          </p>
+          
+          <label className="block">
+            <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>New Password</span>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 h-11 w-full rounded-lg border bg-white px-3 text-sm outline-none transition focus:ring-4"
+              style={{
+                borderColor: "var(--card-border)",
+                background: "var(--card)",
+                color: "var(--foreground)"
+              }}
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Confirm New Password</span>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="mt-1 h-11 w-full rounded-lg border bg-white px-3 text-sm outline-none transition focus:ring-4"
+              style={{
+                borderColor: "var(--card-border)",
+                background: "var(--card)",
+                color: "var(--foreground)"
+              }}
+            />
+          </label>
+        </div>
+
+        <div className="flex gap-3 border-t p-5" style={{ borderColor: "var(--card-border)" }}>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            {isSaving ? "Resetting..." : "Reset Password"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition"
+            style={{ borderColor: "var(--card-border)", color: "var(--foreground)" }}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function AddUserModal({ isSaving, onClose, onSave }) {
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -1062,6 +1205,7 @@ function AddUserModal({ isSaving, onClose, onSave }) {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
       phone: "",
       address: "",
       status: "ACTIVE",
@@ -1260,6 +1404,7 @@ function AddUserModal({ isSaving, onClose, onSave }) {
             <TextInput label="Full name" registration={register("name")} error={errors.name?.message} required />
             <TextInput label="Email" type="email" registration={register("email")} error={errors.email?.message} required />
             <TextInput label="Password" type="password" registration={register("password")} error={errors.password?.message} required />
+            <TextInput label="Confirm Password" type="password" registration={register("confirmPassword")} error={errors.confirmPassword?.message} required />
             <TextInput label="Phone" registration={register("phone")} error={errors.phone?.message} />
             <TextInput label="Address" registration={register("address")} error={errors.address?.message} />
             <FormSelect label="Status" registration={register("status")} error={errors.status?.message}>
