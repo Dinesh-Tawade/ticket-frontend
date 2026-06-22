@@ -16,7 +16,8 @@ export default function AdminLayout({ children }) {
     const userStr = localStorage.getItem("user");
 
     if (!token) {
-      router.push("/admin/login");
+      router.push("/login");
+      setChecking(false);
     } else {
       if (userStr) {
         try {
