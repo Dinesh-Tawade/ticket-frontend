@@ -25,12 +25,14 @@ const ZONE_PALETTE = [
   "#00bcd4","#ff5722",
 ];
 
-const DEFAULT_ZONES = [
-  { id: "z1", name: "44 ARMD",         color: "#c0392b", noSeat: false, label: "", basePrice: 150 },
-  { id: "z2", name: "26 MECH",         color: "#2980b9", noSeat: false, label: "", basePrice: 150 },
-  { id: "z3", name: "19 MECH",         color: "#27ae60", noSeat: false, label: "", basePrice: 150 },
-  { id: "z4", name: "677(I) & 689(I)", color: "#8e44ad", noSeat: false, label: "", basePrice: 150 },
-  { id: "z5", name: "VIP / CAMP",      color: "#d4ac0d", noSeat: false, label: "", basePrice: 150 },
+const _uid = () => Math.random().toString(36).slice(2, 9);
+
+const makeDefaultZones = () => [
+  { id: `z_${_uid()}`, name: "44 ARMD",         color: "#c0392b", noSeat: false, label: "", basePrice: 150 },
+  { id: `z_${_uid()}`, name: "26 MECH",         color: "#2980b9", noSeat: false, label: "", basePrice: 150 },
+  { id: `z_${_uid()}`, name: "19 MECH",         color: "#27ae60", noSeat: false, label: "", basePrice: 150 },
+  { id: `z_${_uid()}`, name: "677(I) & 689(I)", color: "#8e44ad", noSeat: false, label: "", basePrice: 150 },
+  { id: `z_${_uid()}`, name: "VIP / CAMP",      color: "#d4ac0d", noSeat: false, label: "", basePrice: 150 },
 ];
 
 const BUILDER_TOOLS = [
@@ -184,9 +186,10 @@ function AisleTag({ label, onRemove, style={} }) {
 
 function TheaterLayoutBuilder({ onLayoutChange }) {
   const [rowNaming,   setRowNaming]   = useState("alpha");
-  const [zones,       setZones]       = useState(DEFAULT_ZONES);
+  const [initZones] = useState(() => makeDefaultZones());
+  const [zones,       setZones]       = useState(initZones);
   const [tool,        setTool]        = useState("paint");
-  const [activeZone,  setActiveZone]  = useState("z1");
+  const [activeZone,  setActiveZone]  = useState(initZones[0]?.id);
   const [currentLevel, setCurrentLevel] = useState("ground");
 
   const [levels, setLevels] = useState({

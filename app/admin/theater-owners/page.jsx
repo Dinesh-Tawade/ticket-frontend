@@ -1158,6 +1158,14 @@ const OWNER_FIELDS = [
     required: true,
   },
   {
+    name: "confirmPassword",
+    label: "Confirm Password",
+    placeholder: "Re-enter password",
+    icon: FaLock,
+    type: "password",
+    required: true,
+  },
+  {
     name: "phone",
     label: "Phone",
     placeholder: "10-digit mobile number",
@@ -1182,6 +1190,7 @@ function CreateOwnerModal({ onClose, onCreated }) {
     name: "",
     email: "",
     password: "",
+    confirmPassword: "",
     phone: "",
     address: "",
   });
@@ -1250,6 +1259,10 @@ function CreateOwnerModal({ onClose, onCreated }) {
     }
     if (!ownerInfo.password || ownerInfo.password.length < 8) {
       toast.error("Password must be 8+ characters");
+      return false;
+    }
+    if (ownerInfo.password !== ownerInfo.confirmPassword) {
+      toast.error("Passwords do not match");
       return false;
     }
     if (
