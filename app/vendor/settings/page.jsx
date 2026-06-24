@@ -67,7 +67,7 @@ function StoreSettingsPage() {
           <h2 className="mb-2 text-xl font-semibold" style={{ color: "var(--foreground)" }}>No Store Found</h2>
           <p className="mb-6" style={{ color: "var(--foreground)", opacity: 0.6 }}>Please create your store first.</p>
           <button
-            onClick={() => router.push("/vendor/store/add")}
+            onClick={() => router.push("/vendor/store")}
             className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
           >
             Create Store
@@ -78,7 +78,7 @@ function StoreSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300 py-8 px-4" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       <Toaster 
         position="top-right"
         reverseOrder={false}
@@ -93,33 +93,21 @@ function StoreSettingsPage() {
 
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="px-8 py-4">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+          <div>
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-2 hover:text-white transition-colors mb-4" style={{ color: "var(--foreground)", opacity: 0.7 }}
+              className="flex items-center gap-2 hover:text-white transition-colors mb-2 text-sm font-semibold" style={{ color: "var(--foreground)", opacity: 0.7 }}
             >
               <FaArrowLeft className="w-4 h-4" />
               Back
             </button>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
-                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                    <FaStore className="text-white text-xl" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
-                    Store Settings
-                  </h1>
-                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                    Manage your store status and settings
-                  </p>
-                </div>
-              </div>
-            </div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+              Store Settings
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              Manage your store status and settings
+            </p>
           </div>
         </div>
 
@@ -127,7 +115,7 @@ function StoreSettingsPage() {
         <div className="rounded-xl" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
           {/* Store Info */}
           <div className="p-6" style={{ borderBottom: "1px solid var(--card-border)" }}>
-            <div className="flex items-start gap-4">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
               {store.storeLogo ? (
                 <img
                   src={store.storeLogo}
@@ -163,7 +151,7 @@ function StoreSettingsPage() {
 
           {/* Toggle Section */}
           <div className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>Store Status</h3>
                 <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>

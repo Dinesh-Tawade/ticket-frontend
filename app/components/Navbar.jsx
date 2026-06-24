@@ -149,7 +149,7 @@ export default function Navbar() {
       <div className="max-w-[1200px] mx-auto px-7 h-[60px] flex items-center justify-between">
 
         {/* Brand */}
-        <a href="/" className="flex items-center gap-3 no-underline">
+        <a href="/" className="flex items-center gap-3 no-underline ml-12 md:ml-0">
           <div className="relative w-[34px] h-[34px]  flex items-center justify-center overflow-hidden">
             <div className="" />
          

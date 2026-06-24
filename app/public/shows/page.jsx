@@ -113,10 +113,25 @@ function ShowCard({ show, onClick, index, visible, isBookingFeatureEnabled, book
           <span className={`show-card__price ${show.isPaid ? "show-card__price--paid" : "show-card__price--free"}`}>
             {show.isPaid ? `₹${show.basePrice}` : "FREE"}
           </span>
-          <span className={`show-card__status ${isOpen ? "show-card__status--open" : "show-card__status--closed"}`}>
-            <span className="show-card__status-dot" />
-            {isOpen ? "Open" : "Closed"}
-          </span>
+          {(() => {
+            const getStatusLabel = () => {
+              if (show.status === "BOOKING_OPEN") return { text: "Now Showing", className: "show-card__status--open" };
+              if (show.status === "BOOKING_CLOSED") return { text: "Closed", className: "show-card__status--closed" };
+              if (show.status === "COMING_SOON") return { text: "Coming Soon", className: "show-card__status--coming" };
+              if (show.status === "UPCOMING") return { text: "Upcoming", className: "show-card__status--coming" };
+              if (show.status === "HOUSE_FULL") return { text: "House Full", className: "show-card__status--closed" };
+              if (show.status === "COMPLETED") return { text: "Completed", className: "show-card__status--closed" };
+              if (show.status === "CANCELLED") return { text: "Cancelled", className: "show-card__status--closed" };
+              return { text: "Closed", className: "show-card__status--closed" };
+            };
+            const label = getStatusLabel();
+            return (
+              <span className={`show-card__status ${label.className}`}>
+                <span className="show-card__status-dot" />
+                {label.text}
+              </span>
+            );
+          })()}
         </div>
       </div>
     </div>

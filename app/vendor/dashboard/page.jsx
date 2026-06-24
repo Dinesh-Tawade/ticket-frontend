@@ -157,36 +157,24 @@ export default function VendorDashboardPage() {
   return (
     <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       {/* Header Section */}
-      <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-        <div className="px-8 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
-                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                  <IoStorefrontOutline className="text-white text-xl" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
-                  Vendor Dashboard
-                </h1>
-                <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                  Welcome back, <span className="font-medium text-blue-500">{store?.name || 'Vendor'}</span>! Here is your store overview.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => { refetchStats(); refetchReport(); }}
-              className="p-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center gap-2"
-              style={{ background: "var(--background)", border: "1px solid var(--card-border)", color: "var(--foreground)" }}
-            >
-              <FaSpinner className={`text-sm ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+            Vendor Dashboard
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+            Welcome back, <span className="font-medium text-blue-500">{store?.name || 'Vendor'}</span>! Here is your store overview.
+          </p>
         </div>
+
+        <button
+          onClick={() => { refetchStats(); refetchReport(); }}
+          className="px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center gap-2 border text-sm font-semibold"
+          style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+        >
+          <FaSpinner className={`text-sm ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
       {/* Low Stock Warning */}

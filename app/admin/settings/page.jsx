@@ -40,6 +40,7 @@ const statusStyles = {
   BOOKING_OPEN: { color: "#22c55e", label: "BOOKING OPEN" },
   BOOKING_CLOSED: { color: "#ef4444", label: "BOOKING CLOSED" },
   CANCELLED: { color: "#6b7280", label: "CANCELLED" },
+  UPCOMING: { color: "#3b82f6", label: "UPCOMING" },
 };
 
 const StatCard = ({ label, value, icon: Icon, color }) => (
@@ -623,9 +624,13 @@ function AdminSettingsPage() {
                   className="w-full px-3 py-2 rounded-xl border outline-none"
                   style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
                 >
+                  <option value="COMING_SOON">Coming Soon</option>
                   <option value="BOOKING_OPEN">Open for Booking</option>
-                  <option value="BOOKING_CLOSED">Closed for Booking</option>
+                  <option value="HOUSE_FULL">House Full</option>
+                  <option value="COMPLETED">Completed</option>
                   <option value="CANCELLED">Cancelled</option>
+                  <option value="BOOKING_CLOSED">Closed for Booking</option>
+                  <option value="UPCOMING">Upcoming</option>
                 </select>
               </div>
 

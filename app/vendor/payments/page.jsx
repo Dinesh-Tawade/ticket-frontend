@@ -216,7 +216,7 @@ function VendorPaymentsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           <DashboardStatCard
             title="Total Transactions"
             value={summary.totalTransactions || 0}
@@ -241,6 +241,19 @@ function VendorPaymentsPage() {
             value={summary.pendingTransactions || 0}
             icon={IoTimeOutline}
             color="yellow"
+          />
+          <DashboardStatCard
+            title="Delivered Orders"
+            value={summary.deliveredOrdersCount || 0}
+            icon={IoCheckmarkCircleOutline}
+            color="blue"
+          />
+          <DashboardStatCard
+            title="Delivered Payment"
+            value={summary.deliveredOrdersTotalPayment || 0}
+            icon={IoWalletOutline}
+            color="indigo"
+            prefix="₹"
           />
         </div>
 
@@ -312,7 +325,7 @@ function VendorPaymentsPage() {
                     <td className="px-4 py-3 text-right">
                       <span className="font-semibold" style={{ color: "var(--foreground)" }}>₹{(payment.amount || 0).toLocaleString()}</span>
                     </td>
-                    <td className="px-4 py-3">getStatusBadge(payment.status)</td>
+                    <td className="px-4 py-3">{getStatusBadge(payment.status)}</td>
                     <td className="px-4 py-3">
                       <span className="text-sm flex items-center gap-1" style={{ color: "var(--foreground)", opacity: 0.7 }}>
                         <IoCardOutline className="w-3 h-3" />

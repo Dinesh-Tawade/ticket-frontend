@@ -192,40 +192,29 @@ function AddProductPage() {
   };
 
   return (
-    <div className="min-h-screen transition-colors duration-300 py-8 px-4" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
       <div className="max-w-4xl mx-auto">
-        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="px-8 py-4">
-            <button onClick={() => router.back()} className="flex items-center gap-2 hover:opacity-100 transition-opacity mb-4" style={{ color: "var(--foreground)", opacity: 0.7 }}>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+          <div>
+            <button onClick={() => router.back()} className="flex items-center gap-2 hover:opacity-100 transition-opacity mb-2 text-sm font-semibold" style={{ color: "var(--foreground)", opacity: 0.7 }}>
               <IoArrowBackOutline className="w-4 h-4" />
               Back to Products
             </button>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
-                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                    <IoCubeOutline className="text-white text-xl" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
-                    Add New Product
-                  </h1>
-                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                    Add Indian snacks, sweets, and beverages to your menu
-                  </p>
-                </div>
-              </div>
-            </div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+              Add New Product
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              Add Indian snacks, sweets, and beverages to your menu
+            </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-xl overflow-hidden shadow-lg border" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           {/* Image Upload */}
-          <div className="p-6 border-b" style={{ borderColor: "var(--card-border)" }}>
+          <div className="p-4 md:p-6 border-b" style={{ borderColor: "var(--card-border)" }}>
             <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Product Image <span className="text-red-400">*</span></label>
             <div className="flex flex-col sm:flex-row items-start gap-6">
               <div onClick={() => document.getElementById("imageInput").click()} className={`w-32 h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${imagePreview ? "border-green-500 bg-green-500/10" : "hover:border-blue-500"}`} style={!imagePreview ? { borderColor: "var(--card-border)" } : {}}>
@@ -247,7 +236,7 @@ function AddProductPage() {
           </div>
 
           {/* Form Fields */}
-          <div className="p-6 space-y-5">
+          <div className="p-4 md:p-6 space-y-5">
             {/* Product Name */}
             <div>
               <label className="block font-medium mb-2" style={{ color: "var(--foreground)" }}>Product Name <span className="text-red-400">*</span></label>

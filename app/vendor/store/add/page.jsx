@@ -145,33 +145,27 @@ function AddProductPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8 px-4">
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
-          >
-            <FaArrowLeft className="w-4 h-4" />
-            Back to Products
-          </button>
-          
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-r from-green-500 to-teal-500 rounded-xl">
-              <FaBox className="text-white text-2xl" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Add New Product</h1>
-              <p className="text-gray-400 mt-1">Add items to your store menu</p>
-            </div>
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+          <div>
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 hover:opacity-100 transition-colors mb-2 text-sm font-semibold" style={{ color: "var(--foreground)", opacity: 0.7 }}
+            >
+              <FaArrowLeft className="w-4 h-4" />
+              Back to Products
+            </button>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Add New Product</h1>
+            <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>Add items to your store menu</p>
           </div>
         </div>
 
         {/* Form Card */}
-        <form onSubmit={handleSubmit} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl overflow-hidden">
+        <form onSubmit={handleSubmit} className="rounded-xl overflow-hidden shadow-lg border animate-fade-in" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
           {/* Image Upload Section */}
           <div className="p-6 border-b border-gray-700">
             <label className="block text-white font-medium mb-2">

@@ -32,13 +32,12 @@ export default function VendorLayout({ children }) {
         
         {/* Main Content */}
         <main 
-          className="flex-1 overflow-y-auto p-6"
+          className="flex-1 overflow-y-auto p-4 md:p-6"
           style={{
-            // marginLeft: isSidebarCollapsed ? "72px" : "240px",
             transition: "margin-left 0.3s ease"
           }}
         >
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto w-full">
             {children}
           </div>
         </main>
