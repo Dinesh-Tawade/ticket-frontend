@@ -147,10 +147,29 @@ function ShowDetails() {
                 {show.movie?.genre && (
                   <span className="sd-badge sd-badge--genre">{show.movie.genre}</span>
                 )}
-                <span className={`sd-badge ${isOpen ? "sd-badge--open" : "sd-badge--closed"}`}>
-                  <span className="sd-badge__dot" />
-                  {isOpen ? "Booking Open" : "Booking Closed"}
-                </span>
+                {(() => {
+                  const getBadge = () => {
+                    if (show.status === "BOOKING_OPEN") {
+                      return isBookingFeatureEnabled 
+                        ? { text: "Booking Open", className: "sd-badge--open" }
+                        : { text: "Booking Disabled", className: "sd-badge--closed" };
+                    }
+                    if (show.status === "BOOKING_CLOSED") return { text: "Booking Closed", className: "sd-badge--closed" };
+                    if (show.status === "COMING_SOON") return { text: "Coming Soon", className: "sd-badge--closed" };
+                    if (show.status === "UPCOMING") return { text: "Upcoming", className: "sd-badge--closed" };
+                    if (show.status === "HOUSE_FULL") return { text: "House Full", className: "sd-badge--closed" };
+                    if (show.status === "COMPLETED") return { text: "Completed", className: "sd-badge--closed" };
+                    if (show.status === "CANCELLED") return { text: "Cancelled", className: "sd-badge--closed" };
+                    return { text: "Closed", className: "sd-badge--closed" };
+                  };
+                  const badge = getBadge();
+                  return (
+                    <span className={`sd-badge ${badge.className}`}>
+                      <span className="sd-badge__dot" />
+                      {badge.text}
+                    </span>
+                  );
+                })()}
               </div>
 
               <h1 className="sd-title">{show.movie?.name}</h1>

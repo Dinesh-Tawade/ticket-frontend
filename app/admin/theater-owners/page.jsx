@@ -3476,6 +3476,14 @@ export default function TheaterOwnersPage() {
   const [reviewOwner, setReviewOwner] = useState(null);
   const [assignOwner, setAssignOwner] = useState(null);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // Fetch all users filtered to THEATER_OWNER
   const { data, isLoading, error } = useQuery({
     queryKey: ["adminTheaterOwners"],
@@ -3504,7 +3512,7 @@ export default function TheaterOwnersPage() {
       style={{
         minHeight: "100vh",
         background: "var(--background)",
-        padding: "24px",
+        padding: isMobile ? "12px" : "24px",
         fontFamily: "'Segoe UI', system-ui, sans-serif",
       }}
     >
@@ -3516,7 +3524,7 @@ export default function TheaterOwnersPage() {
           background: "var(--card)",
           border: "1px solid var(--card-border)",
           borderRadius: 16,
-          padding: "18px 24px",
+          padding: isMobile ? "12px 16px" : "18px 24px",
           marginBottom: 24,
           display: "flex",
           alignItems: "center",
@@ -3592,7 +3600,7 @@ export default function TheaterOwnersPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
           gap: 14,
           marginBottom: 24,
         }}

@@ -20,13 +20,18 @@ import {
 import { MdDashboard } from "react-icons/md";
 import { useRouter, usePathname } from "next/navigation";
 
-export default function VendorSidebar() {
+export default function VendorSidebar({ onCollapseChange }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Sync collapsed state with parent layout
+  useEffect(() => {
+    onCollapseChange?.(isCollapsed);
+  }, [isCollapsed, onCollapseChange]);
 
   // ✅ Responsive
   useEffect(() => {
@@ -50,8 +55,8 @@ export default function VendorSidebar() {
       // { name: "Categories", path: "/vendor/categories", icon: FaTags },
       { name: "Orders", path: "/vendor/orders", icon: FaShoppingCart },
       { name: "Sales Report", path: "/vendor/sales", icon: FaChartLine },
-      { name: "Payments", path: "/vendor/payments", icon: FaCreditCard },
-      { name: "Profile", path: "/vendor/profile", icon: FaUser },
+      // { name: "Payments", path: "/vendor/payments", icon: FaCreditCard },
+      // { name: "Profile", path: "/vendor/profile", icon: FaUser },
       { name: "Settings", path: "/vendor/settings", icon: FaCog },
     ],
     []
@@ -70,6 +75,7 @@ export default function VendorSidebar() {
   };
 
   // ✅ Sidebar Item Component
+  // ✅ Sidebar Item Component
   const SidebarItem = ({ item }) => {
     const Icon = item.icon;
     const isActive = pathname === item.path;
@@ -80,30 +86,19 @@ export default function VendorSidebar() {
           className={`
             relative flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5
             transition-all duration-300
-            ${
-              isActive
-                ? "bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg"
-                : "text-gray-300 hover:bg-gray-800"
+            ${isActive
+              ? "bg-blue-600 text-white shadow-lg"
+              : "text-gray-300 hover:bg-gray-800"
             }
           `}
         >
-          {/* Left Indicator */}
-          <span
-            className={`
-              absolute left-0 top-0 h-full w-1 rounded-r-full
-              transition-all duration-300
-              ${isActive ? "bg-gradient-to-b from-blue-500 to-indigo-500 opacity-100" : "opacity-0 group-hover:opacity-100 group-hover:bg-blue-500"}
-            `}
-          />
-
           {/* Icon */}
           <Icon
             className={`
               text-lg transition-all duration-300 flex-shrink-0
-              ${
-                isActive
-                  ? "text-white"
-                  : "text-gray-400 group-hover:text-blue-400"
+              ${isActive
+                ? "text-white"
+                : "text-gray-400 group-hover:text-blue-400"
               }
             `}
           />
@@ -128,36 +123,12 @@ export default function VendorSidebar() {
   const SidebarContent = () => (
     <div className="h-full flex flex-col">
       {/* Header - Fixed at top */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-700">
+      <div className="flex-shrink-0 p-4 border-b border-gray-700 transition-all duration-300">
         <div className="flex items-center justify-between">
           {!isCollapsed ? (
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 animate-pulse blur-lg opacity-50" />
-                <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                  <FaStore className="text-white text-xl" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tight text-white">
-                  Vendor Panel
-                </h1>
-                <p className="text-[9px] font-medium text-gray-400">
-                  Manage your store
-                </p>
-              </div>
-            </div>
+            <h1 className="text-xl font-bold text-white">Vendor Panel</h1>
           ) : (
-            <div className="relative w-10 h-10 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-              <FaStore className="text-white text-xl" />
-            </div>
-          )}
-
-          {isMobile && (
-            <FaTimes
-              className="text-gray-400 cursor-pointer text-lg hover:text-white transition-colors flex-shrink-0"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
+            <span className="text-2xl text-center block text-white">🏪</span>
           )}
         </div>
       </div>
@@ -196,19 +167,7 @@ export default function VendorSidebar() {
     <div className="h-full flex flex-col bg-[#0f172a]">
       <div className="flex-shrink-0 p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-              <FaStore className="text-white text-xl" />
-            </div>
-            <div>
-              <h1 className="text-lg font-black tracking-tight text-white">
-                Vendor Panel
-              </h1>
-              <p className="text-[9px] font-medium text-gray-400">
-                Manage your store
-              </p>
-            </div>
-          </div>
+          <h1 className="text-xl font-bold text-white">Vendor Panel</h1>
           <FaTimes
             className="text-gray-400 cursor-pointer text-lg hover:text-white transition-colors"
             onClick={() => setIsMobileMenuOpen(false)}
@@ -227,10 +186,9 @@ export default function VendorSidebar() {
                   className={`
                     flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5
                     transition-all duration-300
-                    ${
-                      isActive
-                        ? "bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg"
-                        : "text-gray-300 hover:bg-gray-800"
+                    ${isActive
+                      ? "bg-blue-600 text-white shadow-lg"
+                      : "text-gray-300 hover:bg-gray-800"
                     }
                   `}
                 >

@@ -175,38 +175,26 @@ function VendorSalesReportPage() {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       <main className="space-y-8">
         {/* Header */}
-        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="px-8 py-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
-                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                    <IoBarChartOutline className="text-white text-xl" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
-                    Sales Report
-                  </h1>
-                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                    Track your sales performance
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={handleExport} 
-                  className="px-4 py-2 hover:bg-gray-700/50 rounded-lg text-sm flex items-center gap-2 transition-colors border"
-                  style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
-                >
-                  <IoDownloadOutline /> Export CSV
-                </button>
-              </div>
-            </div>
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+              Sales Report
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              Track your sales performance
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleExport} 
+              className="px-4 py-2 hover:bg-gray-750 rounded-lg text-sm flex items-center gap-2 transition-colors border shadow-sm"
+              style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+            >
+              <IoDownloadOutline /> Export CSV
+            </button>
           </div>
         </div>
 
@@ -338,7 +326,7 @@ function VendorSalesReportPage() {
         ) : (
           <>
             <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--card-border)" }}>
-              <table className="w-full">
+              <table className="w-full min-w-[600px]">
                 <thead style={{ background: "var(--card)", borderBottom: "1px solid var(--card-border)" }}>
                   <tr className="text-left text-xs">
                     <th className="px-4 py-3 rounded-l-lg" style={{ color: "var(--foreground)", opacity: 0.6 }}>#</th>

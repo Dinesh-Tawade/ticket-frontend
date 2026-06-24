@@ -136,39 +136,27 @@ function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div>
         {/* Header */}
-        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="px-8 py-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
-                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                    <FaBox className="text-white text-xl" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
-                    Products
-                  </h1>
-                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                    Manage your store inventory
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => refetch()} className="px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors border hover:shadow-md" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
-                  <FaSyncAlt className="w-4 h-4" /> Refresh
-                </button>
-                <button onClick={() => router.push("/vendor/products/add")} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:shadow-lg rounded-lg text-white text-sm flex items-center gap-2 transition-all font-medium">
-                  <FaPlus className="w-4 h-4" /> Add Product
-                </button>
-              </div>
-            </div>
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+              Products
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              Manage your store inventory
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => refetch()} className="px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors border hover:shadow-md" style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}>
+              <FaSyncAlt className="w-4 h-4" /> Refresh
+            </button>
+            <button onClick={() => router.push("/vendor/products/add")} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:shadow-lg rounded-lg text-white text-sm flex items-center gap-2 transition-all font-medium">
+              <FaPlus className="w-4 h-4" /> Add Product
+            </button>
           </div>
         </div>
 
@@ -222,7 +210,7 @@ function ProductsPage() {
         ) : (
           <div className="rounded-xl border overflow-hidden shadow-md" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead style={{ background: "var(--background)", borderBottom: "1px solid var(--card-border)" }}>
                   <tr>
                     <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--foreground)", opacity: 0.7 }}>Image</th>

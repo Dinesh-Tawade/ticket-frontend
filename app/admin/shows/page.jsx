@@ -333,6 +333,9 @@ const ShowCard = ({ show, onViewSeats, onStatusToggle, onDelete, theaterData }) 
   const getStatus = (status) => {
     if (status === 'BOOKING_OPEN') return { text: 'Booking Open', color: '#22c55e', icon: FaCheckCircle };
     if (status === 'BOOKING_CLOSED') return { text: 'Booking Closed', color: '#eab308', icon: FaEyeSlash };
+    if (status === 'UPCOMING' || status === 'COMING_SOON') return { text: status === 'UPCOMING' ? 'Upcoming' : 'Coming Soon', color: '#3b82f6', icon: FaCalendar };
+    if (status === 'HOUSE_FULL') return { text: 'House Full', color: '#f97316', icon: FaTimesCircle };
+    if (status === 'COMPLETED') return { text: 'Completed', color: '#6b7280', icon: FaCheckCircle };
     return { text: 'Cancelled', color: '#ef4444', icon: FaTimesCircle };
   };
   
@@ -800,9 +803,13 @@ export default function ShowsManagement() {
           }}
         >
           <option value="ALL">All Status</option>
+          <option value="COMING_SOON">Coming Soon</option>
           <option value="BOOKING_OPEN">Booking Open</option>
-          <option value="BOOKING_CLOSED">Booking Closed</option>
+          <option value="HOUSE_FULL">House Full</option>
+          <option value="COMPLETED">Completed</option>
           <option value="CANCELLED">Cancelled</option>
+          <option value="BOOKING_CLOSED">Booking Closed</option>
+          <option value="UPCOMING">Upcoming</option>
         </select>
         {(searchTerm || statusFilter !== "ALL") && (
           <button 

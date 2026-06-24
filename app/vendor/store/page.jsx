@@ -263,38 +263,26 @@ function AddStorePage() {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300 py-8 px-4" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       <Toaster position="top-right" />
       
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="px-8 py-4">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+          <div>
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-2 hover:opacity-100 transition-opacity mb-4" style={{ color: "var(--foreground)", opacity: 0.7 }}
+              className="flex items-center gap-2 hover:opacity-100 transition-opacity mb-2 text-sm font-semibold" style={{ color: "var(--foreground)", opacity: 0.7 }}
             >
               <FaArrowLeft className="w-4 h-4" />
               Back
             </button>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse blur-lg opacity-50" />
-                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                    <FaStore className="text-white text-xl" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
-                    Create Your Store
-                  </h1>
-                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                    Fill in the details to register your food store
-                  </p>
-                </div>
-              </div>
-            </div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+              Create Your Store
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              Fill in the details to register your food store
+            </p>
           </div>
         </div>
 

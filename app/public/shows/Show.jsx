@@ -121,9 +121,24 @@ function ShowCard({ show, onClick, isBookingFeatureEnabled, bookingDisabledReaso
           <span className={`text-sm font-bold ${show.isPaid ? "text-yellow-500" : "text-green-500"}`}>
             {show.isPaid ? `₹${show.basePrice}` : "FREE"}
           </span>
-          <span className={`text-xs ${isOpen ? "text-green-500" : "text-gray-400"}`}>
-            {isOpen ? "Now Showing" : "Closed"}
-          </span>
+          {(() => {
+            const getStatusLabel = () => {
+              if (show.status === "BOOKING_OPEN") return { text: "Now Showing", color: "text-green-500" };
+              if (show.status === "BOOKING_CLOSED") return { text: "Booking Closed", color: "text-orange-500" };
+              if (show.status === "COMING_SOON") return { text: "Coming Soon", color: "text-blue-500" };
+              if (show.status === "UPCOMING") return { text: "Upcoming", color: "text-cyan-500" };
+              if (show.status === "HOUSE_FULL") return { text: "House Full", color: "text-red-500" };
+              if (show.status === "COMPLETED") return { text: "Completed", color: "text-gray-500" };
+              if (show.status === "CANCELLED") return { text: "Cancelled", color: "text-red-600" };
+              return { text: "Closed", color: "text-gray-400" };
+            };
+            const label = getStatusLabel();
+            return (
+              <span className={`text-xs font-semibold ${label.color}`}>
+                {label.text}
+              </span>
+            );
+          })()}
         </div>
       </div>
     </div>

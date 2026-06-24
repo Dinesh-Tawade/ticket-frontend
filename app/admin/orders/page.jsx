@@ -317,28 +317,6 @@ function AdminOrdersPage() {
                           >
                             <FaDownload className="w-3.5 h-3.5" />
                           </button>
-                          {nextAction && (
-                            <button
-                              onClick={() => handleStatusUpdate(order.orderId, order.orderStatus)}
-                              disabled={updateStatusMutation.isLoading}
-                              className="p-1.5 rounded-lg border text-green-500 hover:bg-green-500/10 transition-colors disabled:opacity-50"
-                              style={{ borderColor: "var(--card-border)" }}
-                              title={nextAction.label}
-                            >
-                              <FaCheckCircle className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {order.orderStatus !== "DELIVERED" && order.orderStatus !== "CANCELLED" && (
-                            <button
-                              onClick={() => handleCancelOrder(order.orderId, order.orderStatus)}
-                              disabled={updateStatusMutation.isLoading}
-                              className="p-1.5 rounded-lg border text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                              style={{ borderColor: "var(--card-border)" }}
-                              title="Cancel Order"
-                            >
-                              <FaTrash className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -489,31 +467,7 @@ function AdminOrdersPage() {
                 </button>
               </div>
 
-              {/* Actions inside Modal */}
-              {selectedOrder.orderStatus !== "DELIVERED" && selectedOrder.orderStatus !== "CANCELLED" && (
-                <div className="rounded-lg p-4 flex flex-wrap gap-3" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
-                  {(() => {
-                    const nextAction = getNextAction(selectedOrder.orderStatus);
-                    return nextAction && (
-                      <button
-                        onClick={() => handleStatusUpdate(selectedOrder.orderId, selectedOrder.orderStatus)}
-                        disabled={updateStatusMutation.isLoading}
-                        className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                      >
-                        {updateStatusMutation.isLoading ? <FaSpinner className="animate-spin" /> : <FaCheckCircle />}
-                        {nextAction.label}
-                      </button>
-                    );
-                  })()}
-                  <button
-                    onClick={() => handleCancelOrder(selectedOrder.orderId, selectedOrder.orderStatus)}
-                    disabled={updateStatusMutation.isLoading}
-                    className="px-5 py-2.5 bg-red-500/10 text-red-500 rounded-lg text-sm font-semibold border border-red-500/20 hover:bg-red-500/20 transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    Cancel Order
-                  </button>
-                </div>
-              )}
+
 
               {/* Timeline */}
               <div className="rounded-lg p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>

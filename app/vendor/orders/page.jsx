@@ -311,7 +311,7 @@ function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300 p-6" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen transition-colors duration-300 pb-8" style={{ background: "var(--background)" }}>
       {/* Audio for notifications */}
       <audio ref={audioRef} src="/notification.mp3" preload="auto" />
       
@@ -364,36 +364,24 @@ function OrdersPage() {
       )}
 
       <main className="space-y-8">
-        <div className="relative border-b shadow-lg transition-all duration-300 rounded-xl mb-8" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-          <div className="px-8 py-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse blur-lg opacity-50" />
-                  <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
-                    <IoCartOutline className="text-white text-xl" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--foreground)" }}>
-                    Orders
-                  </h1>
-                  <p className="text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                    Manage and track customer orders in real-time.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => refetch()}
-                className="h-10 px-3 rounded-xl transition-all duration-300 hover:scale-105 border flex items-center gap-2 text-sm font-semibold"
-                style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
-              >
-                <IoRefreshOutline className={`text-sm ${isLoading ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
-            </div>
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+              Orders
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+              Manage and track customer orders in real-time.
+            </p>
           </div>
+
+          <button
+            onClick={() => refetch()}
+            className="h-10 px-3 rounded-xl transition-all duration-300 hover:scale-105 border flex items-center gap-2 text-sm font-semibold"
+            style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }}
+          >
+            <IoRefreshOutline className={`text-sm ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -472,7 +460,7 @@ function OrdersPage() {
           ) : (
             <>
               <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--card-border)" }}>
-                <table className="w-full">
+                <table className="w-full min-w-[900px]">
                   <thead style={{ background: "var(--card)", borderBottom: "1px solid var(--card-border)" }}>
                     <tr className="text-left">
                       <th className="px-4 py-3 text-xs font-medium" style={{ color: "var(--foreground)", opacity: 0.6 }}>Order ID</th>
@@ -579,8 +567,8 @@ function OrdersPage() {
 
       {/* Order Details Modal */}
       {isModalOpen && selectedOrder && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
-          <div className="rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ background: "var(--card)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
+          <div className="rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto m-2" style={{ background: "var(--card)" }} onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 p-4 flex justify-between items-center" style={{ background: "var(--card)", borderBottom: "1px solid var(--card-border)" }}>
               <div>
                 <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Order Details</h2>
@@ -591,13 +579,13 @@ function OrdersPage() {
               </button>
             </div>
 
-            <div className="p-5 space-y-5">
+            <div className="p-4 md:p-5 space-y-5">
               {/* Customer Info */}
               <div className="rounded-lg p-4" style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}>
                 <h3 className="font-medium mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
                   <IoPersonOutline className="text-blue-500" /> Customer Details
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Name</p><p style={{ color: "var(--foreground)" }}>{selectedOrder.buyerId?.name || "N/A"}</p></div>
                   <div><p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Phone</p><p style={{ color: "var(--foreground)" }}>{selectedOrder.buyerId?.phone || "N/A"}</p></div>
                 </div>
@@ -608,7 +596,7 @@ function OrdersPage() {
                 <h3 className="font-medium mb-3 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
                   <IoLocationOutline className="text-blue-500" /> Delivery Details
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Delivery Type</p><p style={{ color: "var(--foreground)" }}>{selectedOrder.deliveryType?.replace("_", " ") || "SEAT DELIVERY"}</p></div>
                   <div><p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Payment</p><p className={selectedOrder.paymentStatus === "PAID" ? "text-green-400" : "text-yellow-400"}>{selectedOrder.paymentStatus || "PENDING"}</p></div>
                   <div><p className="text-xs" style={{ color: "var(--foreground)", opacity: 0.6 }}>Seat Number</p><p className="text-blue-500 font-semibold">{extractSeatNumbers(selectedOrder.specialInstructions)}</p></div>
