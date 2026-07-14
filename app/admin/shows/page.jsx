@@ -6,6 +6,7 @@ import { getAllShowsAdmin, updateShowStatusAdmin, deleteShowAdmin } from "../../
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast, Toaster } from "react-hot-toast";
 import useTheme from "@/app/hooks/useTheme";
+import Swal from 'sweetalert2';
 import { 
   FaCalendar, FaClock, FaTicketAlt, FaFilm, FaStar, FaLanguage, 
   FaChair, FaEdit, FaTrash, FaEye, FaEyeSlash, FaCheckCircle, 
@@ -695,9 +696,19 @@ export default function ShowsManagement() {
   });
   
   const handleDelete = (show) => {
-    if (confirm(`Delete "${show.movie?.name}"? This action cannot be undone.`)) {
-      deleteMutation.mutate(show._id);
-    }
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `Delete "${show.movie?.name}"? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        deleteMutation.mutate(show._id);
+      }
+    });
   };
   
   const filtered = useMemo(() => {
