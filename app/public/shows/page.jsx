@@ -78,11 +78,11 @@ function ShowCard({ show, onClick, index, visible, isBookingFeatureEnabled, book
           </div>
         )}
 
-        {/* City at bottom of poster */}
-        {show.theaterId?.city && (
+        {/* City & Theater at bottom of poster */}
+        {show.theaterId && (
           <div className="show-card__city">
             <FaMapMarkerAlt size={9} />
-            <span>{show.theaterId.city}</span>
+            <span>{show.theaterId.name || show.theaterId.city}</span>
           </div>
         )}
       </div>
@@ -93,6 +93,13 @@ function ShowCard({ show, onClick, index, visible, isBookingFeatureEnabled, book
 
         {show.movie?.genre && (
           <p className="show-card__genre">{show.movie.genre}</p>
+        )}
+
+        {/* Assigned Vendor info */}
+        {(show.theaterId?.ownerId || show.theaterId?.assignedVendor) && (
+          <div className="text-[10px] font-medium text-amber-400 opacity-90 my-1 truncate">
+            🏪 {show.theaterId.assignedVendor?.storeName || show.theaterId.ownerId?.name}
+          </div>
         )}
 
         <div className="show-card__meta">
