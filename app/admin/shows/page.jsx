@@ -443,12 +443,22 @@ const uniqueCategories = useMemo(() => {
           
           <p className="text-sm mb-3 line-clamp-2" style={{ color: "var(--foreground)", opacity: 0.7 }}>{show.movie?.description || 'No description available'}</p>
           
-          {/* Theater Info */}
-          <div className="flex flex-wrap gap-4 text-xs mb-3" style={{ color: "var(--foreground)", opacity: 0.7 }}>
-            <div className="flex items-center gap-1.5">
+          {/* Theater Info & Assigned Owner/Vendor */}
+          <div className="flex flex-wrap items-center gap-3 text-xs mb-3" style={{ color: "var(--foreground)", opacity: 0.8 }}>
+            <div className="flex items-center gap-1.5 font-bold text-foreground">
               <MdTheaters className="text-red-400" size={14} />
               <span>{show.theaterId?.name}</span>
             </div>
+            {show.theaterId?.ownerId?.name && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 font-semibold text-[11px]">
+                <span>👤 Owner: {show.theaterId.ownerId.name}</span>
+              </div>
+            )}
+            {show.theaterId?.assignedVendor && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 font-semibold text-[11px]">
+                <span>🏪 Vendor: {show.theaterId.assignedVendor.storeName || show.theaterId.assignedVendor.vendorName}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1.5">
               <MdLocationOn className="text-blue-400" size={14} />
               <span>{show.theaterId?.location}</span>

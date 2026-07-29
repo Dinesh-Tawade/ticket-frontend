@@ -276,6 +276,137 @@ function ShowDetails() {
                     </div>
                   ))}
                 </div>
+
+                {/* Assigned Vendor & Owner Info Banner */}
+                {(show.theaterId?.ownerId || show.assignedVendor || show.theaterId?.assignedVendor) && (
+                  <div className="mt-5 p-4 rounded-xl border bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-amber-500/10 border-blue-500/20">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#d4af37] mb-2 flex items-center gap-2">
+                      <span>🏷️ Assigned Theater Vendor & Owner</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {show.theaterId?.ownerId && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-black/20 border border-white/10">
+                          <span className="text-lg">👤</span>
+                          <div>
+                            <div className="font-bold text-foreground opacity-90">Theater Owner</div>
+                            <div className="text-blue-400 font-semibold">{show.theaterId.ownerId.name}</div>
+                            {show.theaterId.ownerId.email && <div className="text-[10px] opacity-60">{show.theaterId.ownerId.email}</div>}
+                          </div>
+                        </div>
+                      )}
+                      {(show.assignedVendor || show.theaterId?.assignedVendor) && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-black/20 border border-white/10">
+                          <span className="text-lg">🏪</span>
+                          <div>
+                            <div className="font-bold text-foreground opacity-90">Food & Beverage Vendor</div>
+                            <div className="text-amber-400 font-semibold">
+                              {(show.assignedVendor || show.theaterId?.assignedVendor)?.storeName} ({(show.assignedVendor || show.theaterId?.assignedVendor)?.vendorName})
+                            </div>
+                            {(show.assignedVendor || show.theaterId?.assignedVendor)?.phone && (
+                              <div className="text-[10px] opacity-60">📞 {(show.assignedVendor || show.theaterId?.assignedVendor)?.phone}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* All Theaters Showing This Movie */}
+              <div className="sd-card">
+                <div className="sd-card__header">
+                  <div className="sd-card__header-line" style={{ background: "linear-gradient(180deg, #3b82f6, #1d4ed8)" }} />
+                  <div>
+                    <h2 className="sd-card__title">All Theaters Showing This Movie</h2>
+                    <p className="text-xs text-foreground opacity-60 mt-0.5">Browse all active theaters running {show.movie?.name} with assigned vendor details</p>
+                  </div>
+                </div>
+
+                {show.allTheatersForMovie && show.allTheatersForMovie.length > 0 ? (
+                  <div className="space-y-3">
+                    {show.allTheatersForMovie.map((tItem) => {
+                      const isCurrent = tItem.isCurrent || tItem.showId?.toString() === showId?.toString();
+                      return (
+                        <div 
+                          key={tItem.showId}
+                          className={`p-4 rounded-xl border transition-all duration-200 ${
+                            isCurrent 
+                              ? 'bg-gradient-to-r from-[#d4af37]/15 to-transparent border-[#d4af37]/50 shadow-lg'
+                              : 'bg-background hover:bg-foreground/5 border-card-border'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-base text-foreground">{tItem.theaterName}</h4>
+                                {isCurrent && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#d4af37] text-black">
+                                    CURRENT THEATER
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs opacity-70 mt-0.5">
+                                📍 {tItem.location}, {tItem.city}
+                              </p>
+
+                              {/* Vendor info pills */}
+                              <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                                {tItem.ownerInfo?.name && (
+                                  <span className="px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 text-[10px] font-medium">
+                                    👤 Owner: {tItem.ownerInfo.name}
+                                  </span>
+                                )}
+                                {tItem.assignedVendor?.storeName && (
+                                  <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[10px] font-medium">
+                                    🏪 Vendor: {tItem.assignedVendor.storeName} ({tItem.assignedVendor.vendorName})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:items-end gap-2">
+                              <div className="text-xs font-semibold text-emerald-400">
+                                {tItem.availableSeats} seats available
+                              </div>
+                              {isCurrent ? (
+                                <span className="text-xs font-bold text-[#d4af37] px-3 py-1.5 rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/10">
+                                  Currently Selected
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => router.push(`/public/shows/${tItem.showId}`)}
+                                  className="sd-btn-gold text-xs py-1.5 px-3 rounded-lg"
+                                >
+                                  Select Theater →
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Timings list for this theater */}
+                          {tItem.timings && tItem.timings.length > 0 && (
+                            <div className="mt-3 pt-2 border-t border-foreground/10 flex flex-wrap items-center gap-2 text-xs">
+                              <span className="opacity-60 text-[11px]">Timings:</span>
+                              {tItem.timings.map((time, idx) => (
+                                <span 
+                                  key={idx}
+                                  className="px-2 py-1 rounded bg-foreground/5 border border-foreground/10 font-mono text-[11px]"
+                                >
+                                  {time.startTime}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border text-center text-xs opacity-60">
+                    Showing at {show.theaterId?.name} ({show.theaterId?.city})
+                  </div>
+                )}
               </div>
 
               {/* About card */}

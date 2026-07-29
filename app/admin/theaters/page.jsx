@@ -1145,6 +1145,7 @@ export default function TheatersPage() {
                 <TableHeader column="name"          label="Theater Name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                 <TableHeader column="location"      label="Location"     sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                 <TableHeader column="city"          label="City"         sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Owner / Vendor</th>
                 <TableHeader column="contactNumber" label="Contact"      sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                 <TableHeader column="screens"       label="Screens"      sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                 <TableHeader column="totalSeats"    label="Seats"        sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
@@ -1156,13 +1157,13 @@ export default function TheatersPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-12">
+                  <td colSpan="10" className="text-center py-12">
                     <FaSpinner className="animate-spin text-2xl mx-auto opacity-40" />
                   </td>
                 </tr>
               ) : paginatedTheaters.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-12">
+                  <td colSpan="10" className="text-center py-12">
                     <div className="text-lg opacity-40">No theaters found</div>
                   </td>
                 </tr>
@@ -1180,6 +1181,18 @@ export default function TheatersPage() {
                       </td>
                       <td className="px-4 py-3 text-sm opacity-70">{theater.location || "—"}</td>
                       <td className="px-4 py-3 text-sm opacity-70">{theater.city || "—"}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <div>
+                          <div className="font-medium text-xs text-blue-400">
+                            👤 {theater.ownerId?.name || "Unassigned"}
+                          </div>
+                          {theater.assignedVendor?.storeName && (
+                            <div className="text-[10px] text-amber-400 font-semibold mt-0.5">
+                              🏪 {theater.assignedVendor.storeName} ({theater.assignedVendor.vendorName})
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm opacity-70">{theater.contactNumber || "—"}</td>
                       <td className="px-4 py-3 text-center">
                         <span className="px-2 py-1 rounded-full text-xs font-bold"

@@ -8,6 +8,7 @@ import { getMyTheaters, getTheaterByIdAdmin } from "../../services/adminCommunic
 import axios from "axios";
 import { io } from "socket.io-client";
 import { toast, Toaster } from "react-hot-toast";
+import Swal from "sweetalert2";
 import { generateInvoicePDF } from "../../utils/invoiceGenerator";
 
 const BE_URL = process.env.NEXT_PUBLIC_BE_URL || "http://localhost:5000/api";
@@ -103,7 +104,7 @@ const addToCart = async (productId, quantity) => {
     return res.data;
   } catch (error) {
     console.error('Error adding to cart:', error);
-    return { success: false };
+    return error.response?.data || { success: false, message: error.message || 'Error adding to cart' };
   }
 };
 
@@ -522,10 +523,32 @@ const FoodOrderingPage = () => {
     return match ? match[1].trim() : specialInstructions;
   };
 
-  const theaters = theatersData?.data || theatersData || [];
+  const theaters = useMemo(() => {
+    if (Array.isArray(theatersData?.data)) return theatersData.data;
+    if (Array.isArray(theatersData)) return theatersData;
+    return [];
+  }, [theatersData]);
+
+  // Auto-select first theater when theaters load
+  useEffect(() => {
+    if (theaters.length > 0 && !selectedTheater) {
+      setSelectedTheater(theaters[0]);
+    }
+  }, [theaters, selectedTheater]);
   const shows = showsData?.data || showsData || [];
   const store = storeData?.data?.store;
+  const assignedStores = storeData?.data?.stores || (store ? [store] : []);
   const products = storeData?.data?.products || {};
+  const [selectedVendorFilter, setSelectedVendorFilter] = useState(null);
+  const [exploreAllVendors, setExploreAllVendors] = useState(false);
+
+  // Always auto-select the first vendor when storeData loads
+  useEffect(() => {
+    if (assignedStores && assignedStores.length > 0) {
+      const firstId = assignedStores[0].id || assignedStores[0]._id;
+      setSelectedVendorFilter(firstId);
+    }
+  }, [storeData]);
   const profile = profileData?.data || profileData;
   const theater = theaterData?.data || theaterData;
   const accessibleSeats = profile?.accessibleSeats || [];
@@ -678,11 +701,55 @@ const FoodOrderingPage = () => {
 
   const handleAddToCart = async (productId, quantity = 1) => {
     setLoading(true);
-    await addToCart(productId, quantity);
+    const result = await addToCart(productId, quantity);
+    
+    if (result && result.success === false) {
+      setLoading(false);
+      const isVendorConflict = result.code === 'DIFFERENT_VENDOR_CART' || 
+                                (result.message && (result.message.includes('one vendor') || result.message.includes('different')));
+                                
+      if (isVendorConflict) {
+        const errorMsg = result.message || "At one time you can order from one vendor only.";
+        const confirmClear = await Swal.fire({
+          title: 'Vendor Conflict!',
+          text: `${errorMsg}\n\nDo you want to clear your current cart and add items from this vendor instead?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#3b82f6',
+          cancelButtonColor: '#ef4444',
+          confirmButtonText: 'Yes, Clear Cart & Switch Vendor',
+          cancelButtonText: 'Cancel'
+        });
+        
+        if (confirmClear.isConfirmed) {
+          setLoading(true);
+          await clearCartData();
+          const retryResult = await addToCart(productId, quantity);
+          await refetchCart();
+          setLoading(false);
+          if (retryResult?.success) {
+            setShowCart(true);
+            setProductQuantities(prev => ({ ...prev, [productId]: 1 }));
+            Swal.fire({
+              title: 'Cart Updated!',
+              text: 'Your cart has been cleared and updated with items from the new vendor.',
+              icon: 'success',
+              timer: 2000,
+              showConfirmButton: false
+            });
+          } else {
+            Swal.fire('Error', retryResult?.message || "Failed to add item to cart after clearing.", 'error');
+          }
+        }
+      } else {
+        Swal.fire('Error', result.message || "Failed to add item to cart.", 'error');
+      }
+      return;
+    }
+
     await refetchCart();
     setLoading(false);
     setShowCart(true);
-    // Reset quantity for this product
     setProductQuantities(prev => ({ ...prev, [productId]: 1 }));
   };
 
@@ -703,7 +770,16 @@ const FoodOrderingPage = () => {
   };
 
   const handleRemoveFromCart = async (productId) => {
-    if (!confirm('Remove this item from cart?')) return;
+    const resConfirm = await Swal.fire({
+      title: 'Remove Item?',
+      text: 'Are you sure you want to remove this item from your cart?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, remove it!'
+    });
+    if (!resConfirm.isConfirmed) return;
     setLoading(true);
     await removeFromCart(productId);
     await refetchCart();
@@ -712,32 +788,32 @@ const FoodOrderingPage = () => {
 
   const handlePlaceOrder = async () => {
     if (!selectedTheater) {
-      alert("Please select a theater first");
+      Swal.fire('Selection Required', 'Please select a theater first.', 'warning');
       return;
     }
 
     if (!selectedShow) {
-      alert("Please select a show first");
+      Swal.fire('Selection Required', 'Please select a show first.', 'warning');
       return;
     }
 
     if (!selectedTiming) {
-      alert("Please select a show timing first");
+      Swal.fire('Selection Required', 'Please select a show timing first.', 'warning');
       return;
     }
 
     if (selectedSeats.size === 0) {
-      alert("Please select at least one seat");
+      Swal.fire('Selection Required', 'Please select at least one seat.', 'warning');
       return;
     }
 
     if (cart.items.length === 0) {
-      alert("Cart is empty");
+      Swal.fire('Empty Cart', 'Your cart is empty. Please add items to cart.', 'warning');
       return;
     }
 
     if (orderType === 'scheduled' && !scheduledDateTime) {
-      alert("Please select a scheduled date and time");
+      Swal.fire('Schedule Time Required', 'Please select a scheduled date and time.', 'warning');
       return;
     }
 
@@ -758,6 +834,12 @@ const FoodOrderingPage = () => {
     if (result.success) {
       setOrderSuccess(true);
       setOrderId(result.data.orderId);
+      Swal.fire({
+        title: 'Order Placed!',
+        text: `Your order #${result.data.orderId || ''} has been placed successfully.`,
+        icon: 'success',
+        confirmButtonColor: '#3b82f6'
+      });
 
       // Automatically generate and download the invoice after placing the order
       try {
@@ -806,7 +888,7 @@ const FoodOrderingPage = () => {
         await refetchOrderHistory();
       }
     } else {
-      alert(result.message || "Failed to place order");
+      Swal.fire('Order Failed', result.message || "Failed to place order.", 'error');
     }
   };
 
@@ -1085,6 +1167,8 @@ const FoodOrderingPage = () => {
                         setSelectedShow(null);
                         setSelectedTiming(null);
                         setSelectedSeats(new Set());
+                        setSelectedVendorFilter(null);
+                        setExploreAllVendors(false);
                       }}
                       className={`p-4 rounded-xl transition-all ${
                         selectedTheater?._id === theater._id
@@ -1104,24 +1188,72 @@ const FoodOrderingPage = () => {
                   ))}
                 </div>
               </div>
-
-              {/* Vendor Info */}
-              {store && (
+                     {/* Assigned Vendors / Stores */}
+              {assignedStores && assignedStores.length > 0 && (
                 <div className="rounded-xl p-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-                  <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Assigned Vendor</h2>
-                  <div className="flex items-center gap-4">
-                    {store.logo && (
-                      <img src={store.logo} alt={store.name} className="w-16 h-16 rounded-xl object-cover" />
-                    )}
+                  <div className="flex items-center justify-between mb-4">
                     <div>
-                      <div className="font-bold text-lg" style={{ color: "var(--foreground)" }}>{store.name}</div>
-                      <div className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        {store.isOpen ? "🟢 Open" : "🔴 Closed"}
-                      </div>
-                      <div className="text-sm" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        {store.openingTime} - {store.closingTime}
-                      </div>
+                      <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
+                        Select Vendor <span className="text-xs text-amber-400 font-semibold">(Required)</span>
+                      </h2>
+                      <p className="text-xs opacity-60">Click a vendor below to load their food menu</p>
                     </div>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                      {assignedStores.length} Vendor{assignedStores.length > 1 ? 's' : ''} Available
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {assignedStores.map((st) => {
+                      const stId = st.id || st._id;
+                      const isFilterSelected = selectedVendorFilter === stId;
+                      return (
+                        <div
+                          key={stId}
+                          onClick={() => setSelectedVendorFilter(stId)}
+                          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                            isFilterSelected
+                              ? "border-blue-500 bg-blue-500/15 shadow-lg scale-[1.02] ring-2 ring-blue-500/50"
+                              : "hover:border-blue-400/50 hover:scale-[1.01] opacity-75 hover:opacity-100"
+                          }`}
+                          style={{ background: "var(--background)", borderColor: isFilterSelected ? "#3b82f6" : "var(--card-border)" }}
+                        >
+                          <div className="flex items-center gap-3">
+                            {st.logo ? (
+                              <img src={st.logo} alt={st.name} className="w-12 h-12 rounded-xl object-cover border" />
+                            ) : (
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl border ${
+                                isFilterSelected 
+                                  ? "bg-blue-500 text-white border-blue-400" 
+                                  : "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                              }`}>
+                                <FaStore />
+                              </div>
+                            )}
+                            <div className="text-left flex-1">
+                              <div className="font-bold text-base text-foreground flex items-center justify-between">
+                                <span>{st.name}</span>
+                                {isFilterSelected && (
+                                  <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold shadow">
+                                    ✓ Active Vendor
+                                  </span>
+                                )}
+                              </div>
+                              {st.vendorName && (
+                                <div className="text-xs font-semibold text-blue-400 mt-0.5">
+                                  👤 {st.vendorName}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 text-xs opacity-70 mt-1">
+                                <span className={st.isOpen ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
+                                  {st.isOpen ? "🟢 Open" : "🔴 Closed"}
+                                </span>
+                                {st.phone && <span>📞 {st.phone}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1237,204 +1369,406 @@ const FoodOrderingPage = () => {
                   </div>
                   
                   <div style={{ textAlign: "center", padding: "18px 0 10px" }}>
-                    <div
-                      style={{
-                        height: 3,
-                        maxWidth: 500,
-                        margin: "0 auto 6px",
-                        background: "linear-gradient(90deg,transparent,#e2c97e,transparent)",
-                        borderRadius: 2,
-                      }}
-                    />
-                    <div style={{ fontSize: 10, color: "#e2c97e", letterSpacing: "3px", fontWeight: 700 }}>
-                      SCREEN — ALL EYES THIS WAY
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: "rgba(34,197,94,0.1)",
-                    border: "1px solid rgba(34,197,94,0.3)",
-                    borderRadius: 12,
-                    padding: "12px 20px",
-                    marginBottom: 24,
-                    textAlign: "center"
-                  }}>
-                    <span style={{ color: "#22c55e", fontWeight: 600, fontSize: 14 }}>
-                      🎟️ You have access to {accessibleSeats?.length || 0} seats in this show
-                    </span>
-                  </div>
-
-                  {!hasLayout ? (
-                    <div style={{ textAlign: "center", paddingTop: 80, color: "#6b7280" }}>
-                      <MdEventSeat style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }} />
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "#4b5563" }}>No seat layout configured</div>
-                      <div style={{ fontSize: 12, marginTop: 6 }}>This theater has no seat data stored yet.</div>
-                    </div>
-                  ) : (
-                    <>
-                      {groundData && (
-                        <div style={{ marginBottom: 24 }}>
-                          <div style={{ textAlign: "center", marginBottom: 12 }}>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: "#6b7280",
-                                textTransform: "uppercase",
-                                letterSpacing: ".1em",
-                                padding: "3px 14px",
-                                background: "#1a1a24",
-                                borderRadius: 20,
-                                border: "1px solid #2a2a38",
-                              }}
-                            >
-                              Ground Floor
-                            </span>
+                    {/* Cinema seat layout */}
+                    {!hasLayout ? (
+                      <div style={{ padding: 30, textAlign: "center", background: "#0f0f16", borderRadius: 12 }}>
+                        <MdEventSeat style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }} />
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "#4b5563" }}>No seat layout configured</div>
+                        <div style={{ fontSize: 12, marginTop: 6 }}>This theater has no seat data stored yet.</div>
+                      </div>
+                    ) : (
+                      <>
+                        {groundData && (
+                          <div style={{ marginBottom: 24 }}>
+                            <div style={{ textAlign: "center", marginBottom: 12 }}>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: "#6b7280",
+                                  textTransform: "uppercase",
+                                  letterSpacing: ".1em",
+                                  padding: "3px 14px",
+                                  background: "#1a1a24",
+                                  borderRadius: 20,
+                                  border: "1px solid #2a2a38",
+                                }}
+                              >
+                                Ground Floor
+                              </span>
+                            </div>
+                            <CinemaSeatFloor
+                              levelKey="ground"
+                              zones={allZones}
+                              seats={groundData.seats}
+                              rows={groundData.rows}
+                              cols={groundData.cols}
+                              aisleCols={groundData.aisleCols}
+                              aisleRows={groundData.aisleRows}
+                              selected={selectedSeats}
+                              onToggle={handleSeatToggle}
+                              accessibleSeatSet={accessibleSeatSet}
+                              bookedSeatsSet={bookedSeats}
+                            />
                           </div>
-                          <CinemaSeatFloor
-                            levelKey="ground"
-                            zones={allZones}
-                            seats={groundData.seats}
-                            rows={groundData.rows}
-                            cols={groundData.cols}
-                            aisleCols={groundData.aisleCols}
-                            aisleRows={groundData.aisleRows}
-                            selected={selectedSeats}
-                            onToggle={handleSeatToggle}
-                            accessibleSeatSet={accessibleSeatSet}
-                            bookedSeatsSet={bookedSeats}
-                          />
-                        </div>
-                      )}
+                        )}
 
-                      {balconyData && (
-                        <div>
-                          <div style={{ textAlign: "center", marginBottom: 12 }}>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: "#6b7280",
-                                textTransform: "uppercase",
-                                letterSpacing: ".1em",
-                                padding: "3px 14px",
-                                background: "#1a1a24",
-                                borderRadius: 20,
-                                border: "1px solid #2a2a38",
-                              }}
-                            >
-                              Balcony
-                            </span>
+                        {balconyData && (
+                          <div>
+                            <div style={{ textAlign: "center", marginBottom: 12 }}>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: "#6b7280",
+                                  textTransform: "uppercase",
+                                  letterSpacing: ".1em",
+                                  padding: "3px 14px",
+                                  background: "#1a1a24",
+                                  borderRadius: 20,
+                                  border: "1px solid #2a2a38",
+                                }}
+                              >
+                                Balcony
+                              </span>
+                            </div>
+                            <CinemaSeatFloor
+                              levelKey="balcony"
+                              zones={allZones}
+                              seats={balconyData.seats}
+                              rows={balconyData.rows}
+                              cols={balconyData.cols}
+                              aisleCols={balconyData.aisleCols}
+                              aisleRows={balconyData.aisleRows}
+                              selected={selectedSeats}
+                              onToggle={handleSeatToggle}
+                              accessibleSeatSet={accessibleSeatSet}
+                              bookedSeatsSet={bookedSeats}
+                            />
                           </div>
-                          <CinemaSeatFloor
-                            levelKey="balcony"
-                            zones={allZones}
-                            seats={balconyData.seats}
-                            rows={balconyData.rows}
-                            cols={balconyData.cols}
-                            aisleCols={balconyData.aisleCols}
-                            aisleRows={balconyData.aisleRows}
-                            selected={selectedSeats}
-                            onToggle={handleSeatToggle}
-                            accessibleSeatSet={accessibleSeatSet}
-                            bookedSeatsSet={bookedSeats}
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* Products */}
               {showProducts && (
                 <div className="rounded-xl p-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-                  <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Menu</h2>
-                  {!store ? (
-                    <p style={{ color: "var(--foreground)", opacity: 0.6 }}>No store found for this theater</p>
-                  ) : !products || Object.keys(products).length === 0 ? (
-                    <p style={{ color: "var(--foreground)", opacity: 0.6 }}>No products available</p>
-                  ) : (
-                    Object.entries(groupedProducts).map(([category, items]) => (
-                      <div key={category} className="mb-6">
-                        <h3 className="text-md font-semibold mb-3" style={{ color: "var(--foreground)", opacity: 0.8 }}>{category}</h3>
-                        <div className="flex flex-col gap-4">
-                          {items.map((product) => (
-                            <div
-                              key={product._id}
-                              className="rounded-xl p-4 transition-all hover:scale-[1.01]"
-                              style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
+                  {(() => {
+                    const activeVendorObj = assignedStores.find(s => (s.id || s._id) === selectedVendorFilter);
+
+                    if (exploreAllVendors) {
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-6 border-b pb-4" style={{ borderColor: "var(--card-border)" }}>
+                            <div>
+                              <h2 className="text-xl font-black" style={{ color: "var(--foreground)" }}>
+                                All Vendor-Wise Menus ({assignedStores.length})
+                              </h2>
+                              <p className="text-xs opacity-60">Browse menus from all assigned vendors for this theater</p>
+                            </div>
+                            <button
+                              onClick={() => setExploreAllVendors(false)}
+                              className="px-4 py-2 text-xs font-bold rounded-xl border bg-background text-foreground hover:scale-105 transition-all cursor-pointer"
                             >
-                              <div className="flex gap-4 items-stretch">
-                                {/* Left: Image */}
-                                <div className="w-28 h-28 shrink-0 rounded-lg overflow-hidden flex items-center justify-center border" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                                  {product.image ? (
-                                    <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover" />
+                              ← Back to Selected Vendor View
+                            </button>
+                          </div>
+
+                          <div className="space-y-10">
+                            {assignedStores.map((st) => {
+                              const stId = st.id || st._id;
+                              const isCurrentSelected = selectedVendorFilter === stId;
+                              const vendorItems = Object.entries(groupedProducts).reduce((acc, [cat, items]) => {
+                                const matched = items.filter(i => (
+                                  i.storeId === stId || 
+                                  i.storeInfo?.id === stId || 
+                                  i.storeId?.toString() === stId?.toString()
+                                ));
+                                if (matched.length > 0) acc[cat] = matched;
+                                return acc;
+                              }, {});
+
+                              return (
+                                <div key={stId} className="rounded-2xl p-5 border" style={{ background: "var(--background)", borderColor: isCurrentSelected ? "#3b82f6" : "var(--card-border)" }}>
+                                  <div className="flex items-center justify-between flex-wrap gap-3 mb-6 pb-4 border-b" style={{ borderColor: "var(--card-border)" }}>
+                                    <div className="flex items-center gap-3">
+                                      {st.logo ? (
+                                        <img src={st.logo} alt={st.name} className="w-12 h-12 rounded-xl object-cover border" />
+                                      ) : (
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 text-xl font-bold">
+                                          <FaStore />
+                                        </div>
+                                      )}
+                                      <div>
+                                        <div className="font-bold text-lg text-foreground flex items-center gap-2">
+                                          <span>{st.name}</span>
+                                          {isCurrentSelected && (
+                                            <span className="text-[10px] bg-blue-500 text-white px-2.5 py-0.5 rounded-full font-bold">
+                                              Active Selection
+                                            </span>
+                                          )}
+                                        </div>
+                                        {st.vendorName && (
+                                          <div className="text-xs font-semibold text-blue-400">
+                                            👤 Vendor: {st.vendorName} {st.phone ? `(${st.phone})` : ''}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {!isCurrentSelected && (
+                                      <button
+                                        onClick={() => {
+                                          setSelectedVendorFilter(stId);
+                                          setExploreAllVendors(false);
+                                        }}
+                                        className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                      >
+                                        Select & Switch to {st.name}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {Object.keys(vendorItems).length === 0 ? (
+                                    <p className="text-xs opacity-60 py-4 text-center">No menu items added for {st.name} yet</p>
                                   ) : (
-                                    <FaUtensils className="text-3xl opacity-20" style={{ color: "var(--foreground)" }} />
+                                    Object.entries(vendorItems).map(([cat, items]) => (
+                                      <div key={cat} className="mb-6">
+                                        <h4 className="text-sm font-bold mb-3 opacity-80 uppercase tracking-wider text-blue-400">{cat}</h4>
+                                        <div className="flex flex-col gap-4">
+                                          {items.map((product) => (
+                                            <div
+                                              key={product._id}
+                                              className="rounded-xl p-4 transition-all hover:scale-[1.01]"
+                                              style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+                                            >
+                                              <div className="flex gap-4 items-stretch">
+                                                <div className="w-24 h-24 shrink-0 rounded-lg overflow-hidden flex items-center justify-center border" style={{ background: "var(--background)", borderColor: "var(--card-border)" }}>
+                                                  {product.image ? (
+                                                    <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover" />
+                                                  ) : (
+                                                    <FaUtensils className="text-2xl opacity-20" style={{ color: "var(--foreground)" }} />
+                                                  )}
+                                                </div>
+                                                <div className="flex flex-col justify-between flex-1 py-1">
+                                                  <div>
+                                                    <div className="font-bold text-base mb-1" style={{ color: "var(--foreground)" }}>{product.name}</div>
+                                                    <div className="text-xs line-clamp-2 opacity-60" style={{ color: "var(--foreground)" }}>{product.description}</div>
+                                                  </div>
+                                                  <div className="flex items-end justify-between mt-2">
+                                                    <div className="font-bold text-base text-blue-500">
+                                                      ₹{product.discountPrice || product.price}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                      {cart.items.find(item => item.productId === product._id) ? (
+                                                        <div className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white p-1">
+                                                          <button
+                                                            onClick={() => {
+                                                              const item = cart.items.find(i => i.productId === product._id);
+                                                              if (item.quantity <= 1) {
+                                                                handleRemoveFromCart(product._id);
+                                                              } else {
+                                                                handleUpdateCartItem(product._id, item.quantity - 1);
+                                                              }
+                                                            }}
+                                                            disabled={loading}
+                                                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
+                                                          >
+                                                            <FaMinus className="text-[10px]" />
+                                                          </button>
+                                                          <span className="w-6 text-center font-bold text-sm">
+                                                            {cart.items.find(item => item.productId === product._id).quantity}
+                                                          </span>
+                                                          <button
+                                                            onClick={() => {
+                                                              const item = cart.items.find(i => i.productId === product._id);
+                                                              handleUpdateCartItem(product._id, item.quantity + 1);
+                                                            }}
+                                                            disabled={loading}
+                                                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
+                                                          >
+                                                            <FaPlus className="text-[10px]" />
+                                                          </button>
+                                                        </div>
+                                                      ) : (
+                                                        <button
+                                                          onClick={() => handleAddToCart(product._id, 1)}
+                                                          disabled={loading}
+                                                          className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50 text-sm font-bold flex items-center gap-2 cursor-pointer"
+                                                        >
+                                                          <FaPlus className="text-xs" /> Add
+                                                        </button>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))
                                   )}
                                 </div>
-                                
-                                {/* Right: Info */}
-                                <div className="flex flex-col justify-between flex-1 py-1">
-                                  <div>
-                                    <div className="font-bold text-lg mb-1" style={{ color: "var(--foreground)" }}>{product.name}</div>
-                                    <div className="text-sm line-clamp-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>{product.description}</div>
-                                  </div>
-                                  <div className="flex items-end justify-between mt-2">
-                                    <div className="font-bold text-lg text-blue-500">
-                                      ₹{product.discountPrice || product.price}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {cart.items.find(item => item.productId === product._id) ? (
-                                        <div className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white p-1">
-                                          <button
-                                            onClick={() => {
-                                              const item = cart.items.find(i => i.productId === product._id);
-                                              if (item.quantity <= 1) {
-                                                handleRemoveFromCart(product._id);
-                                              } else {
-                                                handleUpdateCartItem(product._id, item.quantity - 1);
-                                              }
-                                            }}
-                                            disabled={loading}
-                                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
-                                          >
-                                            <FaMinus className="text-[10px]" />
-                                          </button>
-                                          <span className="w-6 text-center font-bold text-sm">
-                                            {cart.items.find(item => item.productId === product._id).quantity}
-                                          </span>
-                                          <button
-                                            onClick={() => {
-                                              const item = cart.items.find(i => i.productId === product._id);
-                                              handleUpdateCartItem(product._id, item.quantity + 1);
-                                            }}
-                                            disabled={loading}
-                                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
-                                          >
-                                            <FaPlus className="text-[10px]" />
-                                          </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="pt-6 border-t mt-8 text-center" style={{ borderColor: "var(--card-border)" }}>
+                            <button
+                              onClick={() => setExploreAllVendors(false)}
+                              className="px-6 py-2.5 rounded-xl border bg-background text-foreground font-bold hover:scale-105 transition-all flex items-center gap-2 mx-auto cursor-pointer"
+                            >
+                              ← Collapse / Back to Selected Vendor View
+                            </button>
+                          </div>
+                        </>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: "var(--card-border)" }}>
+                          <div>
+                            <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
+                              Food Menu {activeVendorObj ? `— ${activeVendorObj.name}` : ''}
+                            </h2>
+                            {activeVendorObj?.vendorName && (
+                              <p className="text-xs text-blue-400 font-semibold">
+                                Vendor: {activeVendorObj.vendorName} {activeVendorObj.phone ? `(${activeVendorObj.phone})` : ''}
+                              </p>
+                            )}
+                          </div>
+                          {activeVendorObj && (
+                            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
+                              <span>🟢</span> {activeVendorObj.name} Selected
+                            </span>
+                          )}
+                        </div>
+
+                        {!selectedVendorFilter ? (
+                          <div className="p-8 text-center bg-amber-500/10 border border-amber-500/30 rounded-xl my-4">
+                            <FaStore className="text-3xl text-amber-400 mx-auto mb-2" />
+                            <p className="font-bold text-amber-400">Please select a vendor first</p>
+                            <p className="text-xs opacity-70 mt-1">Select one of the assigned vendors above to load their food menu items.</p>
+                          </div>
+                        ) : (!assignedStores || assignedStores.length === 0) ? (
+                          <p style={{ color: "var(--foreground)", opacity: 0.6 }}>No store found for this theater</p>
+                        ) : !products || Object.keys(products).length === 0 ? (
+                          <p style={{ color: "var(--foreground)", opacity: 0.6 }}>No products available for this vendor</p>
+                        ) : (
+                          Object.entries(groupedProducts).map(([category, items]) => {
+                            const filteredItems = items.filter(i => (
+                              i.storeId === selectedVendorFilter || 
+                              i.storeInfo?.id === selectedVendorFilter || 
+                              i.storeId?.toString() === selectedVendorFilter?.toString()
+                            ));
+
+                            if (filteredItems.length === 0) return null;
+
+                            return (
+                              <div key={category} className="mb-6">
+                                <h3 className="text-md font-semibold mb-3" style={{ color: "var(--foreground)", opacity: 0.8 }}>{category}</h3>
+                                <div className="flex flex-col gap-4">
+                                  {filteredItems.map((product) => (
+                                    <div
+                                      key={product._id}
+                                      className="rounded-xl p-4 transition-all hover:scale-[1.01]"
+                                      style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
+                                    >
+                                      <div className="flex gap-4 items-stretch">
+                                        <div className="w-28 h-28 shrink-0 rounded-lg overflow-hidden flex items-center justify-center border" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+                                          {product.image ? (
+                                            <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <FaUtensils className="text-3xl opacity-20" style={{ color: "var(--foreground)" }} />
+                                          )}
                                         </div>
-                                      ) : (
-                                        <button
-                                          onClick={() => handleAddToCart(product._id, 1)}
-                                          disabled={loading}
-                                          className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50 text-sm font-bold flex items-center gap-2"
-                                        >
-                                          <FaPlus className="text-xs" /> Add
-                                        </button>
-                                      )}
+                                        
+                                        <div className="flex flex-col justify-between flex-1 py-1">
+                                          <div>
+                                            {product.storeInfo?.name && (
+                                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 mb-1 border border-amber-500/30">
+                                                <span>🏪 Vendor: {product.storeInfo.name}</span>
+                                                {product.storeInfo.vendorName && <span className="opacity-80">({product.storeInfo.vendorName})</span>}
+                                              </div>
+                                            )}
+                                            <div className="font-bold text-lg mb-1" style={{ color: "var(--foreground)" }}>{product.name}</div>
+                                            <div className="text-sm line-clamp-2" style={{ color: "var(--foreground)", opacity: 0.6 }}>{product.description}</div>
+                                          </div>
+                                          <div className="flex items-end justify-between mt-2">
+                                            <div className="font-bold text-lg text-blue-500">
+                                              ₹{product.discountPrice || product.price}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              {cart.items.find(item => item.productId === product._id) ? (
+                                                <div className="flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white p-1">
+                                                  <button
+                                                    onClick={() => {
+                                                      const item = cart.items.find(i => i.productId === product._id);
+                                                      if (item.quantity <= 1) {
+                                                        handleRemoveFromCart(product._id);
+                                                      } else {
+                                                        handleUpdateCartItem(product._id, item.quantity - 1);
+                                                      }
+                                                    }}
+                                                    disabled={loading}
+                                                    className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
+                                                  >
+                                                    <FaMinus className="text-[10px]" />
+                                                  </button>
+                                                  <span className="w-6 text-center font-bold text-sm">
+                                                    {cart.items.find(item => item.productId === product._id).quantity}
+                                                  </span>
+                                                  <button
+                                                    onClick={() => {
+                                                      const item = cart.items.find(i => i.productId === product._id);
+                                                      handleUpdateCartItem(product._id, item.quantity + 1);
+                                                    }}
+                                                    disabled={loading}
+                                                    className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition-colors rounded disabled:opacity-50"
+                                                  >
+                                                    <FaPlus className="text-[10px]" />
+                                                  </button>
+                                                </div>
+                                              ) : (
+                                                <button
+                                                  onClick={() => handleAddToCart(product._id, 1)}
+                                                  disabled={loading}
+                                                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50 text-sm font-bold flex items-center gap-2 cursor-pointer"
+                                                >
+                                                  <FaPlus className="text-xs" /> Add
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
                                     </div>
-                                  </div>
+                                  ))}
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                            );
+                          })
+                        )}
+
+                        {assignedStores.length > 1 && (
+                          <div className="pt-6 border-t mt-8 text-center" style={{ borderColor: "var(--card-border)" }}>
+                            <button
+                              onClick={() => setExploreAllVendors(true)}
+                              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2 mx-auto cursor-pointer"
+                            >
+                              <FaUtensils className="text-sm" />
+                              Explore More Vendor Menus ({assignedStores.length} Vendors Available) ✨
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
