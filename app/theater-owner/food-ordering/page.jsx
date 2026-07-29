@@ -8,6 +8,7 @@ import { getMyTheaters, getTheaterByIdAdmin } from "../../services/adminCommunic
 import axios from "axios";
 import { io } from "socket.io-client";
 import { toast, Toaster } from "react-hot-toast";
+import Swal from "sweetalert2";
 import { generateInvoicePDF } from "../../utils/invoiceGenerator";
 
 const BE_URL = process.env.NEXT_PUBLIC_BE_URL || "http://localhost:5000/api";
@@ -709,9 +710,18 @@ const FoodOrderingPage = () => {
                                 
       if (isVendorConflict) {
         const errorMsg = result.message || "At one time you can order from one vendor only.";
-        const confirmClear = window.confirm(`⚠️ Vendor Conflict:\n\n${errorMsg}\n\nDo you want to clear your current cart and add items from this vendor instead?`);
+        const confirmClear = await Swal.fire({
+          title: 'Vendor Conflict!',
+          text: `${errorMsg}\n\nDo you want to clear your current cart and add items from this vendor instead?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#3b82f6',
+          cancelButtonColor: '#ef4444',
+          confirmButtonText: 'Yes, Clear Cart & Switch Vendor',
+          cancelButtonText: 'Cancel'
+        });
         
-        if (confirmClear) {
+        if (confirmClear.isConfirmed) {
           setLoading(true);
           await clearCartData();
           const retryResult = await addToCart(productId, quantity);
@@ -720,15 +730,19 @@ const FoodOrderingPage = () => {
           if (retryResult?.success) {
             setShowCart(true);
             setProductQuantities(prev => ({ ...prev, [productId]: 1 }));
-            if (typeof toast !== 'undefined' && toast.success) {
-              toast.success("Cart updated with items from new vendor!");
-            }
+            Swal.fire({
+              title: 'Cart Updated!',
+              text: 'Your cart has been cleared and updated with items from the new vendor.',
+              icon: 'success',
+              timer: 2000,
+              showConfirmButton: false
+            });
           } else {
-            alert(retryResult?.message || "Failed to add item to cart after clearing.");
+            Swal.fire('Error', retryResult?.message || "Failed to add item to cart after clearing.", 'error');
           }
         }
       } else {
-        alert(result.message || "Failed to add item to cart.");
+        Swal.fire('Error', result.message || "Failed to add item to cart.", 'error');
       }
       return;
     }
@@ -736,7 +750,6 @@ const FoodOrderingPage = () => {
     await refetchCart();
     setLoading(false);
     setShowCart(true);
-    // Reset quantity for this product
     setProductQuantities(prev => ({ ...prev, [productId]: 1 }));
   };
 
@@ -757,7 +770,16 @@ const FoodOrderingPage = () => {
   };
 
   const handleRemoveFromCart = async (productId) => {
-    if (!confirm('Remove this item from cart?')) return;
+    const resConfirm = await Swal.fire({
+      title: 'Remove Item?',
+      text: 'Are you sure you want to remove this item from your cart?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, remove it!'
+    });
+    if (!resConfirm.isConfirmed) return;
     setLoading(true);
     await removeFromCart(productId);
     await refetchCart();
@@ -766,32 +788,32 @@ const FoodOrderingPage = () => {
 
   const handlePlaceOrder = async () => {
     if (!selectedTheater) {
-      alert("Please select a theater first");
+      Swal.fire('Selection Required', 'Please select a theater first.', 'warning');
       return;
     }
 
     if (!selectedShow) {
-      alert("Please select a show first");
+      Swal.fire('Selection Required', 'Please select a show first.', 'warning');
       return;
     }
 
     if (!selectedTiming) {
-      alert("Please select a show timing first");
+      Swal.fire('Selection Required', 'Please select a show timing first.', 'warning');
       return;
     }
 
     if (selectedSeats.size === 0) {
-      alert("Please select at least one seat");
+      Swal.fire('Selection Required', 'Please select at least one seat.', 'warning');
       return;
     }
 
     if (cart.items.length === 0) {
-      alert("Cart is empty");
+      Swal.fire('Empty Cart', 'Your cart is empty. Please add items to cart.', 'warning');
       return;
     }
 
     if (orderType === 'scheduled' && !scheduledDateTime) {
-      alert("Please select a scheduled date and time");
+      Swal.fire('Schedule Time Required', 'Please select a scheduled date and time.', 'warning');
       return;
     }
 
@@ -812,6 +834,12 @@ const FoodOrderingPage = () => {
     if (result.success) {
       setOrderSuccess(true);
       setOrderId(result.data.orderId);
+      Swal.fire({
+        title: 'Order Placed!',
+        text: `Your order #${result.data.orderId || ''} has been placed successfully.`,
+        icon: 'success',
+        confirmButtonColor: '#3b82f6'
+      });
 
       // Automatically generate and download the invoice after placing the order
       try {
@@ -860,7 +888,7 @@ const FoodOrderingPage = () => {
         await refetchOrderHistory();
       }
     } else {
-      alert(result.message || "Failed to place order");
+      Swal.fire('Order Failed', result.message || "Failed to place order.", 'error');
     }
   };
 
