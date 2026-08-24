@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FaUtensils, FaShoppingCart, FaPlus, FaMinus, FaTrash, FaCalendarAlt, FaClock, FaChair, FaRupeeSign, FaSpinner, FaStore, FaLock, FaHistory, FaTimes, FaEye, FaDownload } from "react-icons/fa";
+import { FaUtensils, FaShoppingCart, FaPlus, FaMinus, FaTrash, FaCalendarAlt, FaClock, FaChair, FaRupeeSign, FaSpinner, FaStore, FaLock, FaHistory, FaTimes, FaEye, FaDownload, FaCheckCircle } from "react-icons/fa";
 import { MdEventSeat } from "react-icons/md";
 import { getMyTheaters, getTheaterByIdAdmin } from "../../services/adminCommunication";
 import axios from "axios";
@@ -1156,36 +1156,66 @@ const FoodOrderingPage = () => {
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Theater Selection */}
-              <div className="rounded-xl p-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-                <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Select Theater</h2>
+              <div className="rounded-xl p-6 shadow-sm" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                      <FaStore className="text-blue-500" /> Select Theater
+                    </h2>
+                    <p className="text-xs opacity-60 mt-1">Choose the venue for this order</p>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                    Step 1
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {theaters.map((theater) => (
-                    <button
-                      key={theater._id}
-                      onClick={() => {
-                        setSelectedTheater(theater);
-                        setSelectedShow(null);
-                        setSelectedTiming(null);
-                        setSelectedSeats(new Set());
-                        setSelectedVendorFilter(null);
-                        setExploreAllVendors(false);
-                      }}
-                      className={`p-4 rounded-xl transition-all ${
-                        selectedTheater?._id === theater._id
-                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                          : "hover:scale-105"
-                      }`}
-                      style={selectedTheater?._id !== theater._id ? { background: "var(--background)", border: "1px solid var(--card-border)" } : {}}
-                    >
-                      <div className="flex items-center gap-3">
-                        <FaStore />
-                        <div className="text-left">
-                          <div className="font-semibold">{theater.name}</div>
-                          <div className="text-xs opacity-80">{theater.location}</div>
+                  {theaters.map((theater) => {
+                    const isSelected = selectedTheater?._id === theater._id;
+                    return (
+                      <button
+                        key={theater._id}
+                        onClick={() => {
+                          setSelectedTheater(theater);
+                          setSelectedShow(null);
+                          setSelectedTiming(null);
+                          setSelectedSeats(new Set());
+                          setSelectedVendorFilter(null);
+                          setExploreAllVendors(false);
+                        }}
+                        className={`relative p-5 rounded-xl transition-all duration-300 border text-left overflow-hidden group ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20 ring-1 ring-blue-500"
+                            : "hover:border-blue-400/50 hover:bg-white/5 hover:scale-[1.02]"
+                        }`}
+                        style={{
+                          background: isSelected ? undefined : "var(--background)",
+                          borderColor: isSelected ? "#3b82f6" : "var(--card-border)",
+                        }}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/20 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2" />
+                        )}
+                        <div className="flex flex-col gap-2 relative z-10">
+                          <div className="flex items-start justify-between">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${isSelected ? 'bg-blue-500 text-white shadow-md' : 'bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20'}`}>
+                              <FaStore />
+                            </div>
+                            {isSelected && (
+                              <div className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                <FaCheckCircle className="text-[10px]" /> Selected
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-base text-foreground mt-2 group-hover:text-blue-400 transition-colors">{theater.name}</div>
+                            <div className="text-xs opacity-60 mt-1 flex items-center gap-1">
+                              <span className="truncate">{theater.location}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
                      {/* Assigned Vendors / Stores */}
@@ -1193,13 +1223,13 @@ const FoodOrderingPage = () => {
                 <div className="rounded-xl p-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
-                        Select Vendor <span className="text-xs text-amber-400 font-semibold">(Required)</span>
+                      <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                        <FaStore className="text-amber-500" /> Select Vendor <span className="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20 ml-2">Required</span>
                       </h2>
-                      <p className="text-xs opacity-60">Click a vendor below to load their food menu</p>
+                      <p className="text-xs opacity-60 mt-1">Click a vendor below to load their food menu</p>
                     </div>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                      {assignedStores.length} Vendor{assignedStores.length > 1 ? 's' : ''} Available
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 hidden sm:block">
+                      Step 2
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1258,64 +1288,104 @@ const FoodOrderingPage = () => {
                 </div>
               )}
 
-              {/* Show Selection */}
               {selectedTheater && (
-                <div className="rounded-xl p-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-                  <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Select Show</h2>
-                  <div className="space-y-3">
+                <div className="rounded-xl p-6 shadow-sm" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                        <FaCalendarAlt className="text-indigo-500" /> Select Show
+                      </h2>
+                      <p className="text-xs opacity-60 mt-1">Pick the movie show to deliver to</p>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                      Step 3
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {shows.filter(show => {
                       const showTheaterId = show.theaterId?._id || show.theaterId;
                       const selectedTheaterId = selectedTheater._id;
                       return showTheaterId === selectedTheaterId || showTheaterId?.toString() === selectedTheaterId?.toString();
-                    }).map((show) => (
-                      <button
-                        key={show._id}
-                        onClick={() => {
-                          setSelectedShow(show);
-                          setSelectedTiming(null);
-                          setSelectedSeats(new Set());
-                        }}
-                        className={`w-full p-4 rounded-xl transition-all text-left ${
-                          selectedShow?._id === show._id
-                            ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                            : "hover:scale-105"
-                        }`}
-                        style={selectedShow?._id !== show._id ? { background: "var(--background)", border: "1px solid var(--card-border)" } : {}}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-semibold">{show.movie?.name}</div>
-                            <div className="text-sm opacity-80 flex items-center gap-2">
-                              <FaCalendarAlt />
-                              {new Date(show.showDate).toLocaleDateString()}
+                    }).map((show) => {
+                      const isSelected = selectedShow?._id === show._id;
+                      return (
+                        <button
+                          key={show._id}
+                          onClick={() => {
+                            setSelectedShow(show);
+                            setSelectedTiming(null);
+                            setSelectedSeats(new Set());
+                          }}
+                          className={`relative p-4 rounded-xl transition-all duration-300 border text-left overflow-hidden group ${
+                            isSelected
+                              ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500"
+                              : "hover:border-indigo-400/50 hover:bg-white/5 hover:scale-[1.02]"
+                          }`}
+                          style={{
+                            background: isSelected ? undefined : "var(--background)",
+                            borderColor: isSelected ? "#6366f1" : "var(--card-border)",
+                          }}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/20 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2" />
+                          )}
+                          <div className="flex items-start gap-4 relative z-10">
+                            <div className={`w-12 h-16 shrink-0 rounded-lg flex items-center justify-center text-xl overflow-hidden ${isSelected ? 'shadow-md border border-indigo-500/50' : 'bg-indigo-500/10 text-indigo-500 border border-transparent group-hover:border-indigo-500/30'}`}>
+                              {show.movie?.poster ? (
+                                <img src={show.movie.poster} alt={show.movie.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <FaCalendarAlt />
+                              )}
+                            </div>
+                            <div className="flex-1 py-1">
+                              <div className="flex items-start justify-between">
+                                <div className="font-bold text-base text-foreground line-clamp-1 group-hover:text-indigo-400 transition-colors">{show.movie?.name}</div>
+                                {isSelected && (
+                                  <FaCheckCircle className="text-indigo-500 shrink-0 ml-2" />
+                                )}
+                              </div>
+                              <div className="text-xs opacity-70 mt-2 flex items-center gap-1.5 bg-background/50 inline-flex px-2 py-1 rounded-md border border-card-border">
+                                <FaCalendarAlt className="text-indigo-400" />
+                                {new Date(show.showDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                     {shows.filter(show => {
                       const showTheaterId = show.theaterId?._id || show.theaterId;
                       const selectedTheaterId = selectedTheater._id;
                       return showTheaterId === selectedTheaterId || showTheaterId?.toString() === selectedTheaterId?.toString();
                     }).length === 0 && (
-                      <p className="text-center py-4" style={{ color: "var(--foreground)", opacity: 0.6 }}>
-                        No shows found for this theater
-                      </p>
+                      <div className="col-span-full p-8 text-center rounded-xl border border-dashed" style={{ borderColor: "var(--card-border)" }}>
+                        <FaCalendarAlt className="text-3xl mx-auto mb-3 opacity-20" />
+                        <p className="text-sm opacity-60">No shows found for this theater</p>
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Timing Selection */}
               {selectedShow && showTimings.length > 0 && (
-                <div className="rounded-xl p-6" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
-                  <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>Select Show Timing</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl p-6 shadow-sm" style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                        <FaClock className="text-emerald-500" /> Select Show Timing
+                      </h2>
+                      <p className="text-xs opacity-60 mt-1">Select the exact time of the show</p>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Step 4
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {showTimings.map((timing, idx) => {
                       const isSelected = selectedTiming?._id === timing._id;
                       const showDate = timing.showDate || selectedShow.showDate;
                       const formattedDate = showDate ? new Date(showDate).toLocaleDateString('en-IN', {
-                        weekday: 'short',
+                        weekday: 'long',
                         day: 'numeric',
                         month: 'short'
                       }) : '';
@@ -1326,21 +1396,30 @@ const FoodOrderingPage = () => {
                             setSelectedTiming(timing);
                             setSelectedSeats(new Set());
                           }}
-                          className={`p-4 rounded-xl transition-all text-left ${
+                          className={`relative p-4 rounded-xl transition-all duration-300 border text-left overflow-hidden group flex items-center justify-between ${
                             isSelected
-                              ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                              : "hover:scale-105"
+                              ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500"
+                              : "hover:border-emerald-400/50 hover:bg-white/5 hover:scale-[1.02]"
                           }`}
-                          style={!isSelected ? { background: "var(--background)", border: "1px solid var(--card-border)" } : {}}
+                          style={{
+                            background: isSelected ? undefined : "var(--background)",
+                            borderColor: isSelected ? "#10b981" : "var(--card-border)",
+                          }}
                         >
-                          <div className="flex items-center gap-2 mb-2">
-                            <FaCalendarAlt />
-                            <span className="font-semibold">{formattedDate}</span>
+                          {isSelected && (
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/20 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2" />
+                          )}
+                          <div className="relative z-10 flex flex-col gap-1.5">
+                            <div className={`text-xs font-bold px-2 py-0.5 rounded-md self-start ${isSelected ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                              {formattedDate}
+                            </div>
+                            <div className="flex items-end gap-2 mt-1">
+                              <span className="text-xl font-black text-foreground group-hover:text-emerald-400 transition-colors tracking-tight">{timing.startTime}</span>
+                              <span className="text-xs opacity-60 mb-1 font-semibold">to {timing.endTime}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <FaClock />
-                            <span className="font-semibold">{timing.startTime}</span>
-                            <span className="text-xs opacity-80">- {timing.endTime}</span>
+                          <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-lg transition-transform ${isSelected ? 'bg-emerald-500 text-white shadow-md scale-110' : 'bg-background border border-card-border text-emerald-500/50 group-hover:border-emerald-500/30 group-hover:text-emerald-400'}`}>
+                            {isSelected ? <FaCheckCircle /> : <FaClock />}
                           </div>
                         </button>
                       );

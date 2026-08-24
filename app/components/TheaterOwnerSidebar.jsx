@@ -88,7 +88,7 @@ export default function TheaterOwnerSidebar() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("sidebarCollapsed");
-    router.push("/login");
+    router.push("/");
   };
 
   const SidebarItem = ({ item }) => {

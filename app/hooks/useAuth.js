@@ -47,7 +47,7 @@ export default function useAuth(redirectTo = null) {
 
   const logout = () => {
     dispatch(logoutUser());
-    router.push("/login");
+    router.push("/");
   };
 
   return { user, isAuthenticated, isLoading, logout };

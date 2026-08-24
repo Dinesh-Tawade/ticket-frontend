@@ -67,11 +67,10 @@ export default function VendorSidebar({ onCollapseChange }) {
     if (isMobile) setIsMobileMenuOpen(false);
   };
 
-  // ✅ Logout handler
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    router.push("/login");
+    router.push("/");
   };
 
   // ✅ Sidebar Item Component
