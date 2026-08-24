@@ -885,6 +885,11 @@ export default function CreateShow() {
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
+    
+    if (createMutation.isPending) {
+      return;
+    }
+    
     if (!validateForm()) {
       setActiveTab('basic');
       return;

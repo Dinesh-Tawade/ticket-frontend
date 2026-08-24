@@ -232,7 +232,7 @@ export default function Sidebar({ sidebarOpen = true, setSidebarOpen = null }) {
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
-    router.push("/admin/login");
+    router.push("/");
   }, [router]);
 
   const handleCloseMenu = useCallback(() => {

@@ -64,15 +64,15 @@ export default function Navbar() {
       // Clear all queries from cache
       queryClient.clear();
       
-      // Redirect to login page
-      router.push("/login");
+      // Redirect to home page
+      router.push("/");
     },
     onError: (error) => {
       console.error("Logout failed:", error);
-      // Still redirect to login even if API fails
+      // Still redirect to home even if API fails
       // The logout function already cleared localStorage
       queryClient.clear();
-      router.push("/login");
+      router.push("/");
     },
   });
 
